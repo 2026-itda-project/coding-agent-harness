@@ -1,5 +1,7 @@
 # SnowChat 연결 검증 — 2026-09-24
 
+> 기존 M1의 과거 실행 기록입니다. 아래 수치와 결과는 해당 실행 당시의 증거이며 현재 브랜치의 재검증 결과가 아닙니다. M2 최종 제품은 Claude API를 사용하며 개발 기준은 [M2 결정사항](decisions/m2-development-direction.md)을 따릅니다.
+
 ## 실제 실행 결과
 
 - 현재 Key의 모델 목록 조회 성공. `gpt-5.6-luna`, `gpt-5.6-terra`, `gpt-5.6-sol` 모두 존재.

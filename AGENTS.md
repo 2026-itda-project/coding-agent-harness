@@ -2,12 +2,25 @@
 
 ## Scope Interpretation
 
-이 문서는 프로젝트 전체 및 M1 전체의 공통 Context를 설명합니다. 
+이 문서는 프로젝트 공통 원칙, 현재 M2 개발 기준과 기존 M1 Context를 설명합니다.
 다만, 문서에 기술된 모든 기능이 현재 작업자의 구현 범위라는 의미는 아닙니다.
 
 Coding Agent는 작업을 시작하기 전에 반드시 현재 Task의 Owner, 구현 범위, 선행 단계, 후속 Handoff 지점을 확인해야 하며, 현재 Task Scope가 M1 전체보다 좁은 경우 현재 Task Scope를 우선합니다.
 
 현재 작업자의 작업 이후 진행할 다른 담당자의 후속 기능이 남아 있는 경우, Interface와 Handoff를 고려하되 후속 기능을 선행 구현하지 않아야 합니다.
+
+## Current Milestone: M2
+
+현재 개발 기준은 [M2 결정사항과 실행 범위](docs/decisions/m2-development-direction.md)입니다. 아래 M1 기획·담당·초기 구현 제안은 기존 단계의 맥락이며, M2에 명시적으로 변경된 사항은 이 절과 연결된 결정문을 우선합니다. 계획은 실제 구현 완료를 뜻하지 않습니다.
+
+- 범용 Harness를 개발합니다. 휴가관리 예시는 fixture·예시 데이터로만 두며 Spec·Task·Agent에 도메인 전용 로직을 넣지 않습니다.
+- M2 최종 제품의 생성·계획·코딩·검증 호출은 Claude API를 사용합니다. 요구사항·PRD·코딩은 Sonnet, Coding Plan·검증·재계획은 Opus입니다. Spec 모델과 실제 모델 ID·권한은 확인이 필요합니다. Jev는 별도 비교 실험이며 기본 경로의 선행조건이 아닙니다.
+- PRD·Spec·Task·코드는 LLM이 생성합니다. 코드는 입력·Context 전달, 응답 정리, 스키마·필수 필드·ID 참조·중복·순환 검증과 실행을 담당합니다. 잘못된 산출물을 제품 내용의 임의 생성·보정으로 통과시키지 않습니다.
+- 입력 항목은 목업 생성에 필요한 항목 중심으로 재구성하는 제안이 팀 컨펌 대기 중입니다(결정문 3절). 컨펌 전에는 입력 계약을 구현하지 않습니다.
+- AI 기본값과 최소 질문 정책은 7.4·8·9·17장을 따릅니다. `proposed`·AI 출처를 유지하면서 PRD 본문과 구현 범위에 포함하고, 사용자 명시사항을 우선합니다. Review·일괄 수락은 유지합니다.
+- Mock·fixture 검증과 실제 모델 E2E 실행 결과를 구분합니다.
+- 생성물은 Harness 밖 작업 폴더에서 로컬 Git으로 관리하고 원격에 연결하지 않습니다. Task 단위 커밋·변경 파일·diff를 남깁니다. 사용자에게는 서비스 내 실행 결과 미리보기를 제공하며 내보내기는 범위 밖입니다.
+- 구체적인 실행 환경은 미정입니다. Sandbox·Verification·Retry는 M2 개발 범위에 포함합니다.
 
 ## 1. Project Overview
 
@@ -29,7 +42,7 @@ Coding Agent
 Working Web SaaS
 ```
 
-현재 마일스톤인 **M1**에서는 이 중 자연어 요구사항부터 PRD까지의 흐름을 구현합니다.
+기존 **M1**에서는 이 중 자연어 요구사항부터 PRD까지의 흐름을 구현했습니다. 현재 **M2**에서는 PRD 이후 실행·검증·MVP 미리보기까지 확장합니다.
 
 M1의 핵심은 자연어를 곧바로 PRD 형식으로 변환하는 것이 아닙니다.
 
@@ -39,7 +52,7 @@ M1의 핵심은 자연어를 곧바로 PRD 형식으로 변환하는 것이 아�
 
 # Part 1. Confirmed M1 Product Decisions
 
-이 Part의 내용은 현재 M1 Demo 기획에서 확정된 사항입니다.
+이 Part의 내용은 기존 M1 Demo 기획의 확정사항입니다. M2 변경사항은 상단 Current Milestone과 7.4 등 명시된 변경 절을 함께 읽습니다.
 
 구현 과정에서 임의로 변경하지 않습니다.
 
@@ -148,6 +161,8 @@ M1의 대표 Demo Scenario는 **사내 휴가관리 Web SaaS**입니다.
 이를 통해 시스템이 사용자의 문장을 단순히 확장하는 것이 아니라, 실제 서비스 동작을 결정하기 위해 필요한 정보를 식별하고 보완할 수 있는지 확인합니다.
 
 가능하면 이후 M2/M3에서도 동일한 Demo Scenario를 사용하여 산출물 간 추적 관계를 유지합니다.
+
+M2에서는 이 시나리오를 fixture와 예시 데이터로만 사용합니다. 서비스 도메인에 대한 판단과 생성은 LLM이 수행하며 Harness의 Spec·Task·Agent 코드에 휴가관리 규칙을 하드코딩하지 않습니다.
 
 ---
 
@@ -270,6 +285,26 @@ Clarification 질문 라운드는 최대 **3회**로 제한합니다.
 
 사용자가 AI Proposal을 수락하면 해당 Blocking Issue는 해소된 것으로 처리합니다.
 
+### 7.4 M2 변경: AI 기본값 우선 (대표님 피드백 반영)
+
+M2의 주 사용자는 IT 비전공자이며, Gap 분석 결과에 직접 답하는 것을 어려워할 수 있습니다.
+
+따라서 M2부터는 다음 원칙을 우선합니다.
+
+```text
+사용자가 명시하지 않은 내용
+→ 질문하지 않고 AI가 일반적인 서비스 관례에 맞는 기본값으로 정한다 (proposed)
+
+사용자가 명시한 내용
+→ 그대로 따른다. AI 기본값이 이를 바꾸거나 충돌해서는 안 된다
+
+AI 기본값으로 정할 수 없는 핵심 결정
+(사용자 의도에 따라 서비스 성격 자체가 달라지는 경우)
+→ 이때만 쉬운 표현으로 최소한의 Clarification 질문을 한다
+```
+
+위 7.1~7.3의 Blocking·라운드 규칙은 이 최소 질문에만 적용합니다.
+
 ---
 
 ## 8. Requirement State
@@ -302,6 +337,8 @@ proposed
 
 AI Proposal은 사용자 확인 없이 자동으로 confirmed 상태가 되어서는 안 됩니다.
 
+단, M2부터 `proposed`는 "사용자가 거부·수정하지 않은 AI 기본값"으로서 일반 Requirement처럼 PRD 본문과 구현 범위에 포함합니다(7.4). `status`와 `source`는 AI 기본값임을 추적하기 위해 유지합니다.
+
 ---
 
 ## 9. AI Proposal Rules
@@ -323,6 +360,8 @@ status = confirmed
 사용자가 확인하지 않은 `proposed` Requirement는 삭제하지 않습니다.
 
 최종 PRD의 **Assumptions** 항목에 가정으로 표시하여 포함합니다.
+
+M2부터는 Assumptions에 표시하는 것과 별개로, 해당 내용을 PRD 본문(Functional Requirements, Business Rules 등)과 구현 범위에도 포함하고 AI 기본값임을 표시합니다(7.4).
 
 ---
 
@@ -600,6 +639,7 @@ Final PRD를 출력하기 전에 최소한 다음 내용을 확인합니다.
 
 사용자가 승인하지 않은 AI Proposal이
 confirmed Requirement로 포함되지 않았는가
+(M2: PRD 본문에 포함된 AI 기본값은 출처가 AI 기본값으로 표시되어 있는가)
 
 필수 PRD Section이 모두 존재하는가
 
@@ -610,6 +650,8 @@ Acceptance Criteria가 정의되어 있는가
 Validation에 실패하면 바로 Final PRD로 출력하지 않습니다.
 
 PRD를 수정한 뒤 다시 Validation을 수행합니다.
+
+M2에서는 수정할 제품 내용을 코드가 임의로 채우지 않습니다. 스키마·필수 필드·ID 참조·중복·순환 의존을 최소 검증하고, 실패 결과를 통과한 산출물과 구분합니다. 재생성이 필요한 경우 오류를 LLM에 전달합니다. 재시도 정책의 구체적인 값은 해당 이슈에서 정합니다.
 
 ---
 
@@ -786,7 +828,7 @@ M1 핵심 산출물은 다음과 같습니다.
 
 이 Part는 확정된 제품 요구사항이 아니라 저장소를 안정적으로 공동 개발하기 위한 Engineering Rule입니다.
 
-제품 기획과 충돌할 경우 Part 1의 확정 Product Decision을 우선합니다.
+제품 기획과 충돌할 경우 현재 마일스톤의 확정 Product Decision을 우선합니다. M2는 상단 Current Milestone과 연결된 결정문, M1 재현은 Part 1의 기존 규칙을 기준으로 합니다.
 
 ---
 
@@ -818,7 +860,7 @@ README
 
 ```text
 1. 현재 사용자가 명시적으로 요청한 작업
-2. 현재 디렉터리에 적용되는 AGENTS.md
+2. 현재 디렉터리에 적용되는 AGENTS.md (M2 변경 절과 연결된 결정문 포함)
 3. 최신 확정 PRD 또는 Product Decision
 4. 최신 Development Spec
 5. 확정된 Schema / API Contract
@@ -1080,6 +1122,8 @@ LLM 호출이 필요한 Test는 가능한 경우 Mock을 사용해 재현 가능
 ---
 
 ## 33. Collaboration and Handoff
+
+아래 담당 구분은 기존 M1의 인계 기록입니다. M2 팀 담당자는 아직 확정되지 않았으며 이 기록을 근거로 배정하지 않습니다.
 
 M1은 여러 사람이 단계별로 이어서 구현할 수 있으므로 Module 간 Contract를 명확하게 유지합니다.
 
