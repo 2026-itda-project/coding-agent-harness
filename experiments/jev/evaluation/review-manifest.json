@@ -1,0 +1,98 @@
+{
+  "status": "decision_boundaries_approved_execution_setup_pending",
+  "baseline_sha256": "75c052529e0d1663793c69a73680fa64df8cdd5e681560529c66238342b3ecb1",
+  "candidate_sha256": "be63b6874893c8d3e47c9c533ca2c1e597acd0663b01ac82fc96417d2e72d477",
+  "label_changes": [
+    {
+      "id": "DEFAULT-02",
+      "before": "ai_refine",
+      "after": "defer_to_spec",
+      "reason": "핵심 제품 동작은 정해져 있다. 표시 순서·크기·형식·시각 표현 등 구현 방법만 남아 Spec에서 결정한다. 업무 배정 순서나 권한을 변경하지 않는다."
+    },
+    {
+      "id": "DEFAULT-04",
+      "before": "ai_refine",
+      "after": "defer_to_spec",
+      "reason": "핵심 제품 동작은 정해져 있다. 표시 순서·크기·형식·시각 표현 등 구현 방법만 남아 Spec에서 결정한다. 업무 배정 순서나 권한을 변경하지 않는다."
+    },
+    {
+      "id": "DEFAULT-10",
+      "before": "ai_refine",
+      "after": "defer_to_spec",
+      "reason": "핵심 제품 동작은 정해져 있다. 표시 순서·크기·형식·시각 표현 등 구현 방법만 남아 Spec에서 결정한다. 업무 배정 순서나 권한을 변경하지 않는다."
+    },
+    {
+      "id": "DEFAULT-16",
+      "before": "ai_refine",
+      "after": "defer_to_spec",
+      "reason": "핵심 제품 동작은 정해져 있다. 표시 순서·크기·형식·시각 표현 등 구현 방법만 남아 Spec에서 결정한다. 업무 배정 순서나 권한을 변경하지 않는다."
+    },
+    {
+      "id": "DEFAULT-18",
+      "before": "ai_refine",
+      "after": "defer_to_spec",
+      "reason": "핵심 제품 동작은 정해져 있다. 표시 순서·크기·형식·시각 표현 등 구현 방법만 남아 Spec에서 결정한다. 업무 배정 순서나 권한을 변경하지 않는다."
+    },
+    {
+      "id": "DEFAULT-20",
+      "before": "ai_refine",
+      "after": "defer_to_spec",
+      "reason": "핵심 제품 동작은 정해져 있다. 표시 순서·크기·형식·시각 표현 등 구현 방법만 남아 Spec에서 결정한다. 업무 배정 순서나 권한을 변경하지 않는다."
+    },
+    {
+      "id": "CONFLICT-16",
+      "before": "ask_user",
+      "after": "ready",
+      "reason": "무승부라는 특정 조건과 그때의 예외 동작을 명시했다. 일반 규칙과 명시적 예외로 읽을 수 있어 재질문하지 않는 안이다. 검수 전 잠정 라벨이다."
+    }
+  ],
+  "added_case_ids": [
+    "SPEC-01",
+    "SPEC-02",
+    "SPEC-03",
+    "SPEC-04",
+    "SPEC-05",
+    "SPEC-06",
+    "SPEC-07",
+    "SPEC-08",
+    "SPEC-09",
+    "SPEC-10",
+    "SPEC-11",
+    "SPEC-12",
+    "SPEC-13",
+    "SPEC-14",
+    "SPEC-15",
+    "SPEC-16",
+    "SPEC-17",
+    "SPEC-18",
+    "SPEC-19",
+    "SPEC-20"
+  ],
+  "pilot_case_ids": [
+    "CORE-02",
+    "CORE-06",
+    "CONFLICT-01",
+    "SCOPE-03",
+    "EXPLICIT-01",
+    "EXPLICIT-06",
+    "CONTEXT-01",
+    "CONTEXT-04",
+    "DEFAULT-01",
+    "DEFAULT-03",
+    "DEFAULT-05",
+    "DEFAULT-07",
+    "SPEC-01",
+    "SPEC-02",
+    "SPEC-03",
+    "SPEC-04"
+  ],
+  "repeats": 1,
+  "providers": [
+    "jev-1.13.0",
+    "claude-sonnet-5-5"
+  ],
+  "fallback": false,
+  "generation": false,
+  "paid_execution_authorized_by_this_file": false,
+  "review_note": "사용자가 대표 판정 경계에 동의함. 전체 라벨의 독립 검수나 수치 성공 기준 확정을 뜻하지 않음. 프론트 구조 미리보기는 후속 확장 검토로 기록."
+}

@@ -1,0 +1,66 @@
+{
+  "type": "summary",
+  "stop_reason": null,
+  "known_cost_usd": 0.10236220200000001,
+  "complete": true,
+  "providers": {
+    "jev": {
+      "attempted": 16,
+      "valid": 16,
+      "errors": 0,
+      "correct": 7,
+      "required_questions_found": 3,
+      "required_questions_total_valid": 4,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 12,
+      "median_latency_ms": 216.41173050011275,
+      "cost_usd": 0.000986202,
+      "input_tokens": 23481,
+      "output_tokens": 845,
+      "confusion": {
+        "ready": {
+          "ai_refine": 4
+        },
+        "ai_refine": {
+          "ai_refine": 4
+        },
+        "ask_user": {
+          "ask_user": 3,
+          "ai_refine": 1
+        },
+        "defer_to_spec": {
+          "ai_refine": 4
+        }
+      }
+    },
+    "sonnet": {
+      "attempted": 16,
+      "valid": 16,
+      "errors": 0,
+      "correct": 15,
+      "required_questions_found": 4,
+      "required_questions_total_valid": 4,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 12,
+      "median_latency_ms": 3239.116755001305,
+      "cost_usd": 0.101376,
+      "input_tokens": 32403,
+      "output_tokens": 3657,
+      "confusion": {
+        "ready": {
+          "ready": 4
+        },
+        "ai_refine": {
+          "ai_refine": 3,
+          "ready": 1
+        },
+        "ask_user": {
+          "ask_user": 4
+        },
+        "defer_to_spec": {
+          "defer_to_spec": 4
+        }
+      }
+    }
+  }
+}

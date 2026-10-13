@@ -1,0 +1,226 @@
+[
+  {
+    "id": "CORE-02",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "사무실 공간을 편하게 활용하게 해주는 서비스가 필요해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공간 이용의 핵심 사용자 행동"
+    },
+    "expected": "ask_user",
+    "rationale": "공간 조회·예약·사용 현황 중 제품의 핵심 목적을 결정할 수 없다."
+  },
+  {
+    "id": "CORE-06",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "학교 과제 때문에 힘든 학생들을 도와주는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "과제 서비스의 핵심 사용자 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "제출 관리인지 학습 도움인지 학생 간 협업인지 핵심 방향이 없다."
+  },
+  {
+    "id": "CONFLICT-01",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "휴가는 승인되면 취소할 수 없어요. 직원은 승인된 휴가도 언제든 취소할 수 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "승인 후 휴가 취소 가능 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "같은 상태에서 취소 금지와 허용이 충돌한다."
+  },
+  {
+    "id": "SCOPE-03",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "도서 연체료를 실제 카드로 결제해서 도서관 계좌로 들어오게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 연체료 결제"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 결제 연동은 모의 동작 범위와 충돌한다."
+  },
+  {
+    "id": "EXPLICIT-01",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "휴가는 관리자 한 명만 승인하고 승인 이후 취소는 막아주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "승인 이후 취소 가능 여부"
+    },
+    "expected": "ready",
+    "rationale": "사용자가 취소 금지를 명시했다."
+  },
+  {
+    "id": "EXPLICIT-06",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "과제 마감 시각을 넘기면 학생 제출 버튼을 비활성화해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "마감 후 제출 처리"
+    },
+    "expected": "ready",
+    "rationale": "마감 이후의 동작을 사용자가 직접 정했다."
+  },
+  {
+    "id": "CONTEXT-01",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "직원 화면에서 휴가를 신청해요. 관리자 화면에서 승인 버튼을 누르면 직원 신청 내역에 확정으로 보여요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "휴가 확정 시점"
+    },
+    "expected": "ready",
+    "rationale": "앞뒤 흐름에서 관리자 승인 시 확정됨을 알 수 있어 다시 물을 필요가 없다."
+  },
+  {
+    "id": "CONTEXT-04",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "운영자 화면에 공지 쓰기 버튼을 두고 구성원 화면에는 공지 목록과 상세만 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공지 작성 권한"
+    },
+    "expected": "ready",
+    "rationale": "화면별 기능으로 운영자 작성·구성원 조회가 이미 드러난다."
+  },
+  {
+    "id": "DEFAULT-01",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "직원이 휴가를 신청하고 관리자 한 명이 승인해요. 승인하면 확정돼요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "신청 완료 시 사용자에게 보여줄 안내"
+    },
+    "expected": "ai_refine",
+    "rationale": "핵심 흐름은 확정돼 있으며 일반적인 성공 안내는 AI가 보완할 수 있다."
+  },
+  {
+    "id": "DEFAULT-03",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "관리자가 책과 대출자를 등록하고 반납할 때 대출 기록을 닫아요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "아직 대출 기록이 없을 때 목록 표시"
+    },
+    "expected": "ai_refine",
+    "rationale": "기록이 없음을 설명하는 빈 상태 안내로 보완할 수 있다."
+  },
+  {
+    "id": "DEFAULT-05",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "개인할일",
+    "input_style": "natural",
+    "user_input": "할 일을 추가하고 완료 표시할 수 있으면 돼요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "할 일 제목이 비어 있을 때 처리"
+    },
+    "expected": "ai_refine",
+    "rationale": "비어 있는 필수 제목을 저장하지 않고 안내하는 일반적인 입력 기본값이다."
+  },
+  {
+    "id": "DEFAULT-07",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "상품재고",
+    "input_style": "natural",
+    "user_input": "물품을 등록하고 입출고 수량을 기록해주세요. 음수 수량은 금지예요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "초기 시연용 물품 데이터"
+    },
+    "expected": "ai_refine",
+    "rationale": "공식 생성 범위의 초기 예시 데이터를 AI가 보완할 수 있다."
+  },
+  {
+    "id": "SPEC-01",
+    "category": "implementation_details",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "휴가는 관리자 한 명만 승인하고 승인 이후 취소는 막아주세요. 휴가 신청 내역 화면도 만들어주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "신청 내역 화면에서 승인 버튼과 취소 버튼의 배치"
+    },
+    "expected": "defer_to_spec",
+    "rationale": "대상 행동과 제품 규칙이 명시돼 있고 판정 대상은 구현 방법뿐이다. 사용자 결정을 새로 만들지 않고 Spec으로 넘긴다."
+  },
+  {
+    "id": "SPEC-02",
+    "category": "implementation_details",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "회의실 예약은 30분 단위로 받고 같은 방의 시간 중복은 허용하지 않아요. 예약 내역을 조회하는 화면도 필요해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "예약 조회 API의 URL 경로와 응답 필드명"
+    },
+    "expected": "defer_to_spec",
+    "rationale": "대상 행동과 제품 규칙이 명시돼 있고 판정 대상은 구현 방법뿐이다. 사용자 결정을 새로 만들지 않고 Spec으로 넘긴다."
+  },
+  {
+    "id": "SPEC-03",
+    "category": "implementation_details",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "대출 기간은 14일이고 연장은 한 번만 가능하게 해주세요. 대출 기록은 새로고침해도 남아야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "도서·대출 기록을 저장하는 SQLite 테이블 구조"
+    },
+    "expected": "defer_to_spec",
+    "rationale": "대상 행동과 제품 규칙이 명시돼 있고 판정 대상은 구현 방법뿐이다. 사용자 결정을 새로 만들지 않고 Spec으로 넘긴다."
+  },
+  {
+    "id": "SPEC-04",
+    "category": "implementation_details",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "모임 공지는 운영자만 등록하고 일반 구성원은 읽기만 해요. 공지 목록과 상세 화면을 연결해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공지 상세와 목록의 React 컴포넌트 분리"
+    },
+    "expected": "defer_to_spec",
+    "rationale": "대상 행동과 제품 규칙이 명시돼 있고 판정 대상은 구현 방법뿐이다. 사용자 결정을 새로 만들지 않고 Spec으로 넘긴다."
+  }
+]

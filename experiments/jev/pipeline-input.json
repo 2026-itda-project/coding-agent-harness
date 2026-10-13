@@ -1,0 +1,12 @@
+{
+  "user_input": "동아리 장비 대여 데모를 만들어줘. 회원이 장비를 신청하고 운영진이 승인해. 대여 현황은 저장해줘.",
+  "requirements": [
+    {"id": "REQ-001", "description": "회원이 장비 대여를 신청하고 운영진이 승인한다.", "status": "confirmed", "source": "user_input"},
+    {"id": "REQ-002", "description": "대여 현황을 저장한다.", "status": "confirmed", "source": "user_input"}
+  ],
+  "gaps": [
+    {"id": "GAP-001", "description": "같은 장비에 신청이 몰렸을 때 대여 대상을 결정하는 규칙", "related_requirement_ids": ["REQ-001"]},
+    {"id": "GAP-002", "description": "목록 화면의 배치와 데이터 저장 구조", "related_requirement_ids": ["REQ-002"]},
+    {"id": "GAP-003", "description": "빈 화면과 작업 완료 안내 문구", "related_requirement_ids": []}
+  ]
+}

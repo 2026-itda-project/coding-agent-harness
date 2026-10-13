@@ -1,0 +1,738 @@
+[
+  {
+    "case_id": "CORE-02",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ask_user",
+    "confidence": 0.35,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.48,
+      "ask_user": 0.51,
+      "defer_to_spec": 0.0
+    },
+    "status": "ok",
+    "latency_ms": 263.02755500364583,
+    "usage": {
+      "input_tokens": 1459,
+      "output_tokens": 52
+    },
+    "cost_usd": 6.1278e-05,
+    "reserved_usd": 0.000343518
+  },
+  {
+    "case_id": "CORE-02",
+    "expected": "ask_user",
+    "provider": "sonnet",
+    "decision": "ask_user",
+    "status": "ok",
+    "latency_ms": 3192.703138003708,
+    "usage": {
+      "input_tokens": 2012,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 14,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004164,
+    "reserved_usd": 0.027268
+  },
+  {
+    "case_id": "CORE-06",
+    "expected": "ask_user",
+    "provider": "sonnet",
+    "decision": "ask_user",
+    "status": "ok",
+    "latency_ms": 2133.3714890060946,
+    "usage": {
+      "input_tokens": 2021,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 14,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004182,
+    "reserved_usd": 0.027296
+  },
+  {
+    "case_id": "CORE-06",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ask_user",
+    "confidence": 0.45,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.4,
+      "ask_user": 0.59,
+      "defer_to_spec": 0.0
+    },
+    "status": "ok",
+    "latency_ms": 209.30864599358756,
+    "usage": {
+      "input_tokens": 1458,
+      "output_tokens": 52
+    },
+    "cost_usd": 6.123600000000001e-05,
+    "reserved_usd": 0.000344106
+  },
+  {
+    "case_id": "CONFLICT-01",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ask_user",
+    "confidence": 0.23,
+    "probabilities": {
+      "ready": 0.3,
+      "ai_refine": 0.27,
+      "ask_user": 0.42,
+      "defer_to_spec": 0.01
+    },
+    "status": "ok",
+    "latency_ms": 215.17558900814038,
+    "usage": {
+      "input_tokens": 1474,
+      "output_tokens": 52
+    },
+    "cost_usd": 6.1908e-05,
+    "reserved_usd": 0.00034511400000000004
+  },
+  {
+    "case_id": "CONFLICT-01",
+    "expected": "ask_user",
+    "provider": "sonnet",
+    "decision": "ask_user",
+    "status": "ok",
+    "latency_ms": 2881.467421000707,
+    "usage": {
+      "input_tokens": 2032,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 14,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004204,
+    "reserved_usd": 0.027344
+  },
+  {
+    "case_id": "SCOPE-03",
+    "expected": "ask_user",
+    "provider": "sonnet",
+    "decision": "ask_user",
+    "status": "ok",
+    "latency_ms": 3285.5303719989024,
+    "usage": {
+      "input_tokens": 2012,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 14,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004164,
+    "reserved_usd": 0.027268
+  },
+  {
+    "case_id": "SCOPE-03",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.35,
+    "probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.51,
+      "ask_user": 0.41,
+      "defer_to_spec": 0.02
+    },
+    "status": "ok",
+    "latency_ms": 217.64787199208513,
+    "usage": {
+      "input_tokens": 1461,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.1362e-05,
+    "reserved_usd": 0.000343518
+  },
+  {
+    "case_id": "EXPLICIT-01",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.25,
+    "probabilities": {
+      "ready": 0.4,
+      "ai_refine": 0.44,
+      "ask_user": 0.14,
+      "defer_to_spec": 0.02
+    },
+    "status": "ok",
+    "latency_ms": 306.62443800247274,
+    "usage": {
+      "input_tokens": 1456,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.1152e-05,
+    "reserved_usd": 0.000343476
+  },
+  {
+    "case_id": "EXPLICIT-01",
+    "expected": "ready",
+    "provider": "sonnet",
+    "decision": "ready",
+    "status": "ok",
+    "latency_ms": 1506.3172060035868,
+    "usage": {
+      "input_tokens": 2013,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 12,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004146,
+    "reserved_usd": 0.027266
+  },
+  {
+    "case_id": "EXPLICIT-06",
+    "expected": "ready",
+    "provider": "sonnet",
+    "decision": "ready",
+    "status": "ok",
+    "latency_ms": 6676.373895999859,
+    "usage": {
+      "input_tokens": 2009,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 539,
+      "output_tokens_details": {
+        "thinking_tokens": 527
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.009408,
+    "reserved_usd": 0.027244
+  },
+  {
+    "case_id": "EXPLICIT-06",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.55,
+    "probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.66,
+      "ask_user": 0.18,
+      "defer_to_spec": 0.06
+    },
+    "status": "ok",
+    "latency_ms": 192.51475599594414,
+    "usage": {
+      "input_tokens": 1454,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.1068e-05,
+    "reserved_usd": 0.000343014
+  },
+  {
+    "case_id": "CONTEXT-01",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.39,
+    "probabilities": {
+      "ready": 0.21,
+      "ai_refine": 0.54,
+      "ask_user": 0.17,
+      "defer_to_spec": 0.08
+    },
+    "status": "ok",
+    "latency_ms": 199.02404099411797,
+    "usage": {
+      "input_tokens": 1470,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.174e-05,
+    "reserved_usd": 0.00034528200000000003
+  },
+  {
+    "case_id": "CONTEXT-01",
+    "expected": "ready",
+    "provider": "sonnet",
+    "decision": "ready",
+    "status": "ok",
+    "latency_ms": 2618.7889499997254,
+    "usage": {
+      "input_tokens": 2032,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 12,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004184,
+    "reserved_usd": 0.027352
+  },
+  {
+    "case_id": "CONTEXT-04",
+    "expected": "ready",
+    "provider": "sonnet",
+    "decision": "ready",
+    "status": "ok",
+    "latency_ms": 3625.3552159905666,
+    "usage": {
+      "input_tokens": 2022,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 322,
+      "output_tokens_details": {
+        "thinking_tokens": 310
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.007264,
+    "reserved_usd": 0.027304
+  },
+  {
+    "case_id": "CONTEXT-04",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.51,
+    "probabilities": {
+      "ready": 0.21,
+      "ai_refine": 0.63,
+      "ask_user": 0.09,
+      "defer_to_spec": 0.07
+    },
+    "status": "ok",
+    "latency_ms": 227.51828300533816,
+    "usage": {
+      "input_tokens": 1466,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.1572e-05,
+    "reserved_usd": 0.000344274
+  },
+  {
+    "case_id": "DEFAULT-01",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.6,
+    "probabilities": {
+      "ready": 0.07,
+      "ai_refine": 0.7,
+      "ask_user": 0.18,
+      "defer_to_spec": 0.05
+    },
+    "status": "ok",
+    "latency_ms": 307.84797099477146,
+    "usage": {
+      "input_tokens": 1466,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.1572e-05,
+    "reserved_usd": 0.00034456800000000007
+  },
+  {
+    "case_id": "DEFAULT-01",
+    "expected": "ai_refine",
+    "provider": "sonnet",
+    "decision": "ai_refine",
+    "status": "ok",
+    "latency_ms": 4200.896645998,
+    "usage": {
+      "input_tokens": 2025,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 226,
+      "output_tokens_details": {
+        "thinking_tokens": 211
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.00631,
+    "reserved_usd": 0.027318
+  },
+  {
+    "case_id": "DEFAULT-03",
+    "expected": "ai_refine",
+    "provider": "sonnet",
+    "decision": "ai_refine",
+    "status": "ok",
+    "latency_ms": 1586.3703719951445,
+    "usage": {
+      "input_tokens": 2020,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 15,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.00419,
+    "reserved_usd": 0.0273
+  },
+  {
+    "case_id": "DEFAULT-03",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.28,
+    "probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.46,
+      "ask_user": 0.43,
+      "defer_to_spec": 0.05
+    },
+    "status": "ok",
+    "latency_ms": 187.676724002813,
+    "usage": {
+      "input_tokens": 1468,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.165600000000001e-05,
+    "reserved_usd": 0.00034419
+  },
+  {
+    "case_id": "DEFAULT-05",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.55,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.66,
+      "ask_user": 0.27,
+      "defer_to_spec": 0.04
+    },
+    "status": "ok",
+    "latency_ms": 203.35376799630467,
+    "usage": {
+      "input_tokens": 1454,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.1068e-05,
+    "reserved_usd": 0.000342888
+  },
+  {
+    "case_id": "DEFAULT-05",
+    "expected": "ai_refine",
+    "provider": "sonnet",
+    "decision": "ai_refine",
+    "status": "ok",
+    "latency_ms": 1468.9898409997113,
+    "usage": {
+      "input_tokens": 2009,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 15,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004168,
+    "reserved_usd": 0.027238
+  },
+  {
+    "case_id": "DEFAULT-07",
+    "expected": "ai_refine",
+    "provider": "sonnet",
+    "decision": "ready",
+    "status": "ok",
+    "latency_ms": 7879.58832399454,
+    "usage": {
+      "input_tokens": 2014,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 735,
+      "output_tokens_details": {
+        "thinking_tokens": 723
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.011378,
+    "reserved_usd": 0.027282
+  },
+  {
+    "case_id": "DEFAULT-07",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.59,
+    "probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.69,
+      "ask_user": 0.24,
+      "defer_to_spec": 0.01
+    },
+    "status": "ok",
+    "latency_ms": 194.19903299422003,
+    "usage": {
+      "input_tokens": 1463,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.144600000000001e-05,
+    "reserved_usd": 0.00034381200000000003
+  },
+  {
+    "case_id": "SPEC-01",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.44,
+    "probabilities": {
+      "ready": 0.05,
+      "ai_refine": 0.58,
+      "ask_user": 0.25,
+      "defer_to_spec": 0.12
+    },
+    "status": "ok",
+    "latency_ms": 316.9956269994145,
+    "usage": {
+      "input_tokens": 1483,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.2286e-05,
+    "reserved_usd": 0.00034700400000000004
+  },
+  {
+    "case_id": "SPEC-01",
+    "expected": "defer_to_spec",
+    "provider": "sonnet",
+    "decision": "defer_to_spec",
+    "status": "ok",
+    "latency_ms": 4892.4755479965825,
+    "usage": {
+      "input_tokens": 2050,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 570,
+      "output_tokens_details": {
+        "thinking_tokens": 553
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.0098,
+    "reserved_usd": 0.027434
+  },
+  {
+    "case_id": "SPEC-02",
+    "expected": "defer_to_spec",
+    "provider": "sonnet",
+    "decision": "defer_to_spec",
+    "status": "ok",
+    "latency_ms": 1484.769813992898,
+    "usage": {
+      "input_tokens": 2048,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 17,
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.004266,
+    "reserved_usd": 0.027434
+  },
+  {
+    "case_id": "SPEC-02",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.67,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.75,
+      "ask_user": 0.14,
+      "defer_to_spec": 0.08
+    },
+    "status": "ok",
+    "latency_ms": 285.3216500079725,
+    "usage": {
+      "input_tokens": 1483,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.2286e-05,
+    "reserved_usd": 0.00034700400000000004
+  },
+  {
+    "case_id": "SPEC-03",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.65,
+    "probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.74,
+      "ask_user": 0.12,
+      "defer_to_spec": 0.08
+    },
+    "status": "ok",
+    "latency_ms": 202.9316599946469,
+    "usage": {
+      "input_tokens": 1486,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.241200000000001e-05,
+    "reserved_usd": 0.00034654200000000003
+  },
+  {
+    "case_id": "SPEC-03",
+    "expected": "defer_to_spec",
+    "provider": "sonnet",
+    "decision": "defer_to_spec",
+    "status": "ok",
+    "latency_ms": 4702.046329999575,
+    "usage": {
+      "input_tokens": 2043,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 427,
+      "output_tokens_details": {
+        "thinking_tokens": 410
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.008356,
+    "reserved_usd": 0.027412
+  },
+  {
+    "case_id": "SPEC-04",
+    "expected": "defer_to_spec",
+    "provider": "sonnet",
+    "decision": "defer_to_spec",
+    "status": "ok",
+    "latency_ms": 6869.675820998964,
+    "usage": {
+      "input_tokens": 2041,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 711,
+      "output_tokens_details": {
+        "thinking_tokens": 694
+      },
+      "service_tier": "standard",
+      "inference_geo": "global"
+    },
+    "cost_usd": 0.011192,
+    "reserved_usd": 0.027402
+  },
+  {
+    "case_id": "SPEC-04",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.36,
+    "probabilities": {
+      "ready": 0.11,
+      "ai_refine": 0.52,
+      "ask_user": 0.1,
+      "defer_to_spec": 0.27
+    },
+    "status": "ok",
+    "latency_ms": 306.41071300487965,
+    "usage": {
+      "input_tokens": 1480,
+      "output_tokens": 53
+    },
+    "cost_usd": 6.216e-05,
+    "reserved_usd": 0.000346332
+  }
+]

@@ -1,0 +1,1682 @@
+[
+  {
+    "id": "CORE-01",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "직원들의 휴가 업무를 한곳에서 처리하는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "휴가 업무의 핵심 처리 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "직원 신청과 승인인지 관리자 기록 중심인지 핵심 사용 흐름이 없다."
+  },
+  {
+    "id": "CORE-02",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "사무실 공간을 편하게 활용하게 해주는 서비스가 필요해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공간 이용의 핵심 사용자 행동"
+    },
+    "expected": "ask_user",
+    "rationale": "공간 조회·예약·사용 현황 중 제품의 핵심 목적을 결정할 수 없다."
+  },
+  {
+    "id": "CORE-03",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "사람들이 책을 더 쉽게 이용하게 도와주는 웹서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "책 이용을 지원하는 핵심 기능"
+    },
+    "expected": "ask_user",
+    "rationale": "대출·교환·추천 중 중심 활동이 드러나지 않는다."
+  },
+  {
+    "id": "CORE-04",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "동아리 사람들끼리 잘 연결되는 공간을 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "동아리 구성원의 핵심 활동"
+    },
+    "expected": "ask_user",
+    "rationale": "가입 모집·공지·모임 운영 등 핵심 흐름을 입력만으로 선택할 수 없다."
+  },
+  {
+    "id": "CORE-05",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "개인할일",
+    "input_style": "natural",
+    "user_input": "제 일을 알아서 관리해주는 앱을 만들어주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "개인이 관리할 업무와 핵심 동작"
+    },
+    "expected": "ask_user",
+    "rationale": "할 일 목록·일정·업무 자동 실행 중 서비스 정체가 불명확하다."
+  },
+  {
+    "id": "CORE-06",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "학교 과제 때문에 힘든 학생들을 도와주는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "과제 서비스의 핵심 사용자 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "제출 관리인지 학습 도움인지 학생 간 협업인지 핵심 방향이 없다."
+  },
+  {
+    "id": "CORE-07",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "상품재고",
+    "input_style": "natural",
+    "user_input": "작은 가게에서 물건을 관리하는 데 쓸 서비스를 원해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "물품 관리의 핵심 업무"
+    },
+    "expected": "ask_user",
+    "rationale": "재고 입출고·주문·진열 관리 중 어떤 업무를 해결하는지 없다."
+  },
+  {
+    "id": "CORE-08",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "식당대기",
+    "input_style": "natural",
+    "user_input": "식당 손님들이 덜 기다리게 해주는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "손님 대기 문제를 해결하는 핵심 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "대기 등록·예약·혼잡도 조회 중 어떤 방식인지 없다."
+  },
+  {
+    "id": "CORE-09",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "소규모행사",
+    "input_style": "natural",
+    "user_input": "행사에 오는 사람들을 편하게 도와주는 서비스를 원해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "참가자에게 제공할 핵심 행동"
+    },
+    "expected": "ask_user",
+    "rationale": "신청·입장 확인·일정 안내 중 핵심 기능이 드러나지 않는다."
+  },
+  {
+    "id": "CORE-10",
+    "category": "implicit_core_gap",
+    "split": "dev",
+    "domain": "개인메모",
+    "input_style": "explicit_indecision",
+    "user_input": "메모를 혼자 정리할지 팀이 같이 편집할지 아직 못 정했어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "메모의 개인·공동 사용 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "사용자 관계와 편집 흐름이 다른 선택이며 명시적으로 미결정이다."
+  },
+  {
+    "id": "CORE-11",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "봉사활동",
+    "input_style": "natural",
+    "user_input": "봉사하고 싶은 사람과 도움이 필요한 곳을 이어주는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "봉사 연결 이후의 핵심 활동"
+    },
+    "expected": "ask_user",
+    "rationale": "모집 공고 조회·참가 신청·기관 매칭 중 중심 흐름을 확인해야 한다."
+  },
+  {
+    "id": "CORE-12",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "악기연습",
+    "input_style": "natural",
+    "user_input": "악기를 배우는 사람들에게 도움이 되는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "악기 학습자의 핵심 활동"
+    },
+    "expected": "ask_user",
+    "rationale": "연습 기록·수업 신청·연습 문제 중 핵심 학습 방식이 없다."
+  },
+  {
+    "id": "CORE-13",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "레시피",
+    "input_style": "natural",
+    "user_input": "집에 있는 식재료를 잘 쓰게 해주는 서비스를 원해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "식재료 활용의 핵심 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "재료 목록 관리인지 레시피 추천인지 소비 기록인지 불명확하다."
+  },
+  {
+    "id": "CORE-14",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "식물관리",
+    "input_style": "natural",
+    "user_input": "집에서 식물을 키우는 사람들을 위한 앱을 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "식물 관리에서 해결할 핵심 문제"
+    },
+    "expected": "ask_user",
+    "rationale": "물주기 기록·성장 관찰·문제 진단 중 핵심 목적을 선택해야 한다."
+  },
+  {
+    "id": "CORE-15",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "반려동물",
+    "input_style": "natural",
+    "user_input": "반려동물을 돌보는 일을 편하게 하는 서비스를 원해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "돌봄 서비스의 핵심 활동"
+    },
+    "expected": "ask_user",
+    "rationale": "일상 기록·돌봄 일정·돌봄 제공자 연결 중 서로 다른 제품 방향이다."
+  },
+  {
+    "id": "CORE-16",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "보드게임",
+    "input_style": "natural",
+    "user_input": "보드게임을 좋아하는 사람들이 이용할 공간을 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "보드게임 이용자의 핵심 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "게임 정보 조회·모임 모집·플레이 기록 중 중심 활동이 없다."
+  },
+  {
+    "id": "CORE-17",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "전시관람",
+    "input_style": "natural",
+    "user_input": "전시 보러 가는 사람들을 돕는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "전시 관람을 돕는 핵심 기능"
+    },
+    "expected": "ask_user",
+    "rationale": "전시 탐색·관람 예약·감상 기록 중 무엇이 핵심인지 없다."
+  },
+  {
+    "id": "CORE-18",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "세탁접수",
+    "input_style": "natural",
+    "user_input": "동네 세탁소의 일을 좀 편하게 만들어주는 앱이 필요해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "세탁 업무의 핵심 처리 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "고객 접수·직원 작업 관리·수거 일정 중 중심 업무를 확인해야 한다."
+  },
+  {
+    "id": "CORE-19",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "재활용",
+    "input_style": "natural",
+    "user_input": "사람들이 물건을 덜 버리도록 도와주는 서비스를 만들고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "폐기 감소를 위한 핵심 사용자 행동"
+    },
+    "expected": "ask_user",
+    "rationale": "분리배출 안내·물품 나눔·재사용 기록 중 서비스 정체가 다르다."
+  },
+  {
+    "id": "CORE-20",
+    "category": "implicit_core_gap",
+    "split": "test",
+    "domain": "운동기록",
+    "input_style": "explicit_indecision",
+    "user_input": "운동을 혼자 기록하는 방식과 코치가 과제를 주는 방식 중 아직 못 정했어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "운동 서비스의 사용자 관계와 핵심 흐름"
+    },
+    "expected": "ask_user",
+    "rationale": "개인 기록과 코치 관리의 핵심 관계가 다르며 명시적으로 미결정이다."
+  },
+  {
+    "id": "DEFAULT-01",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "직원이 휴가를 신청하고 관리자 한 명이 승인해요. 승인하면 확정돼요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "신청 완료 시 사용자에게 보여줄 안내"
+    },
+    "expected": "ai_refine",
+    "rationale": "핵심 흐름은 확정돼 있으며 일반적인 성공 안내는 AI가 보완할 수 있다."
+  },
+  {
+    "id": "DEFAULT-02",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "직원이 빈 회의실 시간을 선택해 예약하고 겹치는 시간은 막아주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "예약 내역의 기본 정렬 방식"
+    },
+    "expected": "ai_refine",
+    "rationale": "명시된 예약 규칙을 바꾸지 않는 정렬 기본값으로 보완한다."
+  },
+  {
+    "id": "DEFAULT-03",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "관리자가 책과 대출자를 등록하고 반납할 때 대출 기록을 닫아요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "아직 대출 기록이 없을 때 목록 표시"
+    },
+    "expected": "ai_refine",
+    "rationale": "기록이 없음을 설명하는 빈 상태 안내로 보완할 수 있다."
+  },
+  {
+    "id": "DEFAULT-04",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "운영자가 모임 공지를 올리면 구성원이 확인하는 화면을 만들어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공지 목록의 기본 페이지 크기"
+    },
+    "expected": "ai_refine",
+    "rationale": "공지 기능의 성격을 바꾸지 않는 표시 기본값이다."
+  },
+  {
+    "id": "DEFAULT-05",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "개인할일",
+    "input_style": "natural",
+    "user_input": "할 일을 추가하고 완료 표시할 수 있으면 돼요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "할 일 제목이 비어 있을 때 처리"
+    },
+    "expected": "ai_refine",
+    "rationale": "비어 있는 필수 제목을 저장하지 않고 안내하는 일반적인 입력 기본값이다."
+  },
+  {
+    "id": "DEFAULT-06",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "선생님이 과제를 등록하고 학생이 제출 여부를 표시해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "과제 등록 폼의 항목 안내 표현"
+    },
+    "expected": "ai_refine",
+    "rationale": "주어진 기능을 설명하는 쉬운 안내는 AI가 만들 수 있다."
+  },
+  {
+    "id": "DEFAULT-07",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "상품재고",
+    "input_style": "natural",
+    "user_input": "물품을 등록하고 입출고 수량을 기록해주세요. 음수 수량은 금지예요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "초기 시연용 물품 데이터"
+    },
+    "expected": "ai_refine",
+    "rationale": "공식 생성 범위의 초기 예시 데이터를 AI가 보완할 수 있다."
+  },
+  {
+    "id": "DEFAULT-08",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "식당대기",
+    "input_style": "natural",
+    "user_input": "직원이 방문 팀을 등록하고 호출 완료를 표시해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "등록 완료 후 목록 갱신 동작"
+    },
+    "expected": "ai_refine",
+    "rationale": "새 등록이 보이도록 목록을 갱신하는 기본 동작으로 보완한다."
+  },
+  {
+    "id": "DEFAULT-09",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "소규모행사",
+    "input_style": "natural",
+    "user_input": "행사 목록을 보고 참가 신청을 누르면 신청 내역에 추가되게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "신청할 행사가 없을 때 표시할 내용"
+    },
+    "expected": "ai_refine",
+    "rationale": "행사가 없다는 빈 상태 안내로 보완할 수 있다."
+  },
+  {
+    "id": "DEFAULT-10",
+    "category": "routine_defaults",
+    "split": "dev",
+    "domain": "개인메모",
+    "input_style": "natural",
+    "user_input": "메모에 제목과 내용을 적고 저장하고 목록에서 다시 열 수 있게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "메모 목록에서 선택한 항목의 표시"
+    },
+    "expected": "ai_refine",
+    "rationale": "선택 상태를 구분하는 일반적인 UI 기본값이다."
+  },
+  {
+    "id": "DEFAULT-11",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "봉사활동",
+    "input_style": "natural",
+    "user_input": "기관이 봉사 공고를 등록하고 참가자가 신청하면 운영자가 확인해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "봉사 공고에 아무 내용도 없을 때 안내"
+    },
+    "expected": "ai_refine",
+    "rationale": "핵심 모집 흐름은 정해져 있어 빈 목록 안내만 보완하면 된다."
+  },
+  {
+    "id": "DEFAULT-12",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "악기연습",
+    "input_style": "natural",
+    "user_input": "연습 날짜, 곡 이름, 연습 시간을 적고 지난 기록을 보는 앱이에요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "연습 시간에 문자를 입력했을 때 처리"
+    },
+    "expected": "ai_refine",
+    "rationale": "숫자 입력이 필요함을 안내하는 일반적인 폼 검증이다."
+  },
+  {
+    "id": "DEFAULT-13",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "레시피",
+    "input_style": "natural",
+    "user_input": "레시피에 이름과 재료를 적어 저장하고 목록에서 선택해 확인해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "레시피 목록의 검색 결과가 없을 때 표시"
+    },
+    "expected": "ai_refine",
+    "rationale": "검색 결과가 없음을 안내하는 기본값으로 보완한다."
+  },
+  {
+    "id": "DEFAULT-14",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "식물관리",
+    "input_style": "natural",
+    "user_input": "식물 이름과 물 준 날짜를 기록하고 최근 기록부터 보고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "등록한 식물이 없을 때 화면 안내"
+    },
+    "expected": "ai_refine",
+    "rationale": "사용자 의도를 바꾸지 않는 초기 안내로 보완한다."
+  },
+  {
+    "id": "DEFAULT-15",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "반려동물",
+    "input_style": "natural",
+    "user_input": "동물 이름과 먹이 준 시간을 기록하고 오늘 기록을 확인해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "먹이 기록 저장 성공의 피드백"
+    },
+    "expected": "ai_refine",
+    "rationale": "일반적인 저장 완료 안내로 충분하다."
+  },
+  {
+    "id": "DEFAULT-16",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "보드게임",
+    "input_style": "natural",
+    "user_input": "게임 이름과 참여 인원, 승자를 기록해서 목록으로 볼 거예요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "기록 목록의 날짜 표시 형식"
+    },
+    "expected": "ai_refine",
+    "rationale": "서비스 성격을 바꾸지 않는 일관된 날짜 형식으로 보완한다."
+  },
+  {
+    "id": "DEFAULT-17",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "전시관람",
+    "input_style": "natural",
+    "user_input": "전시 이름과 방문 날짜, 짧은 감상을 저장하고 다시 읽어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "감상 입력란의 기본 안내 문구"
+    },
+    "expected": "ai_refine",
+    "rationale": "제품 핵심 결정 없이 일반적인 입력 안내를 생성할 수 있다."
+  },
+  {
+    "id": "DEFAULT-18",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "세탁접수",
+    "input_style": "natural",
+    "user_input": "직원이 세탁 접수를 등록하고 처리중, 완료 상태로 바꿔요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "처리 상태를 화면에서 구분하는 표현"
+    },
+    "expected": "ai_refine",
+    "rationale": "명시된 상태를 쉽게 구분하는 표시 기본값으로 보완한다."
+  },
+  {
+    "id": "DEFAULT-19",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "재활용",
+    "input_style": "natural",
+    "user_input": "재사용한 물건 이름과 날짜를 기록해서 월별로 보고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "처음 화면에 보여줄 시연용 재사용 기록"
+    },
+    "expected": "ai_refine",
+    "rationale": "공식 범위의 예시 데이터를 추가하는 것으로 보완할 수 있다."
+  },
+  {
+    "id": "DEFAULT-20",
+    "category": "routine_defaults",
+    "split": "test",
+    "domain": "운동기록",
+    "input_style": "natural",
+    "user_input": "운동 종류와 시간, 날짜를 기록하고 주간 목록을 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "화면에서 목록을 불러오는 동안 표시"
+    },
+    "expected": "ai_refine",
+    "rationale": "일반적인 로딩 안내로 보완할 수 있다."
+  },
+  {
+    "id": "EXPLICIT-01",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "휴가는 관리자 한 명만 승인하고 승인 이후 취소는 막아주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "승인 이후 취소 가능 여부"
+    },
+    "expected": "ready",
+    "rationale": "사용자가 취소 금지를 명시했다."
+  },
+  {
+    "id": "EXPLICIT-02",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "회의실 예약은 30분 단위로 받고 같은 방의 시간 중복은 허용하지 않아요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "예약 시간 단위와 중복 처리"
+    },
+    "expected": "ready",
+    "rationale": "시간 단위와 중복 금지가 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-03",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "대출 기간은 14일이고 연장은 한 번만 가능하게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "대출 기간과 연장 횟수"
+    },
+    "expected": "ready",
+    "rationale": "제품 수준의 대출 규칙이 충분하다."
+  },
+  {
+    "id": "EXPLICIT-04",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "모임 공지는 운영자만 등록하고 일반 구성원은 읽기만 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공지 작성 주체"
+    },
+    "expected": "ready",
+    "rationale": "역할별 행동이 명시돼 있다. 실제 로그인 대신 역할 전환으로 구현 가능하다."
+  },
+  {
+    "id": "EXPLICIT-05",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "개인할일",
+    "input_style": "natural",
+    "user_input": "완료한 할 일은 완료 목록으로 옮기고 다시 미완료로 바꿀 수 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "할 일 완료·복구 흐름"
+    },
+    "expected": "ready",
+    "rationale": "상태 이동과 되돌리기가 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-06",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "과제 마감 시각을 넘기면 학생 제출 버튼을 비활성화해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "마감 후 제출 처리"
+    },
+    "expected": "ready",
+    "rationale": "마감 이후의 동작을 사용자가 직접 정했다."
+  },
+  {
+    "id": "EXPLICIT-07",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "상품재고",
+    "input_style": "natural",
+    "user_input": "재고가 부족하면 출고를 거절하고 현재 수량을 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "부족 재고의 출고 처리"
+    },
+    "expected": "ready",
+    "rationale": "거절과 안내 내용이 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-08",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "식당대기",
+    "input_style": "natural",
+    "user_input": "대기팀을 호출했을 때 안 오면 보류로 바꾸고 직원이 다시 호출할 수 있게 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "미응답 대기팀 처리"
+    },
+    "expected": "ready",
+    "rationale": "보류와 재호출의 흐름이 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-09",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "소규모행사",
+    "input_style": "natural",
+    "user_input": "참가 신청은 선착순 20명까지이고 다 차면 신청을 막아주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "행사 참가 인원 제한"
+    },
+    "expected": "ready",
+    "rationale": "정원과 초과 처리 동작이 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-10",
+    "category": "explicit_requirements",
+    "split": "dev",
+    "domain": "개인메모",
+    "input_style": "natural",
+    "user_input": "메모를 지우면 휴지통 없이 즉시 삭제해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "메모 삭제 처리"
+    },
+    "expected": "ready",
+    "rationale": "삭제 정책을 다시 질문할 필요가 없다."
+  },
+  {
+    "id": "EXPLICIT-11",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "봉사활동",
+    "input_style": "natural",
+    "user_input": "봉사 신청은 운영자가 승인하고 참가자는 승인 전까지만 취소할 수 있어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "봉사 신청 취소 가능 시점"
+    },
+    "expected": "ready",
+    "rationale": "사용자가 취소 허용 범위를 정했다."
+  },
+  {
+    "id": "EXPLICIT-12",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "악기연습",
+    "input_style": "natural",
+    "user_input": "연습 시간은 분 단위로 적고 0보다 큰 값만 받으세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "연습 시간 입력 규칙"
+    },
+    "expected": "ready",
+    "rationale": "단위와 유효 범위가 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-13",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "레시피",
+    "input_style": "natural",
+    "user_input": "레시피 재료 수량은 자유롭게 문장으로 적고 숫자로 강제하지 마세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "재료 수량 입력 방식"
+    },
+    "expected": "ready",
+    "rationale": "사용자의 자유 서술 의도를 그대로 유지한다."
+  },
+  {
+    "id": "EXPLICIT-14",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "식물관리",
+    "input_style": "natural",
+    "user_input": "물을 주면 오늘 날짜로 기록하고 잘못 누른 기록은 삭제할 수 있게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "물주기 기록과 잘못된 기록 처리"
+    },
+    "expected": "ready",
+    "rationale": "기록 시점과 되돌리는 행동이 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-15",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "반려동물",
+    "input_style": "natural",
+    "user_input": "같은 반려동물의 같은 시각 먹이 기록은 중복 저장하지 마세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "동일 먹이 기록 중복 처리"
+    },
+    "expected": "ready",
+    "rationale": "중복 기준과 거절 동작이 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-16",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "보드게임",
+    "input_style": "natural",
+    "user_input": "무승부일 때는 승자를 선택하지 않고 무승부로 저장해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "무승부 경기 기록 방식"
+    },
+    "expected": "ready",
+    "rationale": "상태와 저장 방식이 명확하다."
+  },
+  {
+    "id": "EXPLICIT-17",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "전시관람",
+    "input_style": "natural",
+    "user_input": "전시 감상은 제목 없이 내용만 저장하고 수정도 가능하게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "전시 감상의 입력과 수정"
+    },
+    "expected": "ready",
+    "rationale": "생성되는 서비스 기능의 편집 요구는 명시돼 있으며 Harness 생성 후 수정 요청과 다르다."
+  },
+  {
+    "id": "EXPLICIT-18",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "세탁접수",
+    "input_style": "natural",
+    "user_input": "세탁이 완료돼도 직원이 인도 완료를 누르기 전에는 목록에 남겨주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "완료된 세탁 접수의 목록 유지"
+    },
+    "expected": "ready",
+    "rationale": "완료와 인도 완료를 구분하는 규칙이 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-19",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "재활용",
+    "input_style": "natural",
+    "user_input": "재사용 기록은 날짜별로 묶고 물건 개수 합계를 함께 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "재사용 기록 집계 방식"
+    },
+    "expected": "ready",
+    "rationale": "집계 기준과 표시할 값이 명시돼 있다."
+  },
+  {
+    "id": "EXPLICIT-20",
+    "category": "explicit_requirements",
+    "split": "test",
+    "domain": "운동기록",
+    "input_style": "natural",
+    "user_input": "운동 기록은 기록한 사람 혼자 보고 주간 합계는 분 단위로 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "운동 기록 사용 범위와 집계 단위"
+    },
+    "expected": "ready",
+    "rationale": "단일 사용자와 단위가 충분히 명시돼 있다."
+  },
+  {
+    "id": "CONTEXT-01",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "직원 화면에서 휴가를 신청해요. 관리자 화면에서 승인 버튼을 누르면 직원 신청 내역에 확정으로 보여요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "휴가 확정 시점"
+    },
+    "expected": "ready",
+    "rationale": "앞뒤 흐름에서 관리자 승인 시 확정됨을 알 수 있어 다시 물을 필요가 없다."
+  },
+  {
+    "id": "CONTEXT-02",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "빈 방 시간을 클릭하고 예약하기를 누르면 내 예약 목록에 바로 나타나고 그 시간은 다른 예약에서 선택할 수 없어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "회의실 예약 완료 흐름"
+    },
+    "expected": "ready",
+    "rationale": "이용자 선택 후 바로 예약된다는 핵심 흐름이 맥락에 있다."
+  },
+  {
+    "id": "CONTEXT-03",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "관리자가 책을 빌려준 사람을 고르고 대출 등록을 눌러요. 책을 돌려받으면 반납 버튼을 눌러요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "대출·반납 조작 주체"
+    },
+    "expected": "ready",
+    "rationale": "두 행동 모두 관리자가 수행하는 맥락이 명확하다."
+  },
+  {
+    "id": "CONTEXT-04",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "운영자 화면에 공지 쓰기 버튼을 두고 구성원 화면에는 공지 목록과 상세만 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공지 작성 권한"
+    },
+    "expected": "ready",
+    "rationale": "화면별 기능으로 운영자 작성·구성원 조회가 이미 드러난다."
+  },
+  {
+    "id": "CONTEXT-05",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "개인할일",
+    "input_style": "natural",
+    "user_input": "일을 끝내면 체크해요. 체크한 것은 아래쪽 완료 목록으로 내려가고 체크를 풀면 위쪽으로 돌아와요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "할 일 상태 변경과 복구"
+    },
+    "expected": "ready",
+    "rationale": "상태 이름을 기술적으로 설명하지 않아도 행동이 구체적이다."
+  },
+  {
+    "id": "CONTEXT-06",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "선생님이 과제를 올려요. 학생은 그 과제를 열어 답을 적고 제출해요. 제출한 답은 선생님 화면에서 봐요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "과제의 주요 사용자 흐름"
+    },
+    "expected": "ready",
+    "rationale": "선생님·학생의 관계와 제출·열람 흐름이 전체 발화에 있다."
+  },
+  {
+    "id": "CONTEXT-07",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "상품재고",
+    "input_style": "natural",
+    "user_input": "직원이 물건을 받으면 입고 수량을 적어요. 팔고 나면 출고 수량을 적고 남은 개수가 줄어들어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "재고 수량 변화 방향"
+    },
+    "expected": "ready",
+    "rationale": "입고 증가·출고 감소의 의미가 업무 흐름으로 충분히 전달된다."
+  },
+  {
+    "id": "CONTEXT-08",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "식당대기",
+    "input_style": "natural",
+    "user_input": "직원이 온 손님 수와 이름을 적으면 대기 목록 끝에 붙어요. 가장 앞 팀부터 불러요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "대기 호출 순서"
+    },
+    "expected": "ready",
+    "rationale": "선착순 호출이 맥락으로 결정돼 있다."
+  },
+  {
+    "id": "CONTEXT-09",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "소규모행사",
+    "input_style": "natural",
+    "user_input": "행사 상세에서 신청을 누르면 신청자 목록에 들어가요. 취소를 누르면 그 목록에서 빠져요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "참가 신청과 취소의 목록 반영"
+    },
+    "expected": "ready",
+    "rationale": "추가·제거 동작이 사용자 행동에 직접 연결돼 있다."
+  },
+  {
+    "id": "CONTEXT-10",
+    "category": "context_resolved",
+    "split": "dev",
+    "domain": "개인메모",
+    "input_style": "natural",
+    "user_input": "목록에서 메모를 눌러 내용을 고친 다음 저장하면 같은 메모가 바뀌게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "메모 수정 시 기존 항목 처리"
+    },
+    "expected": "ready",
+    "rationale": "새 항목 복제가 아닌 기존 항목 갱신이 명확하다."
+  },
+  {
+    "id": "CONTEXT-11",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "봉사활동",
+    "input_style": "natural",
+    "user_input": "기관 담당자가 참가 신청 목록을 열고 확인한 신청에 승인 표시를 해요. 신청자는 처리 결과를 봐요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "봉사 신청 승인 주체"
+    },
+    "expected": "ready",
+    "rationale": "기관 담당자가 승인한다는 답이 전체 흐름에 있다."
+  },
+  {
+    "id": "CONTEXT-12",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "악기연습",
+    "input_style": "natural",
+    "user_input": "곡을 고르고 오늘 연습한 시간을 적어요. 저장한 뒤 기록에서 같은 곡의 지난 연습도 볼 수 있어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "연습 기록의 곡별 연결"
+    },
+    "expected": "ready",
+    "rationale": "곡과 날짜별 기록을 연결하는 사용 흐름이 있다."
+  },
+  {
+    "id": "CONTEXT-13",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "레시피",
+    "input_style": "natural",
+    "user_input": "재료 이름을 검색하면 그 재료가 들어가는 레시피만 목록에 남게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "레시피 검색 대상"
+    },
+    "expected": "ready",
+    "rationale": "검색 기준이 재료라는 점이 발화에서 명확하다."
+  },
+  {
+    "id": "CONTEXT-14",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "식물관리",
+    "input_style": "natural",
+    "user_input": "식물을 선택하고 물줬어요 버튼을 누르면 그 식물의 기록에 오늘 날짜가 추가돼요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "물주기 기록의 대상과 날짜"
+    },
+    "expected": "ready",
+    "rationale": "선택한 식물과 오늘 날짜가 모두 맥락으로 정해져 있다."
+  },
+  {
+    "id": "CONTEXT-15",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "반려동물",
+    "input_style": "natural",
+    "user_input": "강아지를 고르고 산책 시작과 종료를 적어요. 그 강아지 상세에서 지난 산책 기록을 다시 볼 수 있어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "산책 기록과 반려동물의 연결"
+    },
+    "expected": "ready",
+    "rationale": "기록 대상이 이미 특정돼 있어 사용자에게 다시 물을 필요가 없다."
+  },
+  {
+    "id": "CONTEXT-16",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "보드게임",
+    "input_style": "natural",
+    "user_input": "게임을 끝내면 게임 이름과 참여자, 승자를 적고 저장해요. 지난 게임을 고르면 그 결과를 볼 수 있어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "게임 결과 기록 흐름"
+    },
+    "expected": "ready",
+    "rationale": "등록·조회에 필요한 주요 항목과 행동이 있다."
+  },
+  {
+    "id": "CONTEXT-17",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "전시관람",
+    "input_style": "natural",
+    "user_input": "전시를 보고 와서 전시 이름, 다녀온 날, 감상을 적어요. 목록에서 누르면 그 감상이 열려요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "전시 감상 기록 흐름"
+    },
+    "expected": "ready",
+    "rationale": "날짜와 감상이 연결된 개인 기록이라는 맥락이 충분하다."
+  },
+  {
+    "id": "CONTEXT-18",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "세탁접수",
+    "input_style": "natural",
+    "user_input": "직원은 접수한 세탁물을 처리중으로 바꾸고 다 끝나면 완료로 바꿔요. 손님에게 돌려주면 인도 완료를 눌러요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "세탁물 상태 진행 순서"
+    },
+    "expected": "ready",
+    "rationale": "실제 업무의 단계가 전체 발화에 명시돼 있다."
+  },
+  {
+    "id": "CONTEXT-19",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "재활용",
+    "input_style": "natural",
+    "user_input": "다 쓴 병을 화분으로 다시 쓰면 병 한 개 재사용으로 적어요. 월말에는 그달 재사용 개수를 볼 거예요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "재사용 기록의 개수 집계 기준"
+    },
+    "expected": "ready",
+    "rationale": "예시 행동과 월별 개수 집계가 일관되게 설명돼 있다."
+  },
+  {
+    "id": "CONTEXT-20",
+    "category": "context_resolved",
+    "split": "test",
+    "domain": "운동기록",
+    "input_style": "natural",
+    "user_input": "오늘 달린 시간을 기록해요. 주간 화면에서 이번 주 기록들이 모이고 맨 아래에 총 시간이 나와요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "운동 기록의 주간 집계"
+    },
+    "expected": "ready",
+    "rationale": "주간 기록 목록과 시간 합계라는 답이 맥락에 있다."
+  },
+  {
+    "id": "CONFLICT-01",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "휴가는 승인되면 취소할 수 없어요. 직원은 승인된 휴가도 언제든 취소할 수 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "승인 후 휴가 취소 가능 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "같은 상태에서 취소 금지와 허용이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-02",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "같은 회의실 같은 시간에는 하나만 예약할 수 있어요. 이미 예약된 시간에도 다른 직원이 예약하게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "회의실 시간 중복 허용 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "동일 자원의 중복을 금지·허용하는 두 규칙이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-03",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "책 한 권은 한 사람에게만 빌려줘요. 같은 책 한 권을 여러 사람이 동시에 대출할 수도 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "같은 책의 동시 대출"
+    },
+    "expected": "ask_user",
+    "rationale": "같은 물리적 한 권에 대한 동시 대출 규칙이 모순이다."
+  },
+  {
+    "id": "CONFLICT-04",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "모든 공지는 운영자만 쓰게 해주세요. 일반 구성원도 아무 공지나 직접 등록하게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "공지 작성 주체"
+    },
+    "expected": "ask_user",
+    "rationale": "운영자 전용과 모든 구성원 작성이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-05",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "개인할일",
+    "input_style": "natural",
+    "user_input": "완료한 할 일은 영구 삭제해서 복구 못 하게 해요. 완료 목록에서 체크를 풀어 원래대로 돌릴 수도 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "완료한 할 일의 보존·복구"
+    },
+    "expected": "ask_user",
+    "rationale": "영구 삭제와 목록 보존·복구가 동시에 요구된다."
+  },
+  {
+    "id": "CONFLICT-06",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "마감이 지나면 과제 제출은 무조건 막아요. 마감 지난 과제도 학생이 제한 없이 제출할 수 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "마감 후 과제 제출"
+    },
+    "expected": "ask_user",
+    "rationale": "동일한 마감 이후 조건에서 허용 여부가 충돌한다."
+  },
+  {
+    "id": "CONFLICT-07",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "상품재고",
+    "input_style": "natural",
+    "user_input": "출고 후 재고가 음수가 되면 저장하지 마세요. 부족한 재고를 출고해도 음수로 그대로 저장하세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "재고 부족 시 출고 처리"
+    },
+    "expected": "ask_user",
+    "rationale": "동일한 부족 조건에 저장 거절과 허용이 함께 있다."
+  },
+  {
+    "id": "CONFLICT-08",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "식당대기",
+    "input_style": "natural",
+    "user_input": "대기 순서대로만 호출해야 해요. 직원이 원하면 순서에 상관없이 어떤 팀이든 호출하게 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "대기 호출 순서의 강제 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "순서 강제와 무제한 선택 호출이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-09",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "소규모행사",
+    "input_style": "natural",
+    "user_input": "행사 정원은 20명으로 절대 넘기면 안 돼요. 21번째 이후 신청도 제한 없이 받아주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "행사 정원 초과 신청"
+    },
+    "expected": "ask_user",
+    "rationale": "정원의 절대 제한과 초과 허용이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-10",
+    "category": "contradictory_requirements",
+    "split": "dev",
+    "domain": "개인메모",
+    "input_style": "natural",
+    "user_input": "메모는 삭제 즉시 사라지고 복구 안 돼요. 삭제된 메모를 휴지통에서 다시 살릴 수 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "메모 삭제·복구 정책"
+    },
+    "expected": "ask_user",
+    "rationale": "영구 삭제와 휴지통 복구가 충돌한다."
+  },
+  {
+    "id": "CONFLICT-11",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "봉사활동",
+    "input_style": "natural",
+    "user_input": "봉사 신청은 운영자 승인이 있어야 확정돼요. 신청 버튼을 누르는 순간 승인 없이 확정돼야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "봉사 신청 확정 시점"
+    },
+    "expected": "ask_user",
+    "rationale": "사전 승인 필수와 즉시 확정이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-12",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "악기연습",
+    "input_style": "natural",
+    "user_input": "연습 시간은 분 단위 정수만 받아요. 1.5분처럼 소수도 저장할 수 있게 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "연습 시간 소수 허용 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "정수 전용과 소수 허용이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-13",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "레시피",
+    "input_style": "natural",
+    "user_input": "레시피 이름은 반드시 입력해야 저장돼요. 이름을 비워도 아무 제한 없이 저장해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "레시피 이름 필수 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "필수와 미입력 허용이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-14",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "식물관리",
+    "input_style": "natural",
+    "user_input": "물 준 기록은 잘못 눌러도 삭제할 수 없어요. 각 물주기 기록에 삭제 버튼을 넣어 지울 수 있게 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "물주기 기록 삭제 가능 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "같은 기록의 삭제 금지와 허용이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-15",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "반려동물",
+    "input_style": "natural",
+    "user_input": "같은 반려동물의 같은 시각 식사 기록은 하나만 저장해요. 같은 기록을 여러 번 눌러도 전부 별도로 저장하세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "동일 식사 기록의 중복 허용"
+    },
+    "expected": "ask_user",
+    "rationale": "중복 거절과 별도 저장이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-16",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "보드게임",
+    "input_style": "natural",
+    "user_input": "보드게임 결과에는 승자가 반드시 한 명 있어야 해요. 무승부는 승자 없이 저장할 수 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "무승부 결과의 승자 필수 여부"
+    },
+    "expected": "ask_user",
+    "rationale": "모든 결과 승자 필수와 무승부 예외가 충돌하며 예외 확인이 필요하다."
+  },
+  {
+    "id": "CONFLICT-17",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "전시관람",
+    "input_style": "natural",
+    "user_input": "한 전시에는 감상을 한 개만 남겨요. 같은 전시 감상을 개수 제한 없이 각각 저장하게 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "전시별 감상 개수"
+    },
+    "expected": "ask_user",
+    "rationale": "하나로 제한하는 규칙과 무제한 별도 기록이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-18",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "세탁접수",
+    "input_style": "natural",
+    "user_input": "세탁물을 인도 완료하면 목록에서 바로 지워요. 인도 완료된 것도 같은 목록에서 계속 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "인도 완료 기록의 목록 표시"
+    },
+    "expected": "ask_user",
+    "rationale": "같은 목록에서 제거와 유지가 충돌한다."
+  },
+  {
+    "id": "CONFLICT-19",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "재활용",
+    "input_style": "natural",
+    "user_input": "재사용 물건 개수는 1개 이상만 저장해요. 0개나 음수도 그대로 저장할 수 있어야 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "재사용 개수의 유효 범위"
+    },
+    "expected": "ask_user",
+    "rationale": "양수 제한과 0·음수 허용이 충돌한다."
+  },
+  {
+    "id": "CONFLICT-20",
+    "category": "contradictory_requirements",
+    "split": "test",
+    "domain": "운동기록",
+    "input_style": "natural",
+    "user_input": "운동 기록은 오늘 날짜만 등록하게 해요. 어제나 지난주 날짜로도 등록할 수 있게 해요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "과거 날짜 운동 기록 허용"
+    },
+    "expected": "ask_user",
+    "rationale": "오늘 전용과 과거 날짜 허용이 충돌한다."
+  },
+  {
+    "id": "SCOPE-01",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "휴가관리",
+    "input_style": "natural",
+    "user_input": "휴가 신청을 승인하면 실제 회사 이메일 주소로 승인 메일이 발송되게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 승인 이메일 발송"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 외부 메일 연동 대신 모의 동작이라는 생성 범위를 확인해야 한다."
+  },
+  {
+    "id": "SCOPE-02",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "회의실",
+    "input_style": "natural",
+    "user_input": "직원들이 각자 진짜 회사 계정으로 로그인해서 회의실을 예약하게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "회사 계정 로그인"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 인증·다중 계정이 생성 범위 밖이다."
+  },
+  {
+    "id": "SCOPE-03",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "도서대출",
+    "input_style": "natural",
+    "user_input": "도서 연체료를 실제 카드로 결제해서 도서관 계좌로 들어오게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 연체료 결제"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 결제 연동은 모의 동작 범위와 충돌한다."
+  },
+  {
+    "id": "SCOPE-04",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "동아리",
+    "input_style": "natural",
+    "user_input": "동아리 공지를 외부 사람들이 누구나 볼 수 있는 공개 링크로 보내고 싶어요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "생성 서비스의 외부 공개 링크"
+    },
+    "expected": "ask_user",
+    "rationale": "본인 미리보기만 제공하고 외부 공유 링크는 제외한다."
+  },
+  {
+    "id": "SCOPE-05",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "개인할일",
+    "input_style": "natural",
+    "user_input": "할 일 앱을 만들어준 뒤에 제가 말하면 새 기능을 계속 추가해주는 기능도 넣어주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "Harness의 생성 완료 후 새 요구 반영"
+    },
+    "expected": "ask_user",
+    "rationale": "생성 서비스 안의 할 일 수정이 아닌 Harness의 생성 후 요구 변경 기능이다."
+  },
+  {
+    "id": "SCOPE-06",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "수업과제",
+    "input_style": "natural",
+    "user_input": "학생들이 학교 계정으로 로그인해 각자 자기 과제만 접근하도록 실제 계정을 붙여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 학생 계정 인증"
+    },
+    "expected": "ask_user",
+    "rationale": "역할 시연이 아닌 실제 다중 계정 인증은 지원 범위 밖이다."
+  },
+  {
+    "id": "SCOPE-07",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "상품재고",
+    "input_style": "natural",
+    "user_input": "창고 상품 위치를 실제 지도 서비스 API에 연결해서 보여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "외부 지도 API 연결"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 지도 연동 대신 모의 동작이라는 제한을 확인해야 한다."
+  },
+  {
+    "id": "SCOPE-08",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "식당대기",
+    "input_style": "natural",
+    "user_input": "대기 순서가 오면 손님 휴대폰에 실제 문자메시지를 보내주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 대기 문자 발송"
+    },
+    "expected": "ask_user",
+    "rationale": "외부 메시지 서비스의 실제 발송은 생성 범위 밖이다."
+  },
+  {
+    "id": "SCOPE-09",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "소규모행사",
+    "input_style": "natural",
+    "user_input": "행사 참가비를 실제 결제하고 결제된 사람만 신청 확정되게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 참가비 결제"
+    },
+    "expected": "ask_user",
+    "rationale": "모의 결제는 가능하지만 실제 결제 연동을 그대로 충족할 수 없다."
+  },
+  {
+    "id": "SCOPE-10",
+    "category": "unsupported_scope",
+    "split": "dev",
+    "domain": "개인메모",
+    "input_style": "natural",
+    "user_input": "완성된 메모 서비스의 코드를 내려받는 버튼을 제공해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "Harness 생성 코드 내보내기"
+    },
+    "expected": "ask_user",
+    "rationale": "생성물 내보내기는 이번 범위 밖이다."
+  },
+  {
+    "id": "SCOPE-11",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "봉사활동",
+    "input_style": "natural",
+    "user_input": "봉사 승인 결과를 참여자 실제 이메일로 자동 발송해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 봉사 승인 메일"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 메일 연동과 모의 동작 범위의 차이를 확인한다."
+  },
+  {
+    "id": "SCOPE-12",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "악기연습",
+    "input_style": "natural",
+    "user_input": "악기 연습 서비스를 Next.js와 PostgreSQL로 만들어주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "생성 서비스의 기술 스택"
+    },
+    "expected": "ask_user",
+    "rationale": "공식 FastAPI·React·SQLite 고정 스택과 명시 요구가 충돌한다."
+  },
+  {
+    "id": "SCOPE-13",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "레시피",
+    "input_style": "natural",
+    "user_input": "요리 재료를 누르면 실제 온라인 마트 API로 주문과 결제가 완료되게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 마트 주문·결제"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 외부 주문·결제 연동은 이번 생성 범위 밖이다."
+  },
+  {
+    "id": "SCOPE-14",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "식물관리",
+    "input_style": "natural",
+    "user_input": "물줄 때가 되면 실제 스마트 화분 기기에 명령을 보내 자동으로 물을 주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 외부 장치 제어"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 외부 시스템 연동 대신 모의 동작이라는 제한을 확인한다."
+  },
+  {
+    "id": "SCOPE-15",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "반려동물",
+    "input_style": "natural",
+    "user_input": "완성된 반려동물 기록 앱을 가족들에게 외부 공유 링크로 보내서 쓰게 할 거예요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "생성 서비스의 가족 외부 공유"
+    },
+    "expected": "ask_user",
+    "rationale": "본인 미리보기만 제공하는 범위와 충돌한다."
+  },
+  {
+    "id": "SCOPE-16",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "보드게임",
+    "input_style": "natural",
+    "user_input": "게임 참가자들이 각자 실제 계정으로 로그인해서 기록을 남기게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 참가자 로그인"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 다중 계정 대신 역할 전환만 지원한다는 차이를 확인한다."
+  },
+  {
+    "id": "SCOPE-17",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "전시관람",
+    "input_style": "natural",
+    "user_input": "전시 위치를 실제 지도 API로 불러와 현재 위치에서 길찾기까지 붙여주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 지도·길찾기 연동"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 외부 지도 기능은 모의 동작 범위를 벗어난다."
+  },
+  {
+    "id": "SCOPE-18",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "세탁접수",
+    "input_style": "natural",
+    "user_input": "세탁이 끝나면 손님에게 실제 카카오 알림톡을 보내주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "실제 세탁 완료 알림톡"
+    },
+    "expected": "ask_user",
+    "rationale": "실제 외부 메시지 발송은 지원 범위 밖이다."
+  },
+  {
+    "id": "SCOPE-19",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "재활용",
+    "input_style": "natural",
+    "user_input": "재활용 서비스를 다 만들고 나서 제가 대화로 기능을 고치는 작업까지 계속할 수 있게 해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "Harness의 생성 후 변경 대화"
+    },
+    "expected": "ask_user",
+    "rationale": "첫 생성 이후 새 요구를 받아 변경하는 기능은 범위 밖이다."
+  },
+  {
+    "id": "SCOPE-20",
+    "category": "unsupported_scope",
+    "split": "test",
+    "domain": "운동기록",
+    "input_style": "natural",
+    "user_input": "운동 기록 서비스 코드를 제 GitHub 저장소에 자동으로 Push해주세요.",
+    "requirement": {
+      "id": "REQ-001",
+      "description": "Harness의 생성물 원격 Push"
+    },
+    "expected": "ask_user",
+    "rationale": "로컬 Git 내부 관리와 달리 생성물 원격 연결·Push는 제공하지 않는다."
+  }
+]

@@ -1,0 +1,52 @@
+{
+  "mode": "live",
+  "budget_usd": 0.5,
+  "prices_per_million": {
+    "jev": [
+      0.042,
+      0
+    ],
+    "sonnet": [
+      2,
+      10
+    ]
+  },
+  "sonnet_max_output": 1024,
+  "sonnet_thinking": "API default, recorded in raw response",
+  "policy_sha256": "32d4f326aa388d1e9db0481bd6fc60705b1349c87797ed597d2773410cfc2f30",
+  "code_sha256": "3404d9feb79306a9c47e28a63493a06e48c8fb8acc6829bc09fbce8632e563d8",
+  "planned_calls": 32,
+  "retries": 0,
+  "fallback": false,
+  "version": "v0",
+  "run_id": "compare-live-01",
+  "dataset": "../../datasets/pilot-v1.json",
+  "dataset_sha256": "3d21137eb51c37d6f2460201fa1cd9a505d28c101762e00ba234e90917b29cba",
+  "prompt_sha256": "f28d5f1999b8a5363388e1c5874910b1a19e1f0addcfc012014181a710251f73",
+  "models": {
+    "jev": "jev-1.13.0",
+    "sonnet": "claude-sonnet-5-5"
+  },
+  "case_ids": [
+    "CORE-02",
+    "CORE-06",
+    "CONFLICT-01",
+    "SCOPE-03",
+    "EXPLICIT-01",
+    "EXPLICIT-06",
+    "CONTEXT-01",
+    "CONTEXT-04",
+    "DEFAULT-01",
+    "DEFAULT-03",
+    "DEFAULT-05",
+    "DEFAULT-07",
+    "SPEC-01",
+    "SPEC-02",
+    "SPEC-03",
+    "SPEC-04"
+  ],
+  "repeats": 1,
+  "provider_order": "Jev first for even zero-based case index; Sonnet first for odd index",
+  "original_candidate_sha256": "be63b6874893c8d3e47c9c533ca2c1e597acd0663b01ac82fc96417d2e72d477",
+  "labels_status": "user-approved boundaries; synthetic dev labels, not independently adjudicated"
+}
