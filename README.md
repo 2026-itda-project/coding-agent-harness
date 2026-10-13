@@ -1,6 +1,47 @@
-# NL-to-PRD
+# coding-agent-harness
 
-현재 구현은 M1의 두 번째 인계 지점입니다: 자연어 입력 → Requirement 추출·구조화 → Gap 분석 → Clarification(최대 3라운드) → Requirement Review·승인 → `ReviewedRequirements` 인계. PRD 생성·검증은 다음 담당 범위입니다.
+자연어 요구사항을 받아 실제 실행 가능한 서비스를 생성하는 범용 AI Agent Harness입니다. `NL-to-PRD`의 코드와 Git 이력을 이어받아 M2를 개발합니다. 휴가관리는 검증용 예시이며, Harness에 휴가관리 전용 로직을 넣지 않습니다.
+
+## M2 개발 기준
+
+[M2 결정사항과 실행 범위](docs/decisions/m2-development-direction.md)가 현재 개발 기준입니다. 이 문서의 M1 실행·계약 설명은 **현재 코드의 동작**이며 M2 목표가 구현되었다는 뜻이 아닙니다.
+
+목표 흐름은 다음과 같습니다.
+
+```text
+사용자 입력 → AI 기본값·최소 질문 → Review → PRD
+→ Executable Spec → Feature / Task / Dependency → Coding Plan
+→ Coding Agent → Build / Test / Acceptance → 재계획·수정 → 실행 결과 미리보기
+```
+
+- 최종 제품은 Claude API로 산출물을 생성합니다. 요구사항·PRD는 Sonnet, Spec·Coding Plan·검증·재계획은 Opus이며 실제 코딩은 Opus가 조종하는 Sonnet이 수행합니다. 실제 모델 ID와 Agent 연결 방식은 구현 계약에서 정합니다.
+- PRD·Spec·Task·생성 코드는 LLM이 만듭니다. 코드는 입력·Context 전달, 응답 정리, 구조·참조 검증과 실행 연결을 담당합니다. 규칙 기반 PRD 조립을 M2 생성 경로로 확장하지 않습니다.
+- 사용자 미지정 내용은 AI 기본값으로 보완하고, `proposed`·`source`를 유지하면서 PRD 본문과 구현 범위에 포함합니다. 사용자 명시사항이 우선이며 핵심 결정만 질문합니다.
+- 생성 코드는 Harness 밖 작업 폴더와 로컬 Git으로 관리합니다. 원격 연결·결과물 내보내기 없이 서비스 내 실행 결과 미리보기를 제공합니다.
+- Jev는 별도 비교 실험 후 도입을 결정합니다. 기본 E2E의 선행조건이 아닙니다. 실행 환경의 구체적인 선택도 아직 미정입니다.
+- 생성 서비스는 FastAPI·React·SQLite로 고정하며 React 빌드 결과를 FastAPI가 함께 제공합니다. 초기 예시 데이터와 새로고침 후 데이터 유지를 지원하고, 실제 로그인·다중 계정 대신 단일 사용자 또는 역할 전환을 사용합니다. 외부 연동은 모의 동작으로 표시하고 외부 공유 링크는 제공하지 않습니다.
+- 생성 후 새 요구사항에 따른 수정은 범위 밖입니다. 생성 전 Review 수정·승인과 실패 시 자동 수정·재검증은 유지합니다.
+
+공식 정책 원문은 [M2 방향성 공유본](https://app.notion.com/p/3f7d4def234a80a4b221c99b30c787fb)입니다. 입력 양식 개편과 3라운드 뒤 핵심 미결정 처리 등 원문에서 미정인 내용은 별도 결정합니다.
+
+[GitHub Issues](https://github.com/2026-itda-project/coding-agent-harness/issues) · [M2 October Execution Plan](https://github.com/orgs/2026-itda-project/projects/2) · [팀 10월 계획](https://app.notion.com/p/3ecd4def234a8103ba44d383ab1a18a0) · [M2 상세 기획](https://app.notion.com/p/3f5d4def234a81a4b371e6c7525b9688)
+
+## 현재 구현 상태
+
+아래는 기존 M1 코드의 구현 상태와 M2 개발 목표입니다.
+
+| 영역 | 현재 코드 | M2에서 바뀔 점 |
+| --- | --- | --- |
+| 입력 | `AnalyzeRequest.text` 단일 문자열 | 목업 생성 중심 입력 항목(제안, 팀 컨펌 대기 — `docs/decisions/m2-development-direction.md` 3절). 필드 계약은 컨펌 후 #7·#8에서 구체화 |
+| 요구사항 루프 | Mock / SnowChat, Gap 분석, 최대 3라운드 Clarification, Review·승인 | Claude Sonnet, AI 기본값 우선·핵심 질문 최소화 |
+| PRD | `/api/prd`, 규칙 기반 `build_prd`·`validate_prd`, PRD UI | Sonnet 생성과 M2 상태·출처 계약 검증 |
+| M2 실행 | Spec / Task / Context / Agent / Sandbox / Retry 미구현 | PRD 이후 실행·자동화·검증 연결 |
+
+`backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계는 [NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17)을 참조하며 중복 작업을 만들지 않습니다.
+
+## 기존 M1 실행과 계약
+
+아래는 현재 코드의 실행 방법과 M1 계약입니다. Claude Provider·환경변수·실행 명령은 아직 구현되지 않았으므로 아래 SnowChat 설정을 M2 설정으로 해석하지 않습니다.
 
 ## 로컬 실행
 
@@ -20,7 +61,9 @@ npm run dev
 
 브라우저에서 `http://127.0.0.1:5173`을 엽니다. 프런트엔드 개발 서버가 `/api` 요청을 `127.0.0.1:8000`으로 전달합니다. 현재 Mock 실행에는 환경 변수가 필요하지 않습니다. `uv run python -m unittest discover -s tests -v`와 `npm run build`로 검증할 수 있습니다.
 
-## SnowChat Demo 실행
+## 기존 M1 SnowChat Demo 실행
+
+M1 연결을 재현하기 위한 경로입니다. M2 최종 제품은 FactChat/SnowChat 대신 Claude API를 사용합니다.
 
 루트의 `.env.example`을 `.env`로 복사하고 `FACTCHAT_API_KEY`에 개인 Key를 입력합니다. `.env`는 Git에서 제외됩니다. Key는 백엔드에서만 사용합니다.
 
@@ -132,13 +175,13 @@ Gap은 `AGENTS.md`의 8개 우선 확인 영역인 `user_role`, `core_flow`, `pe
 
 구분되는 오류 코드는 `missing_api_key`, `authentication_failed`, `model_unavailable`, `rate_limit`, `gateway_error`, `timeout`, `request_rejected`, `structured_output_invalid`, `empty_response`, `incomplete_response`, `provider_refusal`, `invalid_config`입니다. 실패 시 전체 분석 결과를 성공으로 반환하지 않습니다.
 
-분석 결과는 아래 Clarification·Review 단계가 이어받습니다. PRD 생성·검증과 영속 저장은 구현하지 않았습니다.
+분석 결과는 아래 Clarification·Review 단계가 이어받습니다. PRD 생성·검증 API와 UI는 존재하며 규칙 기반으로 동작합니다. 영속 저장은 구현하지 않았습니다.
 
 실제 연결 및 브라우저 검증 결과는 [검증 기록](docs/snowchat-verification.md), 분석 단계의 실제 응답 전체는 [실제 Handoff JSON](docs/examples/snowchat-handoff.json)을 참고하세요.
 
 ## Clarification·Review 인계 계약 (초기 구현안)
 
-AGENTS.md 7~10장을 구현한 부분입니다. Endpoint, 필드, `source` 값, metrics 정의는 확정된 제품 요구사항이 아니라 현재 구현의 계약입니다.
+기존 M1의 AGENTS.md 7~10장을 구현한 부분입니다. 추가된 M2 7.4 정책은 아직 코드에 반영되지 않았습니다. Endpoint, 필드, `source` 값, metrics 정의는 현재 구현의 계약입니다.
 
 ### API
 
@@ -156,7 +199,7 @@ AGENTS.md 7~10장을 구현한 부분입니다. Endpoint, 필드, `source` 값, 
 - 요청 형식 오류: FastAPI 기본 422 형식
 - LLM 오류: 분석과 같은 오류 코드
 
-### Clarification 규칙
+### 현재 M1 Clarification 규칙
 
 - Blocking Gap이 있으면 Gap마다 질문 1개를 만듭니다. Non-blocking Gap만 남으면 질문하지 않고 Review로 넘어갑니다.
 - 라운드는 최대 3회입니다. 빈 답변은 건너뜀이며 해당 Blocking이 남아 다음 라운드에 다시 질문합니다. 건너뛴 라운드도 1회로 셉니다. 빠진 답변은 빈 답변으로 채우며, `answers: []`는 전부 건너뜀입니다.
@@ -212,9 +255,15 @@ AGENTS.md 7~10장을 구현한 부분입니다. Endpoint, 필드, `source` 값, 
 | `unaccepted_proposal_count` | 승인 시점에 남은 `proposed` 수 |
 
 PRD 단계에서 참고할 점:
-- 수락하지 않은 `proposed`는 `blocking=false`이므로 AGENTS 17장의 "미해결 Blocking Requirement"가 아닙니다. PRD의 **Assumptions** 후보입니다.
+- 현재 M1에서 수락하지 않은 `proposed`는 `blocking=false`이므로 "미해결 Blocking Requirement"가 아니며 PRD의 **Assumptions**로 전달됩니다. M2에서는 AI 기본값 표시와 `status`·`source`를 유지하면서 본문·구현 범위에도 포함하도록 변경합니다.
 - `blocking=true`인 `needs_clarification`은 승인 조건상 인계물에 없습니다. `blocking=false`인 `needs_clarification`은 **Open Issues** 후보입니다.
 - `confirmed` + `ai_proposal`은 사용자가 승인한 AI 제안입니다. 그대로 수락했는지 수정 후 확정했는지는 항목 단위로 구분되지 않습니다.
 - Acceptance Criteria는 최초 입력에 명시된 것과 사용자가 Review에서 입력한 것만 있습니다. Clarification과 AI Proposal은 AC를 만들지 않으므로 대부분 비어 있습니다.
 
 실제 SnowChat 실행 기록은 [Review 인계 JSON](docs/examples/review-handoff.json)입니다. 대표 데모 입력으로 2026-09-26에 실행했고, Gap 분석 Prompt 수정 전 결과입니다. 1라운드에 답변하고 2·3라운드는 건너뛰었습니다(질문 6 → 9 → 9, Proposal 9개 중 4개 수락). REQ-029의 AC는 Review 수정 기능을 확인하면서 사용자가 입력한 값이며, 항목 내용(기간 중복 금지)과는 관련이 없습니다. 답변 반영의 AC 제한을 추가하기 전 실행이라 REQ-006~020에는 LLM이 만든 AC가 들어 있습니다. 현재 동작에서는 이 AC가 생기지 않으며, 사용자가 확정한 AC로 보지 않습니다. 이 파일은 테스트 fixture로 사용하지 않습니다.
+
+## 현재 PRD API
+
+`POST /api/prd`는 `{text, reviewed}`를 받아 `{prd, validation}`을 반환합니다. `reviewed`는 위 `ReviewedRequirements`입니다. `backend/app/prd.py`는 Requirement를 Section별로 분류하고 ID·Acceptance 참조를 조립하며 LLM을 호출하지 않습니다. `validation`에는 `passed`, `errors`, `warnings`가 있습니다. UI는 검증 결과와 PRD를 표시하고 통과 시 JSON을 제공합니다.
+
+이 경로와 기존 계약은 M1 현황입니다. M2에서는 Sonnet이 PRD를 생성하고 AI 기본값·출처 및 최소 검증 정책에 맞는 계약을 정의합니다. 기존 `PRD` 스키마에는 항목별 `status`·`source`가 없으므로 이를 이미 보존하는 계약이라고 가정하지 않습니다.
