@@ -14,11 +14,15 @@
 → Coding Agent → Build / Test / Acceptance → 재계획·수정 → 실행 결과 미리보기
 ```
 
-- 최종 제품은 Claude API로 산출물을 생성합니다. 요구사항·PRD·코딩은 Sonnet, Coding Plan·검증·재계획은 Opus를 사용합니다. Spec 생성 단계의 모델과 실제 모델 ID는 구현 전에 정합니다.
+- 최종 제품은 Claude API로 산출물을 생성합니다. 요구사항·PRD는 Sonnet, Spec·Coding Plan·검증·재계획은 Opus이며 실제 코딩은 Opus가 조종하는 Sonnet이 수행합니다. 실제 모델 ID와 Agent 연결 방식은 구현 계약에서 정합니다.
 - PRD·Spec·Task·생성 코드는 LLM이 만듭니다. 코드는 입력·Context 전달, 응답 정리, 구조·참조 검증과 실행 연결을 담당합니다. 규칙 기반 PRD 조립을 M2 생성 경로로 확장하지 않습니다.
 - 사용자 미지정 내용은 AI 기본값으로 보완하고, `proposed`·`source`를 유지하면서 PRD 본문과 구현 범위에 포함합니다. 사용자 명시사항이 우선이며 핵심 결정만 질문합니다.
 - 생성 코드는 Harness 밖 작업 폴더와 로컬 Git으로 관리합니다. 원격 연결·결과물 내보내기 없이 서비스 내 실행 결과 미리보기를 제공합니다.
 - Jev는 별도 비교 실험 후 도입을 결정합니다. 기본 E2E의 선행조건이 아닙니다. 실행 환경의 구체적인 선택도 아직 미정입니다.
+- 생성 서비스는 FastAPI·React·SQLite로 고정하며 React 빌드 결과를 FastAPI가 함께 제공합니다. 초기 예시 데이터와 새로고침 후 데이터 유지를 지원하고, 실제 로그인·다중 계정 대신 단일 사용자 또는 역할 전환을 사용합니다. 외부 연동은 모의 동작으로 표시하고 외부 공유 링크는 제공하지 않습니다.
+- 생성 후 새 요구사항에 따른 수정은 범위 밖입니다. 생성 전 Review 수정·승인과 실패 시 자동 수정·재검증은 유지합니다.
+
+공식 정책 원문은 [M2 방향성 공유본](https://app.notion.com/p/3f7d4def234a80a4b221c99b30c787fb)입니다. 입력 양식 개편과 3라운드 뒤 핵심 미결정 처리 등 원문에서 미정인 내용은 별도 결정합니다.
 
 [GitHub Issues](https://github.com/2026-itda-project/coding-agent-harness/issues) · [M2 October Execution Plan](https://github.com/orgs/2026-itda-project/projects/2) · [팀 10월 계획](https://app.notion.com/p/3ecd4def234a8103ba44d383ab1a18a0) · [M2 상세 기획](https://app.notion.com/p/3f5d4def234a81a4b371e6c7525b9688)
 
