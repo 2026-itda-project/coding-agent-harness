@@ -48,3 +48,23 @@ class CompareTests(unittest.TestCase):
         raw['stop_reason']='max_tokens'
         with self.assertRaises(ValueError):
             compare.parse_sonnet(raw)
+
+    def test_v1_only_calls_jev_and_keeps_v0_inputs(self):
+        cases = json.loads((run.ROOT/'datasets/pilot-v1.json').read_text())
+        answers = []
+        for c in cases:
+            answers.append({'model':run.MODEL, 'answers':{'decision':{
+                'type':'choice','choice':c['expected'],'confidence':1.,
+                'probabilities':{key:float(key==c['expected']) for key in run.OPTIONS}}},
+                'usage':{'input_tokens':1000,'output_tokens':50}})
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict('os.environ', {'TYPESAFE_API_KEY':'test'}, clear=True), patch.object(compare,'sonnet_call',side_effect=AssertionError('Sonnet forbidden')), patch.object(run,'call_api',side_effect=answers) as jev, patch('sys.stdout',new_callable=io.StringIO):
+                self.assertEqual(compare.main(['--version','v1','--live','--out',str(Path(tmp)/'out')]),0)
+            self.assertEqual(jev.call_count,16)
+            for c,call in zip(cases,jev.call_args_list):
+                self.assertEqual(call.args[0]['state'], {'user_input':c['user_input'],'requirement':c['requirement']})
+                self.assertNotIn('expected',call.args[0]['state'])
+            result=json.loads((Path(tmp)/'out/summary.json').read_text())
+            self.assertEqual(set(result['providers']),{'jev'})
+            self.assertTrue(result['complete'])
+            self.assertAlmostEqual(result['known_cost_usd'],16*1000*.042/1e6)

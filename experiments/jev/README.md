@@ -4,7 +4,7 @@
 
 제품 코드와 분리한 실험이다. Python 표준 라이브러리만 사용한다. 공식 제품 정책·Jev 도입 여부는 바꾸지 않는다.
 
-## 현재 상태: v0 비교 완료
+## 현재 상태: v1 비교 완료
 
 [첫 16개 실제 비교 결과](evaluation/pilot-01-results.md): Jev 7/16, Sonnet 15/16. 현재 조건에서 도입 보류. 추가 호출 전 비용 안내.
 
@@ -12,7 +12,7 @@
 
 대표 판정 경계에 대한 사용자 동의 후, 수정안에서 dev 16개를 선정해 Jev·Sonnet 단독으로 각각 1회씩 실제 비교했다. 총 32회 호출의 계산 비용은 USD 0.102362202였다. 전체 140개의 독립 정답 검수와 별도 평가셋 검증은 아직 남아 있다. 추가 유료 실행 전 예상 비용을 먼저 안내한다.
 
-현재 결과는 [versions/v0](versions/v0/)에 보존한다. v1 프롬프트 수정과 추가 실험은 아직 하지 않았다. `compare.py`는 evaluation의 수정안을 사용하고, 기존 `run.py`는 원본 120개를 사용하므로 두 평가셋을 혼동하지 않는다.
+현재 결과는 [versions/v0](versions/v0/)에 보존한다. v1은 판정 프롬프트를 정리해 Jev만 같은 16개를 추가 실행했다. **12/16**, 필수 질문 4/4, 과잉 질문 1/12, 비용 USD 0.000697242였다. [v1 결과](versions/v1/report.md)를 참고한다. Sonnet은 재호출하지 않았다. `compare.py`는 v0에서 고정한 `datasets/pilot-v1.json`과 선택 버전의 프롬프트를 읽고 해시를 검사한다. 기존 `run.py`는 원본 120개를 사용하므로 평가셋을 혼동하지 않는다.
 
 ## 고정 조건: demo-gate-v1
 
@@ -38,7 +38,7 @@
 
 ### compare.py: Jev·Sonnet 단독 비교
 
-`compare.py`는 검토 manifest의 dev 16개만 각 모델에 1회씩 판정 요청한다. 동일 입력·기준, 생성·fallback·자동 retry 없음. 기본 dry-run이고 `--live`만 과금한다. Sonnet 출력 상한은 1,024토큰이다.
+`compare.py` 기본값 `--version v0`는 고정 dev 16개를 두 모델에 1회씩 요청한다. `--version v1`은 같은 사례로 Jev만 호출하며 Sonnet v0는 저장된 참고 결과다. 동일 입력·기준, 생성·fallback·자동 retry 없음. 기본 dry-run이고 `--live`만 과금한다. Sonnet 출력 상한은 1,024토큰이다.
 
 ```bash
 python3 experiments/jev/compare.py --out experiments/jev/results/compare-dry-new
@@ -132,3 +132,14 @@ python3 -m unittest discover -s experiments/jev -p 'test_*.py' -v
 - [Claude Messages API](https://platform.claude.com/docs/en/api/messages/create), [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
 
 Jev의 state/instructions/criteria를 조정하는 실험이며 고객 데이터로 모델을 fine-tuning하는 작업이 아니다. 합성 dev/test 분할은 독립 검수된 고객 분포를 뜻하지 않는다.
+
+
+### Jev v1만 실행
+
+```bash
+python3 experiments/jev/compare.py --version v1 --out experiments/jev/results/v1-dry-new
+# 사전 비용 안내 후 실행. Sonnet 호출 없음.
+uv run --no-project --env-file .env python experiments/jev/compare.py --version v1 --live --out experiments/jev/results/v1-live-new
+```
+
+v1은 TYPESAFE_API_KEY만 필요하다. 누적 비용과 다음 요청 예상치를 검사하는 예산은 USD 0.01이며, 자동 재시도나 fallback은 없다. v0 모델·프롬프트·고정 평가셋 파일은 변경하지 않는다.

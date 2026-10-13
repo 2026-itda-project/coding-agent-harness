@@ -101,42 +101,56 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--live', action='store_true')
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--version', choices=('v0', 'v1'), default='v0', help='v0: paired baseline; v1: Jev only, saved Sonnet baseline')
     args = parser.parse_args(argv)
-    folder = run.ROOT / 'evaluation'
-    manifest = json.loads((folder / 'review-manifest.json').read_text())
-    source = (folder / 'cases.proposed.json').read_bytes()
-    if hashlib.sha256(source).hexdigest() != manifest['candidate_sha256']:
-        parser.error('candidate_changed')
-    by_id = {c['id']: c for c in json.loads(source)}
-    cases = [by_id[i] for i in manifest['pilot_case_ids']]
+    baseline = json.loads((run.ROOT / 'versions/v0/config.json').read_text())
+    source = (run.ROOT / 'datasets/pilot-v1.json').read_bytes()
+    if hashlib.sha256(source).hexdigest() != baseline['dataset_sha256']:
+        parser.error('dataset_changed')
+    cases = json.loads(source)
+    if [c['id'] for c in cases] != baseline['case_ids']:
+        parser.error('case_order_changed')
+    prompt_bytes = (run.ROOT / 'versions' / args.version / 'prompt.json').read_bytes()
+    if args.version == 'v0' and hashlib.sha256(prompt_bytes).hexdigest() != baseline['prompt_sha256']:
+        parser.error('baseline_prompt_changed')
+    question = json.loads(prompt_bytes)['jev_question']
+    if question.get('type') != 'choice' or set(question.get('criteria', {})) != set(run.OPTIONS):
+        parser.error('invalid_prompt')
+    only_jev = args.version == 'v1'
+    budget = min(BUDGET_USD, 0.01) if only_jev else BUDGET_USD
+    planned_calls = 16 if only_jev else 32
     if len(cases) != 16 or Counter(c['expected'] for c in cases) != dict.fromkeys(run.OPTIONS, 4):
         parser.error('pilot_must_have_four_per_label')
     if any(c['split'] != 'dev' for c in cases):
         parser.error('pilot_must_use_dev')
-    policy = (run.ROOT / 'policy.md').read_text()
-    if args.live and (os.environ.get('SONNET_MODEL') != SONNET_MODEL or
-                      not all(os.environ.get(k) for k in ('TYPESAFE_API_KEY', 'ANTHROPIC_API_KEY'))):
-        parser.error('expected_keys_and_sonnet_model_required')
+    if args.live and not os.environ.get('TYPESAFE_API_KEY'):
+        parser.error('jev_key_required')
+    if args.live and not only_jev and (os.environ.get('SONNET_MODEL') != SONNET_MODEL or
+                                       not os.environ.get('ANTHROPIC_API_KEY')):
+        parser.error('expected_sonnet_key_and_model_required')
     args.out.mkdir(parents=True, exist_ok=False)
     records, spent, stop = [], 0., None
     with (args.out / 'calls.jsonl').open('x') as output:
         def write(record):
             output.write(json.dumps(record, ensure_ascii=False, allow_nan=False)+'\n')
             output.flush()
-        write({'type': 'run', 'mode': 'live' if args.live else 'dry_run', 'budget_usd': BUDGET_USD,
+        write({'type': 'run', 'mode': 'live' if args.live else 'dry_run', 'budget_usd': budget, 'version': args.version,
                'prices_per_million': PRICES, 'sonnet_max_output': MAX_OUTPUT,
                'sonnet_thinking': 'API default, recorded in raw response',
-               'policy_sha256': hashlib.sha256(policy.encode()).hexdigest(),
+               'prompt_sha256': hashlib.sha256(prompt_bytes).hexdigest(),
+               'dataset_sha256': hashlib.sha256(source).hexdigest(),
                'code_sha256': hashlib.sha256(Path(__file__).read_bytes() + (run.ROOT/'run.py').read_bytes()).hexdigest(),
-               'manifest': manifest, 'planned_calls': 32, 'retries': 0, 'fallback': False})
+               'baseline_config': baseline, 'planned_calls': planned_calls, 'retries': 0, 'fallback': False})
         for index, case in enumerate(cases):
-            jev_payload = run.make_request(case, policy)
+            jev_payload = {'model': run.MODEL, 'state': {'user_input': case['user_input'],
+                           'requirement': case['requirement']}, 'questions': {'decision': question}}
             payloads = {'jev': jev_payload, 'sonnet': sonnet_request(jev_payload)}
             # Alternate order to reduce provider-order bias.
-            for provider in (('jev', 'sonnet') if index % 2 == 0 else ('sonnet', 'jev')):
+            order = ('jev',) if only_jev else (('jev', 'sonnet') if index % 2 == 0 else ('sonnet', 'jev'))
+            for provider in order:
                 payload = payloads[provider]
                 allowance = reserve(provider, payload)
-                if spent + allowance > BUDGET_USD:
+                if spent + allowance > budget:
                     stop = 'budget_reserve_exceeded'
                     break
                 if not args.live:
@@ -171,7 +185,9 @@ def main(argv=None):
             if stop:
                 break
         result = {'type': 'summary', 'stop_reason': stop, 'known_cost_usd': spent,
-                  'complete': len(records) == 32 and not stop, 'providers': summary(records)}
+                  'complete': len(records) == planned_calls and not stop,
+                  'providers': {k: v for k, v in summary(records).items() if not only_jev or k == 'jev'},
+                  'reference_only': 'versions/v0/summary.json (not called again)' if only_jev else None}
         write(result)
         (args.out/'summary.json').write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n')
         print(json.dumps(result, ensure_ascii=False))
