@@ -119,9 +119,12 @@ def main(argv=None):
     parser.add_argument('--live', action='store_true')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--version', choices=('v0', 'v1', 'v2', 'v3'), default='v0', help='v0: paired baseline; v1/v2/v3: Jev only, saved Sonnet baseline')
+    parser.add_argument('--sonnet-only', action='store_true', help='Evaluate Sonnet with frozen v2 English four-way criteria on original120; no Jev calls')
     parser.add_argument('--suite', choices=('pilot', 'original120'), default='pilot')
     parser.add_argument('--start-index', type=int, default=0, help='Skip completed original120 cases; zero-based, no automatic replay')
     args = parser.parse_args(argv)
+    if args.sonnet_only and (args.version != 'v2' or args.suite != 'original120'):
+        parser.error('sonnet_only_requires_v2_original120')
     baseline = json.loads((run.ROOT / 'versions/v0/config.json').read_text())
     source = (run.ROOT / 'datasets/pilot-v1.json').read_bytes()
     if hashlib.sha256(source).hexdigest() != baseline['dataset_sha256']:
@@ -172,9 +175,12 @@ def main(argv=None):
             parser.error('invalid_start_index')
         cases = cases[args.start_index:]
         planned_calls = len(cases)
-    if args.live and not os.environ.get('TYPESAFE_API_KEY'):
+    if args.sonnet_only:
+        budget = 1.20
+    single_provider = 'sonnet' if args.sonnet_only else ('jev' if only_jev else None)
+    if args.live and not args.sonnet_only and not os.environ.get('TYPESAFE_API_KEY'):
         parser.error('jev_key_required')
-    if args.live and not only_jev and (os.environ.get('SONNET_MODEL') != SONNET_MODEL or
+    if args.live and (args.sonnet_only or not only_jev) and (os.environ.get('SONNET_MODEL') != SONNET_MODEL or
                                        not os.environ.get('ANTHROPIC_API_KEY')):
         parser.error('expected_sonnet_key_and_model_required')
     args.out.mkdir(parents=True, exist_ok=False)
@@ -184,7 +190,7 @@ def main(argv=None):
             output.write(json.dumps(record, ensure_ascii=False, allow_nan=False)+'\n')
             output.flush()
         write({'type': 'run', 'mode': 'live' if args.live else 'dry_run', 'budget_usd': budget, 'version': args.version,
-               'suite': args.suite, 'start_index': args.start_index, 'case_ids': [c['id'] for c in cases],
+               'sonnet_only': args.sonnet_only, 'suite': args.suite, 'start_index': args.start_index, 'case_ids': [c['id'] for c in cases],
                'prices_per_million': PRICES, 'sonnet_max_output': MAX_OUTPUT,
                'sonnet_thinking': 'API default, recorded in raw response',
                'prompt_sha256': hashlib.sha256(prompt_bytes).hexdigest(),
@@ -198,7 +204,7 @@ def main(argv=None):
                 jev_payload['questions']['conflict'] = prompt['conflict_question']
             payloads = {'jev': jev_payload, 'sonnet': sonnet_request(jev_payload)}
             # Alternate order to reduce provider-order bias.
-            order = ('jev',) if only_jev else (('jev', 'sonnet') if index % 2 == 0 else ('sonnet', 'jev'))
+            order = (single_provider,) if single_provider else (('jev', 'sonnet') if index % 2 == 0 else ('sonnet', 'jev'))
             for provider in order:
                 payload = payloads[provider]
                 allowance = reserve(provider, payload)
@@ -241,10 +247,10 @@ def main(argv=None):
                 break
         result = {'type': 'summary', 'stop_reason': stop, 'known_cost_usd': spent,
                   'complete': len(records) == planned_calls and not stop,
-                  'providers': {k: v for k, v in summary(records).items() if not only_jev or k == 'jev'},
-                  'by_split': {split: summary([r for r in records if r['split'] == split])['jev'] for split in ('dev','test')} if only_jev else None,
-                  'by_category': {cat: summary([r for r in records if r['category'] == cat])['jev'] for cat in sorted({c['category'] for c in cases})} if only_jev else None,
-                  'reference_only': 'Sonnet v0 covers only the original 16-case pilot, not this suite' if args.suite == 'original120' else ('versions/v0/summary.json (not called again)' if only_jev else None)}
+                  'providers': {k: v for k, v in summary(records).items() if single_provider is None or k == single_provider},
+                  'by_split': {split: summary([r for r in records if r['split'] == split])[single_provider] for split in ('dev','test')} if single_provider else None,
+                  'by_category': {cat: summary([r for r in records if r['category'] == cat])[single_provider] for cat in sorted({c['category'] for c in cases})} if single_provider else None,
+                  'reference_only': 'Saved Jev v3 original120; Sonnet uses v2 English four-way classifier without the separate conflict gate' if args.sonnet_only else 'Sonnet v0 covers only the original 16-case pilot, not this suite' if args.suite == 'original120' else ('versions/v0/summary.json (not called again)' if only_jev else None)}
         write(result)
         (args.out/'summary.json').write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n')
         print(json.dumps(result, ensure_ascii=False))

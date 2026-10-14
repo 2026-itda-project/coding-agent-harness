@@ -4,7 +4,9 @@
 
 제품 코드와 분리한 실험이다. Python 표준 라이브러리만 사용한다. 공식 제품 정책·Jev 도입 여부는 바꾸지 않는다.
 
-## 현재 상태: v3 120개 회귀 평가 완료
+## 현재 상태: Sonnet 단독과 v3의 120개 비교 완료
+
+[Sonnet 비교 결과](versions/v3/sonnet120/report.md): Sonnet 114/120(95%), Jev v3 110/120(91.67%). 순수 판정 비용 USD 0.281048 대 0.005239668. 구성 비교이며 v4는 진행하지 않았다. 신규 독립 검증과 E2E 전체 비용·품질 검증은 남아 있다.
 
 [v3 결과](versions/v3/report.md): v2 영어 분류에 명시 충돌 검사를 추가해 110/120(91.67%), 필수 질문 54/59, 과잉 질문 0/61. 비용 USD 0.005239668. 독립 평가·제품 도입은 미완료.
 
@@ -182,3 +184,14 @@ uv run --no-project --env-file .env python experiments/jev/compare.py --version 
 ```
 
 v2 4분류 지시를 유지하고 noul 충돌 확률 >= 0.5이면 ask_user로 분기한다. 최종 분기의 확률을 합성하지 않으며 원래 판단과 충돌 확률을 따로 기록한다. 예산 검사 USD 0.05, 실패 시 중단하며 자동 재시도하지 않는다. [사전 계획](versions/v3/plan.md)과 [실제 결과](versions/v3/report.md)를 구분한다.
+
+
+### Sonnet 단독 120개 비교 (Jev 결과 재사용)
+
+```bash
+python3 experiments/jev/compare.py --version v2 --suite original120 --sonnet-only --out experiments/jev/results/sonnet-dry-new
+# 예상 비용 안내 후 실행. Jev를 호출하지 않는다.
+uv run --no-project --env-file .env python experiments/jev/compare.py --version v2 --suite original120 --sonnet-only --live --out experiments/jev/results/sonnet-live-new
+```
+
+Sonnet에 v2 영어 4분류 기준을 전달하고 같은 120개를 각 1회 평가한다. 저장된 Jev v3의 4분류+충돌 검사와 구성 단위로 비교하며, 구조가 완전히 동일한 모델 우열 실험은 아니다. 예산 검사는 USD 1.20, 출력 상한 1024, thinking은 API 기본값이다. `ANTHROPIC_API_KEY`와 `SONNET_MODEL=claude-sonnet-5-5`가 필요하며 Jev 키는 필요하지 않다. [비교 계획](versions/v3/sonnet120/plan.md).

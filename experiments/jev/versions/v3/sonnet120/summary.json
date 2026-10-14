@@ -1,0 +1,248 @@
+{
+  "type": "summary",
+  "stop_reason": null,
+  "known_cost_usd": 0.28104799999999996,
+  "complete": true,
+  "providers": {
+    "sonnet": {
+      "attempted": 120,
+      "valid": 120,
+      "errors": 0,
+      "correct": 114,
+      "required_questions_found": 56,
+      "required_questions_total_valid": 59,
+      "unnecessary_questions": 1,
+      "non_question_total_valid": 61,
+      "median_latency_ms": 1722.0996639998702,
+      "cost_usd": 0.281048,
+      "input_tokens": 124484,
+      "output_tokens": 3208,
+      "confusion": {
+        "ready": {
+          "ready": 40,
+          "ask_user": 1
+        },
+        "ai_refine": {
+          "ai_refine": 14
+        },
+        "ask_user": {
+          "ask_user": 56,
+          "ai_refine": 1,
+          "ready": 2
+        },
+        "defer_to_spec": {
+          "ai_refine": 1,
+          "defer_to_spec": 4,
+          "ready": 1
+        }
+      }
+    }
+  },
+  "by_split": {
+    "dev": {
+      "attempted": 60,
+      "valid": 60,
+      "errors": 0,
+      "correct": 57,
+      "required_questions_found": 29,
+      "required_questions_total_valid": 30,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 30,
+      "median_latency_ms": 1730.2619760002926,
+      "cost_usd": 0.14392,
+      "input_tokens": 62190,
+      "output_tokens": 1954,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {
+          "ai_refine": 7
+        },
+        "ask_user": {
+          "ask_user": 29,
+          "ready": 1
+        },
+        "defer_to_spec": {
+          "ai_refine": 1,
+          "defer_to_spec": 1,
+          "ready": 1
+        }
+      }
+    },
+    "test": {
+      "attempted": 60,
+      "valid": 60,
+      "errors": 0,
+      "correct": 57,
+      "required_questions_found": 27,
+      "required_questions_total_valid": 29,
+      "unnecessary_questions": 1,
+      "non_question_total_valid": 31,
+      "median_latency_ms": 1708.658477499739,
+      "cost_usd": 0.137128,
+      "input_tokens": 62294,
+      "output_tokens": 1254,
+      "confusion": {
+        "ready": {
+          "ready": 20,
+          "ask_user": 1
+        },
+        "ai_refine": {
+          "ai_refine": 7
+        },
+        "ask_user": {
+          "ai_refine": 1,
+          "ask_user": 27,
+          "ready": 1
+        },
+        "defer_to_spec": {
+          "defer_to_spec": 3
+        }
+      }
+    }
+  },
+  "by_category": {
+    "context_resolved": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 20,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 1527.97708900016,
+      "cost_usd": 0.044328,
+      "input_tokens": 20964,
+      "output_tokens": 240,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {},
+        "ask_user": {},
+        "defer_to_spec": {}
+      }
+    },
+    "contradictory_requirements": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 17,
+      "required_questions_found": 17,
+      "required_questions_total_valid": 19,
+      "unnecessary_questions": 1,
+      "non_question_total_valid": 1,
+      "median_latency_ms": 1701.5207649997137,
+      "cost_usd": 0.051668,
+      "input_tokens": 20954,
+      "output_tokens": 976,
+      "confusion": {
+        "ready": {
+          "ask_user": 1
+        },
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 17,
+          "ready": 2
+        },
+        "defer_to_spec": {}
+      }
+    },
+    "explicit_requirements": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 20,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 1750.1142159994743,
+      "cost_usd": 0.043584,
+      "input_tokens": 20592,
+      "output_tokens": 240,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {},
+        "ask_user": {},
+        "defer_to_spec": {}
+      }
+    },
+    "implicit_core_gap": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 19,
+      "required_questions_found": 19,
+      "required_questions_total_valid": 20,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 0,
+      "median_latency_ms": 1641.3073525000073,
+      "cost_usd": 0.050226,
+      "input_tokens": 20638,
+      "output_tokens": 895,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 19,
+          "ai_refine": 1
+        },
+        "defer_to_spec": {}
+      }
+    },
+    "routine_defaults": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 18,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 1738.7754599999425,
+      "cost_usd": 0.047122,
+      "input_tokens": 20676,
+      "output_tokens": 577,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {
+          "ai_refine": 14
+        },
+        "ask_user": {},
+        "defer_to_spec": {
+          "ai_refine": 1,
+          "defer_to_spec": 4,
+          "ready": 1
+        }
+      }
+    },
+    "unsupported_scope": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 20,
+      "required_questions_found": 20,
+      "required_questions_total_valid": 20,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 0,
+      "median_latency_ms": 1740.7570784998825,
+      "cost_usd": 0.04412,
+      "input_tokens": 20660,
+      "output_tokens": 280,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 20
+        },
+        "defer_to_spec": {}
+      }
+    }
+  },
+  "reference_only": "Saved Jev v3 original120; Sonnet uses v2 English four-way classifier without the separate conflict gate"
+}

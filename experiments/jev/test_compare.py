@@ -161,3 +161,18 @@ class CompareTests(unittest.TestCase):
             self.assertEqual(rows[-1]['providers']['jev']['unnecessary_questions'],61)
             self.assertAlmostEqual(rows[-1]['known_cost_usd'],.00504)
             self.assertTrue(rows[-1]['complete'])
+
+    def test_sonnet_only_120_never_calls_jev_and_counts_cost(self):
+        raw={'model':compare.SONNET_MODEL,'stop_reason':'end_turn',
+             'content':[{'type':'text','text':'{"decision":"ready"}'}],
+             'usage':{'input_tokens':2000,'output_tokens':200}}
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict('os.environ', {'ANTHROPIC_API_KEY':'test','SONNET_MODEL':compare.SONNET_MODEL}, clear=True), patch.object(run,'call_api',side_effect=AssertionError), patch.object(compare,'sonnet_call',return_value=raw) as sonnet, patch('sys.stdout',new_callable=io.StringIO):
+                self.assertEqual(compare.main(['--version','v2','--suite','original120','--sonnet-only','--live','--out',str(Path(tmp)/'out')]),0)
+            self.assertEqual(sonnet.call_count,120)
+            result=json.loads((Path(tmp)/'out/summary.json').read_text())
+            self.assertEqual(set(result['providers']),{'sonnet'})
+            self.assertEqual(result['providers']['sonnet']['correct'],41)
+            self.assertEqual(result['by_split']['test']['attempted'],60)
+            self.assertAlmostEqual(result['known_cost_usd'],.72)
+            self.assertTrue(result['complete'])
