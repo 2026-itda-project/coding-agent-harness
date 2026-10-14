@@ -68,3 +68,45 @@ class CompareTests(unittest.TestCase):
             self.assertEqual(set(result['providers']),{'jev'})
             self.assertTrue(result['complete'])
             self.assertAlmostEqual(result['known_cost_usd'],16*1000*.042/1e6)
+
+
+    def test_v2_preserves_korean_inputs_and_uses_english_prompt_only(self):
+        cases = json.loads((run.ROOT/'datasets/pilot-v1.json').read_text())
+        v2 = json.loads((run.ROOT/'versions/v2/prompt.json').read_text())['jev_question']
+        v1 = json.loads((run.ROOT/'versions/v1/prompt.json').read_text())['jev_question']
+        self.assertEqual(set(v2['instructions']),set(v1['instructions']))
+        self.assertEqual(list(v2['criteria']),list(v1['criteria']))
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(compare,'sonnet_call',side_effect=AssertionError), patch.object(run,'call_api',side_effect=AssertionError), patch('sys.stdout',new_callable=io.StringIO):
+                compare.main(['--version','v2','--out',str(Path(tmp)/'out')])
+            rows=[json.loads(s) for s in (Path(tmp)/'out/calls.jsonl').read_text().splitlines()]
+            requests=[r for r in rows if r['type']=='request']
+            self.assertEqual(len(requests),16)
+            self.assertEqual({r['provider'] for r in requests},{'jev'})
+            for c,r in zip(cases,requests):
+                self.assertEqual(r['request']['state'],{'user_input':c['user_input'],'requirement':c['requirement']})
+                self.assertEqual(r['request']['questions']['decision'],v2)
+
+
+    def test_original120_uses_revised_labels_and_no_sonnet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(compare,'sonnet_call',side_effect=AssertionError), patch.object(run,'call_api',side_effect=AssertionError), patch('sys.stdout',new_callable=io.StringIO):
+                compare.main(['--version','v2','--suite','original120','--out',str(Path(tmp)/'out')])
+            rows=[json.loads(s) for s in (Path(tmp)/'out/calls.jsonl').read_text().splitlines()]
+            requests=[r for r in rows if r['type']=='request']
+            self.assertEqual(len(requests),120)
+            self.assertEqual({r['provider'] for r in requests},{'jev'})
+            self.assertFalse(any(r['case_id'].startswith('SPEC-') for r in requests))
+            self.assertEqual(rows[0]['planned_calls'],120)
+            self.assertEqual(rows[0]['budget_usd'],.05)
+
+
+    def test_continuation_skips_completed_cases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(run,'call_api',side_effect=AssertionError), patch('sys.stdout',new_callable=io.StringIO):
+                compare.main(['--version','v2','--suite','original120','--start-index','58','--out',str(Path(tmp)/'out')])
+            rows=[json.loads(s) for s in (Path(tmp)/'out/calls.jsonl').read_text().splitlines()]
+            requests=[r for r in rows if r['type']=='request']
+            self.assertEqual(len(requests),62)
+            self.assertEqual(requests[0]['case_id'],'EXPLICIT-19')
+            self.assertEqual(rows[0]['planned_calls'],62)

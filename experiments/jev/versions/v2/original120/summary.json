@@ -1,0 +1,241 @@
+{
+  "overall": {
+    "attempted": 120,
+    "valid": 120,
+    "errors": 0,
+    "correct": 102,
+    "required_questions_found": 46,
+    "required_questions_total_valid": 59,
+    "unnecessary_questions": 0,
+    "non_question_total_valid": 61,
+    "median_latency_ms": 205.99835149914725,
+    "cost_usd": 0.004231668,
+    "input_tokens": 100754,
+    "output_tokens": 6213,
+    "confusion": {
+      "ready": {
+        "ready": 41
+      },
+      "ai_refine": {
+        "ai_refine": 14
+      },
+      "ask_user": {
+        "ask_user": 46,
+        "ai_refine": 3,
+        "ready": 10
+      },
+      "defer_to_spec": {
+        "ai_refine": 5,
+        "defer_to_spec": 1
+      }
+    }
+  },
+  "by_split": {
+    "dev": {
+      "attempted": 60,
+      "valid": 60,
+      "errors": 0,
+      "correct": 51,
+      "required_questions_found": 24,
+      "required_questions_total_valid": 30,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 30,
+      "median_latency_ms": 205.97165049548494,
+      "cost_usd": 0.00211575,
+      "input_tokens": 50375,
+      "output_tokens": 3108,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {
+          "ai_refine": 7
+        },
+        "ask_user": {
+          "ask_user": 24,
+          "ai_refine": 2,
+          "ready": 4
+        },
+        "defer_to_spec": {
+          "ai_refine": 3
+        }
+      }
+    },
+    "test": {
+      "attempted": 60,
+      "valid": 60,
+      "errors": 0,
+      "correct": 51,
+      "required_questions_found": 22,
+      "required_questions_total_valid": 29,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 31,
+      "median_latency_ms": 207.43829200364416,
+      "cost_usd": 0.002115918,
+      "input_tokens": 50379,
+      "output_tokens": 3105,
+      "confusion": {
+        "ready": {
+          "ready": 21
+        },
+        "ai_refine": {
+          "ai_refine": 7
+        },
+        "ask_user": {
+          "ai_refine": 1,
+          "ask_user": 22,
+          "ready": 6
+        },
+        "defer_to_spec": {
+          "ai_refine": 2,
+          "defer_to_spec": 1
+        }
+      }
+    }
+  },
+  "by_category": {
+    "context_resolved": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 20,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 199.2973230080679,
+      "cost_usd": 0.0007117740000000001,
+      "input_tokens": 16947,
+      "output_tokens": 1020,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {},
+        "ask_user": {},
+        "defer_to_spec": {}
+      }
+    },
+    "contradictory_requirements": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 11,
+      "required_questions_found": 10,
+      "required_questions_total_valid": 19,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 1,
+      "median_latency_ms": 203.72928949655034,
+      "cost_usd": 0.0007112280000000001,
+      "input_tokens": 16934,
+      "output_tokens": 1030,
+      "confusion": {
+        "ready": {
+          "ready": 1
+        },
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 10,
+          "ready": 9
+        },
+        "defer_to_spec": {}
+      }
+    },
+    "explicit_requirements": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 20,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 209.12113900703844,
+      "cost_usd": 0.0007014,
+      "input_tokens": 16700,
+      "output_tokens": 1020,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {},
+        "ask_user": {},
+        "defer_to_spec": {}
+      }
+    },
+    "implicit_core_gap": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 17,
+      "required_questions_found": 17,
+      "required_questions_total_valid": 20,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 0,
+      "median_latency_ms": 214.70181450422388,
+      "cost_usd": 0.000701022,
+      "input_tokens": 16691,
+      "output_tokens": 1043,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 17,
+          "ai_refine": 3
+        },
+        "defer_to_spec": {}
+      }
+    },
+    "routine_defaults": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 15,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 204.92249900416937,
+      "cost_usd": 0.000703752,
+      "input_tokens": 16756,
+      "output_tokens": 1061,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {
+          "ai_refine": 14
+        },
+        "ask_user": {},
+        "defer_to_spec": {
+          "ai_refine": 5,
+          "defer_to_spec": 1
+        }
+      }
+    },
+    "unsupported_scope": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 19,
+      "required_questions_found": 19,
+      "required_questions_total_valid": 20,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 0,
+      "median_latency_ms": 204.7363980091177,
+      "cost_usd": 0.0007024920000000001,
+      "input_tokens": 16726,
+      "output_tokens": 1039,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 19,
+          "ready": 1
+        },
+        "defer_to_spec": {}
+      }
+    }
+  },
+  "low_confidence_count": 34,
+  "validator_incidents": 1,
+  "repeated_api_calls": 0
+}

@@ -1,0 +1,37 @@
+{
+  "type": "summary",
+  "stop_reason": null,
+  "known_cost_usd": 0.000566874,
+  "complete": true,
+  "providers": {
+    "jev": {
+      "attempted": 16,
+      "valid": 16,
+      "errors": 0,
+      "correct": 16,
+      "required_questions_found": 4,
+      "required_questions_total_valid": 4,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 12,
+      "median_latency_ms": 235.7948069984559,
+      "cost_usd": 0.000566874,
+      "input_tokens": 13497,
+      "output_tokens": 840,
+      "confusion": {
+        "ready": {
+          "ready": 4
+        },
+        "ai_refine": {
+          "ai_refine": 4
+        },
+        "ask_user": {
+          "ask_user": 4
+        },
+        "defer_to_spec": {
+          "defer_to_spec": 4
+        }
+      }
+    }
+  },
+  "reference_only": "versions/v0/summary.json (not called again)"
+}

@@ -95,7 +95,8 @@ def parse_response(raw):
         raise ValueError("invalid_probability_options")
     if not all(unit_interval(v) for v in probabilities.values()):
         raise ValueError("invalid_probabilities")
-    if not math.isclose(sum(probabilities.values()), 1, abs_tol=0.001):
+    # API rounds each probability to two decimals; retain raw values without normalization.
+    if not math.isclose(sum(probabilities.values()), 1, abs_tol=0.005 * len(OPTIONS) + 1e-9):
         raise ValueError("invalid_probability_sum")
     choice = answer.get("choice")
     if choice not in OPTIONS or probabilities[choice] < max(probabilities.values()):

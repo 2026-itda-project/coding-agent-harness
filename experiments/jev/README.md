@@ -4,7 +4,9 @@
 
 제품 코드와 분리한 실험이다. Python 표준 라이브러리만 사용한다. 공식 제품 정책·Jev 도입 여부는 바꾸지 않는다.
 
-## 현재 상태: v1 비교 완료
+## 현재 상태: v2 120개 확대 평가 완료
+
+[기존 120개 확대 결과](versions/v2/original120/report.md): 102/120(85%), dev/test 각각 51/60. 필수 질문은 46/59를 회수했고 충돌 확인 누락이 남았다. 비용 USD 0.004231668, Sonnet 호출 없음. 소규모 16/16과 구분해서 해석한다.
 
 [첫 16개 실제 비교 결과](evaluation/pilot-01-results.md): Jev 7/16, Sonnet 15/16. 현재 조건에서 도입 보류. 추가 호출 전 비용 안내.
 
@@ -12,7 +14,9 @@
 
 대표 판정 경계에 대한 사용자 동의 후, 수정안에서 dev 16개를 선정해 Jev·Sonnet 단독으로 각각 1회씩 실제 비교했다. 총 32회 호출의 계산 비용은 USD 0.102362202였다. 전체 140개의 독립 정답 검수와 별도 평가셋 검증은 아직 남아 있다. 추가 유료 실행 전 예상 비용을 먼저 안내한다.
 
-현재 결과는 [versions/v0](versions/v0/)에 보존한다. v1은 판정 프롬프트를 정리해 Jev만 같은 16개를 추가 실행했다. **12/16**, 필수 질문 4/4, 과잉 질문 1/12, 비용 USD 0.000697242였다. [v1 결과](versions/v1/report.md)를 참고한다. Sonnet은 재호출하지 않았다. `compare.py`는 v0에서 고정한 `datasets/pilot-v1.json`과 선택 버전의 프롬프트를 읽고 해시를 검사한다. 기존 `run.py`는 원본 120개를 사용하므로 평가셋을 혼동하지 않는다.
+현재 결과는 [versions/v0](versions/v0/)에 보존한다. v2는 지시·기준만 영어로 번역해 같은 dev 16개에서 **16/16** 일치했다. 비용 USD 0.000566874, 지연 중앙값 236ms이며 [v2 결과](versions/v2/report.md)에 보존했다. 일반화·반복 안정성은 미검증이다.
+
+v1은 판정 프롬프트를 정리해 Jev만 같은 16개를 추가 실행했다. **12/16**, 필수 질문 4/4, 과잉 질문 1/12, 비용 USD 0.000697242였다. [v1 결과](versions/v1/report.md)를 참고한다. Sonnet은 재호출하지 않았다. `compare.py`는 v0에서 고정한 `datasets/pilot-v1.json`과 선택 버전의 프롬프트를 읽고 해시를 검사한다. 기존 `run.py`는 원본 120개를 사용하므로 평가셋을 혼동하지 않는다.
 
 ## 고정 조건: demo-gate-v1
 
@@ -38,7 +42,7 @@
 
 ### compare.py: Jev·Sonnet 단독 비교
 
-`compare.py` 기본값 `--version v0`는 고정 dev 16개를 두 모델에 1회씩 요청한다. `--version v1`은 같은 사례로 Jev만 호출하며 Sonnet v0는 저장된 참고 결과다. 동일 입력·기준, 생성·fallback·자동 retry 없음. 기본 dry-run이고 `--live`만 과금한다. Sonnet 출력 상한은 1,024토큰이다.
+`compare.py` 기본값 `--version v0`는 고정 dev 16개를 두 모델에 1회씩 요청한다. `--version v1` 또는 `--version v2`는 같은 사례로 Jev만 호출하며 Sonnet v0는 저장된 참고 결과다. 동일 입력·기준, 생성·fallback·자동 retry 없음. 기본 dry-run이고 `--live`만 과금한다. Sonnet 출력 상한은 1,024토큰이다.
 
 ```bash
 python3 experiments/jev/compare.py --out experiments/jev/results/compare-dry-new
@@ -143,3 +147,25 @@ uv run --no-project --env-file .env python experiments/jev/compare.py --version 
 ```
 
 v1은 TYPESAFE_API_KEY만 필요하다. 누적 비용과 다음 요청 예상치를 검사하는 예산은 USD 0.01이며, 자동 재시도나 fallback은 없다. v0 모델·프롬프트·고정 평가셋 파일은 변경하지 않는다.
+
+
+### Jev v2만 실행
+
+```bash
+python3 experiments/jev/compare.py --version v2 --out experiments/jev/results/v2-dry-new
+# 사전 비용 안내 후 실행. Sonnet 호출 없음.
+uv run --no-project --env-file .env python experiments/jev/compare.py --version v2 --live --out experiments/jev/results/v2-live-new
+```
+
+v2도 TYPESAFE_API_KEY만 사용하며, 예산 검사는 USD 0.01이다. v1과 동일한 한국어 입력에 영어 지시·기준만 전달한다.
+
+
+### 기존 120개로 v2 확대 평가
+
+```bash
+python3 experiments/jev/compare.py --version v2 --suite original120 --out experiments/jev/results/v2-120-dry-new
+# 비용 안내 후 실행: Jev만 120회, 예산 검사 USD 0.05
+uv run --no-project --env-file .env python experiments/jev/compare.py --version v2 --suite original120 --live --out experiments/jev/results/v2-120-live-new
+```
+
+이 suite는 고정 140개 수정안 중 기존 120개의 정답을 사용한다. 원문·대상은 원본과 일치해야 하며 v2 프롬프트 해시도 검사한다. 일부 완료 후 이어 실행할 때는 실제 완료 응답을 확인하고 `--start-index`로 다음 사례 위치를 지정한다. 이 옵션 자체가 이전 로그를 합산하거나 전 실행 비용을 검사하는 것은 아니다. 예산 검사는 실행별이며 통합 결과는 원본 로그를 중복 없이 검증해 작성한다.

@@ -101,7 +101,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--live', action='store_true')
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--version', choices=('v0', 'v1'), default='v0', help='v0: paired baseline; v1: Jev only, saved Sonnet baseline')
+    parser.add_argument('--version', choices=('v0', 'v1', 'v2'), default='v0', help='v0: paired baseline; v1/v2: Jev only, saved Sonnet baseline')
+    parser.add_argument('--suite', choices=('pilot', 'original120'), default='pilot')
+    parser.add_argument('--start-index', type=int, default=0, help='Skip completed original120 cases; zero-based, no automatic replay')
     args = parser.parse_args(argv)
     baseline = json.loads((run.ROOT / 'versions/v0/config.json').read_text())
     source = (run.ROOT / 'datasets/pilot-v1.json').read_bytes()
@@ -116,13 +118,38 @@ def main(argv=None):
     question = json.loads(prompt_bytes)['jev_question']
     if question.get('type') != 'choice' or set(question.get('criteria', {})) != set(run.OPTIONS):
         parser.error('invalid_prompt')
-    only_jev = args.version == 'v1'
+    only_jev = args.version != 'v0'
     budget = min(BUDGET_USD, 0.01) if only_jev else BUDGET_USD
     planned_calls = 16 if only_jev else 32
     if len(cases) != 16 or Counter(c['expected'] for c in cases) != dict.fromkeys(run.OPTIONS, 4):
         parser.error('pilot_must_have_four_per_label')
     if any(c['split'] != 'dev' for c in cases):
         parser.error('pilot_must_use_dev')
+    if args.suite == 'original120':
+        if args.version != 'v2':
+            parser.error('original120 currently requires frozen v2')
+        config = json.loads((run.ROOT/'versions/v2/config.json').read_text())
+        if hashlib.sha256(prompt_bytes).hexdigest() != config['prompt_sha256']:
+            parser.error('v2_prompt_changed')
+        candidate = (run.ROOT/'evaluation/cases.proposed.json').read_bytes()
+        if hashlib.sha256(candidate).hexdigest() != baseline['original_candidate_sha256']:
+            parser.error('candidate_changed')
+        revised = {c['id']: c for c in json.loads(candidate)}
+        originals = run.load_cases()
+        cases = [revised[c['id']] for c in originals]
+        if len(cases) != 120 or len({c['id'] for c in cases}) != 120:
+            parser.error('invalid_original120')
+        for original, case in zip(originals, cases):
+            if any(case[k] != original[k] for k in ('user_input', 'requirement', 'split', 'category')):
+                parser.error('original_input_changed')
+        source = json.dumps(cases, ensure_ascii=False, indent=2).encode()
+        budget = min(BUDGET_USD, 0.05)
+        planned_calls = 120
+    if args.start_index:
+        if args.suite != 'original120' or not 0 <= args.start_index < len(cases):
+            parser.error('invalid_start_index')
+        cases = cases[args.start_index:]
+        planned_calls = len(cases)
     if args.live and not os.environ.get('TYPESAFE_API_KEY'):
         parser.error('jev_key_required')
     if args.live and not only_jev and (os.environ.get('SONNET_MODEL') != SONNET_MODEL or
@@ -135,6 +162,7 @@ def main(argv=None):
             output.write(json.dumps(record, ensure_ascii=False, allow_nan=False)+'\n')
             output.flush()
         write({'type': 'run', 'mode': 'live' if args.live else 'dry_run', 'budget_usd': budget, 'version': args.version,
+               'suite': args.suite, 'start_index': args.start_index, 'case_ids': [c['id'] for c in cases],
                'prices_per_million': PRICES, 'sonnet_max_output': MAX_OUTPUT,
                'sonnet_thinking': 'API default, recorded in raw response',
                'prompt_sha256': hashlib.sha256(prompt_bytes).hexdigest(),
@@ -158,7 +186,8 @@ def main(argv=None):
                            'request': payload, 'reserved_usd': allowance})
                     continue
                 row = {'type': 'result', 'case_id': case['id'], 'expected': case['expected'],
-                       'provider': provider, 'request': payload, 'reserved_usd': allowance}
+                       'provider': provider, 'split': case['split'], 'category': case['category'],
+                       'request': payload, 'reserved_usd': allowance}
                 start = time.perf_counter()
                 try:
                     raw = run.call_api(payload, os.environ['TYPESAFE_API_KEY']) if provider == 'jev' else sonnet_call(payload)
@@ -187,7 +216,9 @@ def main(argv=None):
         result = {'type': 'summary', 'stop_reason': stop, 'known_cost_usd': spent,
                   'complete': len(records) == planned_calls and not stop,
                   'providers': {k: v for k, v in summary(records).items() if not only_jev or k == 'jev'},
-                  'reference_only': 'versions/v0/summary.json (not called again)' if only_jev else None}
+                  'by_split': {split: summary([r for r in records if r['split'] == split])['jev'] for split in ('dev','test')} if only_jev else None,
+                  'by_category': {cat: summary([r for r in records if r['category'] == cat])['jev'] for cat in sorted({c['category'] for c in cases})} if only_jev else None,
+                  'reference_only': 'Sonnet v0 covers only the original 16-case pilot, not this suite' if args.suite == 'original120' else ('versions/v0/summary.json (not called again)' if only_jev else None)}
         write(result)
         (args.out/'summary.json').write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n')
         print(json.dumps(result, ensure_ascii=False))

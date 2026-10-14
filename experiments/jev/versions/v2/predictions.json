@@ -1,0 +1,338 @@
+[
+  {
+    "case_id": "CORE-02",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ask_user",
+    "confidence": 0.55,
+    "probabilities": {
+      "ready": 0.08,
+      "ai_refine": 0.26,
+      "ask_user": 0.66,
+      "defer_to_spec": 0.0
+    },
+    "status": "ok",
+    "latency_ms": 202.47490199108142,
+    "usage": {
+      "input_tokens": 835,
+      "output_tokens": 52
+    },
+    "cost_usd": 3.507e-05,
+    "reserved_usd": 0.000286356
+  },
+  {
+    "case_id": "CORE-06",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ask_user",
+    "confidence": 0.69,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.2,
+      "ask_user": 0.77,
+      "defer_to_spec": 0.0
+    },
+    "status": "ok",
+    "latency_ms": 227.12303600565065,
+    "usage": {
+      "input_tokens": 834,
+      "output_tokens": 52
+    },
+    "cost_usd": 3.5028e-05,
+    "reserved_usd": 0.000286944
+  },
+  {
+    "case_id": "CONFLICT-01",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ask_user",
+    "confidence": 0.59,
+    "probabilities": {
+      "ready": 0.28,
+      "ai_refine": 0.02,
+      "ask_user": 0.69,
+      "defer_to_spec": 0.01
+    },
+    "status": "ok",
+    "latency_ms": 289.9260889971629,
+    "usage": {
+      "input_tokens": 850,
+      "output_tokens": 52
+    },
+    "cost_usd": 3.57e-05,
+    "reserved_usd": 0.000287952
+  },
+  {
+    "case_id": "SCOPE-03",
+    "expected": "ask_user",
+    "provider": "jev",
+    "decision": "ask_user",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.0,
+      "ask_user": 0.87,
+      "defer_to_spec": 0.0
+    },
+    "status": "ok",
+    "latency_ms": 280.72837300715037,
+    "usage": {
+      "input_tokens": 837,
+      "output_tokens": 52
+    },
+    "cost_usd": 3.5154e-05,
+    "reserved_usd": 0.000286356
+  },
+  {
+    "case_id": "EXPLICIT-01",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.0,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "status": "ok",
+    "latency_ms": 245.12321200745646,
+    "usage": {
+      "input_tokens": 832,
+      "output_tokens": 51
+    },
+    "cost_usd": 3.4944e-05,
+    "reserved_usd": 0.000286314
+  },
+  {
+    "case_id": "EXPLICIT-06",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ready",
+    "confidence": 0.67,
+    "probabilities": {
+      "ready": 0.75,
+      "ai_refine": 0.13,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.09
+    },
+    "status": "ok",
+    "latency_ms": 206.33928300230764,
+    "usage": {
+      "input_tokens": 830,
+      "output_tokens": 51
+    },
+    "cost_usd": 3.486e-05,
+    "reserved_usd": 0.000285852
+  },
+  {
+    "case_id": "CONTEXT-01",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "status": "ok",
+    "latency_ms": 217.91332699649502,
+    "usage": {
+      "input_tokens": 846,
+      "output_tokens": 51
+    },
+    "cost_usd": 3.5532000000000005e-05,
+    "reserved_usd": 0.00028812
+  },
+  {
+    "case_id": "CONTEXT-04",
+    "expected": "ready",
+    "provider": "jev",
+    "decision": "ready",
+    "confidence": 0.89,
+    "probabilities": {
+      "ready": 0.92,
+      "ai_refine": 0.03,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.04
+    },
+    "status": "ok",
+    "latency_ms": 240.87320400576573,
+    "usage": {
+      "input_tokens": 842,
+      "output_tokens": 51
+    },
+    "cost_usd": 3.5364e-05,
+    "reserved_usd": 0.000287112
+  },
+  {
+    "case_id": "DEFAULT-01",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.69,
+    "probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.77,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.11
+    },
+    "status": "ok",
+    "latency_ms": 251.72550900606439,
+    "usage": {
+      "input_tokens": 842,
+      "output_tokens": 53
+    },
+    "cost_usd": 3.5364e-05,
+    "reserved_usd": 0.00028740600000000003
+  },
+  {
+    "case_id": "DEFAULT-03",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.77,
+    "probabilities": {
+      "ready": 0.04,
+      "ai_refine": 0.83,
+      "ask_user": 0.1,
+      "defer_to_spec": 0.03
+    },
+    "status": "ok",
+    "latency_ms": 266.0732380027184,
+    "usage": {
+      "input_tokens": 844,
+      "output_tokens": 53
+    },
+    "cost_usd": 3.5448000000000003e-05,
+    "reserved_usd": 0.00028702800000000004
+  },
+  {
+    "case_id": "DEFAULT-05",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.89,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.92,
+      "ask_user": 0.07,
+      "defer_to_spec": 0.0
+    },
+    "status": "ok",
+    "latency_ms": 230.71640999114607,
+    "usage": {
+      "input_tokens": 830,
+      "output_tokens": 53
+    },
+    "cost_usd": 3.486e-05,
+    "reserved_usd": 0.000285726
+  },
+  {
+    "case_id": "DEFAULT-07",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "decision": "ai_refine",
+    "confidence": 0.35,
+    "probabilities": {
+      "ready": 0.41,
+      "ai_refine": 0.51,
+      "ask_user": 0.04,
+      "defer_to_spec": 0.04
+    },
+    "status": "ok",
+    "latency_ms": 188.99650299863424,
+    "usage": {
+      "input_tokens": 839,
+      "output_tokens": 53
+    },
+    "cost_usd": 3.5238e-05,
+    "reserved_usd": 0.00028665000000000006
+  },
+  {
+    "case_id": "SPEC-01",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "defer_to_spec",
+    "confidence": 0.47,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.35,
+      "ask_user": 0.04,
+      "defer_to_spec": 0.6
+    },
+    "status": "ok",
+    "latency_ms": 253.23883799137548,
+    "usage": {
+      "input_tokens": 859,
+      "output_tokens": 54
+    },
+    "cost_usd": 3.6078e-05,
+    "reserved_usd": 0.00028984200000000006
+  },
+  {
+    "case_id": "SPEC-02",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "defer_to_spec",
+    "confidence": 0.36,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.45,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.52
+    },
+    "status": "ok",
+    "latency_ms": 199.8110109998379,
+    "usage": {
+      "input_tokens": 859,
+      "output_tokens": 54
+    },
+    "cost_usd": 3.6078e-05,
+    "reserved_usd": 0.00028984200000000006
+  },
+  {
+    "case_id": "SPEC-03",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "defer_to_spec",
+    "confidence": 0.32,
+    "probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.34,
+      "ask_user": 0.04,
+      "defer_to_spec": 0.49
+    },
+    "status": "ok",
+    "latency_ms": 245.5444460065337,
+    "usage": {
+      "input_tokens": 862,
+      "output_tokens": 54
+    },
+    "cost_usd": 3.6204e-05,
+    "reserved_usd": 0.00028938
+  },
+  {
+    "case_id": "SPEC-04",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "decision": "defer_to_spec",
+    "confidence": 0.76,
+    "probabilities": {
+      "ready": 0.11,
+      "ai_refine": 0.06,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.82
+    },
+    "status": "ok",
+    "latency_ms": 203.24947299377527,
+    "usage": {
+      "input_tokens": 856,
+      "output_tokens": 54
+    },
+    "cost_usd": 3.5952000000000004e-05,
+    "reserved_usd": 0.00028917
+  }
+]

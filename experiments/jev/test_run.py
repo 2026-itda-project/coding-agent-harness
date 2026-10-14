@@ -47,6 +47,15 @@ class PilotTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             run.parse_response({**valid, "model": "unexpected-version"})
 
+    def test_rounded_probability_sum_is_preserved_but_large_error_rejected(self):
+        raw = response('ready')
+        raw['answers']['decision']['probabilities'] = {'ready':.93,'ai_refine':.02,'ask_user':0.,'defer_to_spec':.04}
+        parsed = run.parse_response(raw)
+        self.assertAlmostEqual(sum(parsed['probabilities'].values()), .99)
+        raw['answers']['decision']['probabilities']['ready'] = .85
+        with self.assertRaises(ValueError):
+            run.parse_response(raw)
+
     def test_unknown_usage_is_not_zero(self):
         parsed = run.parse_response(response(usage=False))
         summary = run.summarize([{"status": "ok", "expected": "ask_user", "latency_ms": 1, **parsed}])
