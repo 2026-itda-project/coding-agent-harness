@@ -1,7 +1,7 @@
 """Clarification·Review 상태 전이 규칙. LLM을 호출하지 않는 순수 함수만 둔다."""
 from app.schemas import (
     AddAction, Answer, ClarificationQuestion, EditAction, Gap, Requirement, RequirementCategory,
-    ReviewedRequirements, UpdatedRequirement, WorkflowState,
+    ResolveGapAction, ReviewedRequirements, UpdatedRequirement, WorkflowState,
 )
 
 MAX_ROUNDS = 3
@@ -81,10 +81,14 @@ def edit(state: WorkflowState, action: EditAction) -> WorkflowState:
         raise ValueError(f"{action.id} Requirement가 없습니다.")
     changes = {k: v for k in ("description", "category", "acceptance_criteria")
                if (v := getattr(action, k)) is not None}
+    gaps = state.gaps
     if action.confirm:
         changes |= {"status": "confirmed", "blocking": False}
+        # 미결정 항목을 사용자가 확정하면 그 항목에 연결된 Gap도 해소된 것으로 본다.
+        if next(r for r in state.requirements if r.id == action.id).status == "needs_clarification":
+            gaps = [g for g in gaps if action.id not in g.related_requirement_ids]
     reqs = [r.model_copy(update=changes) if r.id == action.id else r for r in state.requirements]
-    return state.model_copy(update={"requirements": reqs, "edit_count": state.edit_count + 1})
+    return state.model_copy(update={"requirements": reqs, "gaps": gaps, "edit_count": state.edit_count + 1})
 
 
 def add(state: WorkflowState, action: AddAction) -> WorkflowState:
@@ -94,12 +98,31 @@ def add(state: WorkflowState, action: AddAction) -> WorkflowState:
     return state.model_copy(update={"requirements": [*state.requirements, new], "edit_count": state.edit_count + 1})
 
 
+def resolve_gap(state: WorkflowState, action: ResolveGapAction) -> WorkflowState:
+    """사용자가 입력한 결정을 Requirement로 기록하고 Gap을 인계 대상에서 뺀다. 결정 없이 Gap만 지우는 경로는 없다."""
+    gap = next((g for g in open_gaps(state) if g.id == action.gap_id), None)
+    if gap is None:
+        raise ValueError(f"{action.gap_id}는 해결할 수 있는 남은 Gap이 아닙니다.")
+    if not action.description.strip():
+        raise ValueError("결정 내용을 입력해야 합니다.")
+    added = add(state, AddAction(type="add", category=action.category or GAP_TO_REQUIREMENT_CATEGORY[gap.category],
+                                 description=action.description, acceptance_criteria=action.acceptance_criteria))
+    return added.model_copy(update={"gaps": [g for g in state.gaps if g.id != gap.id]})
+
+
+def open_gaps(state: WorkflowState) -> list[Gap]:
+    """PRD Open Issues로 넘길 Gap. blocking Gap은 질문·Proposal로 처리됐고,
+    needs_clarification에 연결된 Gap은 그 Requirement가 Open Issue로 전달되므로 제외한다."""
+    unresolved = {r.id for r in state.requirements if r.status == "needs_clarification"}
+    return [g for g in state.gaps if not g.blocking and not unresolved & set(g.related_requirement_ids)]
+
+
 def approve(state: WorkflowState) -> tuple[WorkflowState, ReviewedRequirements]:
     if any(r.blocking and r.status == "needs_clarification" for r in state.requirements):
         raise ValueError("해소되지 않은 Blocking Requirement가 있습니다.")
     reviewed = ReviewedRequirements(
         project_id=state.project_id, run_id=state.run_id, requirements=state.requirements,
-        metrics={
+        open_gaps=open_gaps(state), metrics={
             "question_count": sum(len(r.questions) for r in state.history),
             "turn_count": len(state.history),
             "edit_count": state.edit_count,

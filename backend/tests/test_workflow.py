@@ -5,11 +5,11 @@ from pathlib import Path
 from pydantic import TypeAdapter, ValidationError
 
 from app.schemas import (
-    AddAction, ClarificationQuestion, ClarificationRound, EditAction, Gap, Requirement,
-    ReviewAction, UpdatedRequirement, WorkflowState,
+    AddAction, ClarificationQuestion, ClarificationRound, EditAction, Gap, Requirement, ResolveGapAction,
+    ReviewAction, ReviewedRequirements, UpdatedRequirement, WorkflowState,
 )
 from app.workflow import (
-    MAX_ROUNDS, accept, add, apply_update, approve, edit, next_step, require_phase, to_proposals,
+    MAX_ROUNDS, accept, add, apply_update, approve, edit, next_step, require_phase, resolve_gap, to_proposals,
 )
 
 HANDOFF = json.loads(
@@ -170,6 +170,8 @@ class EditAddTest(unittest.TestCase):
     def test_review_action_discriminator(self):
         action = TypeAdapter(ReviewAction).validate_python({"type": "accept", "ids": ["REQ-006"]})
         self.assertEqual(action.ids, ["REQ-006"])
+        resolve = TypeAdapter(ReviewAction).validate_python({"type": "resolve_gap", "gap_id": "GAP-001", "description": "x"})
+        self.assertEqual((resolve.gap_id, resolve.category), ("GAP-001", None))
         with self.assertRaises(ValidationError):
             TypeAdapter(ReviewAction).validate_python({"type": "delete", "id": "REQ-001"})
 
@@ -197,6 +199,55 @@ class ApproveTest(unittest.TestCase):
         self.assertEqual(sum(r.status == "proposed" for r in reviewed.requirements), 4)
         self.assertEqual(reviewed.metrics, {"question_count": 3, "turn_count": 2, "edit_count": 2,
                                             "unaccepted_proposal_count": 4})
+
+
+class OpenGapsTest(unittest.TestCase):
+    def review_state(self):
+        reqs = [req("REQ-001"), req("REQ-002", status="needs_clarification")]
+        gaps = [gap("GAP-001", ["REQ-001"], blocking=False),   # 전달
+                gap("GAP-002", [], blocking=False),            # 서비스 전반, 전달
+                gap("GAP-003", ["REQ-002"], blocking=False),   # 미결정 Requirement가 Open Issue로 가므로 제외
+                gap("GAP-004", ["REQ-001"])]                   # blocking은 질문·Proposal로 처리됨, 제외
+        return handoff_state(phase="review", requirements=reqs, gaps=gaps)
+
+    def test_approve_hands_off_remaining_nonblocking_gaps(self):
+        _, reviewed = approve(self.review_state())
+        self.assertEqual([g.id for g in reviewed.open_gaps], ["GAP-001", "GAP-002"])
+        self.assertEqual(reviewed.open_gaps[0].related_requirement_ids, ["REQ-001"])
+        self.assertEqual(len(reviewed.requirements), 2)  # Gap을 Requirement로 바꾸지 않는다
+
+    def test_confirming_unresolved_requirement_resolves_linked_gap(self):
+        state = edit(self.review_state(), EditAction(type="edit", id="REQ-002", confirm=True))
+        self.assertEqual([g.id for g in state.gaps], ["GAP-001", "GAP-002", "GAP-004"])
+        self.assertEqual([g.id for g in approve(state)[1].open_gaps], ["GAP-001", "GAP-002"])
+
+    def test_confirming_already_confirmed_keeps_gaps(self):
+        state = edit(self.review_state(), EditAction(type="edit", id="REQ-001", description="x", confirm=True))
+        self.assertEqual(len(state.gaps), 4)
+
+    def test_resolve_gap_records_user_decision_and_removes_gap(self):
+        state = resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id="GAP-001",
+                                                                  description="중복 신청은 거부한다."))
+        new = state.requirements[-1]
+        self.assertEqual((new.id, new.category, new.description, new.status, new.source, new.blocking),
+                         ("REQ-003", "business_rule", "중복 신청은 거부한다.", "confirmed", "review_input", False))
+        self.assertEqual(state.edit_count, 1)
+        self.assertEqual([g.id for g in approve(state)[1].open_gaps], ["GAP-002"])
+
+    def test_resolve_gap_uses_given_category(self):
+        state = resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id="GAP-002",
+                                                                  description="범위에서 제외한다.", category="scope"))
+        self.assertEqual(state.requirements[-1].category, "scope")
+
+    def test_resolve_gap_rejects_non_handoff_gap_or_blank_decision(self):
+        for gap_id, description in (("GAP-003", "x"), ("GAP-004", "x"), ("GAP-999", "x"), ("GAP-001", " ")):
+            with self.subTest(gap_id=gap_id), self.assertRaises(ValueError):
+                resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id=gap_id,
+                                                                  description=description))
+
+    def test_handoff_without_open_gaps_field_is_valid(self):
+        old = {"project_id": PID, "run_id": "run", "requirements": [req("REQ-001").model_dump()], "metrics": {}}
+        self.assertEqual(ReviewedRequirements.model_validate(old).open_gaps, [])
 
 
 class PhaseGuardTest(unittest.TestCase):

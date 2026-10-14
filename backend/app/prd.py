@@ -41,6 +41,11 @@ def build_prd(reviewed: ReviewedRequirements, overview: ProductOverview) -> PRD:
                 criteria.append(AcceptanceCriterion(
                     id=f"AC-{len(criteria) + 1:03d}", description=text,
                     target_id=item.id, source_requirement_ids=[req.id]))
+    # 남은 non-blocking Gap은 Requirement로 바꾸지 않고 출처(Gap·관련 Requirement)와 함께 Open Issue로 둔다.
+    for gap in reviewed.open_gaps:
+        sections["open_issues"].append(PRDItem(
+            id=f"ISSUE-{len(sections['open_issues']) + 1:03d}", description=gap.description,
+            source_requirement_ids=gap.related_requirement_ids, source_gap_ids=[gap.id]))
     return PRD(project_id=reviewed.project_id, run_id=reviewed.run_id, overview=overview,
                out_of_scope=[], acceptance_criteria=criteria, **sections)
 
@@ -56,6 +61,11 @@ def validate_prd(prd: PRD, reviewed: ReviewedRequirements) -> dict:
         for item in getattr(prd, name):
             if any(i not in by_id or by_id[i].status != "confirmed" for i in item.source_requirement_ids):
                 errors.append(f"{item.id}에 확정되지 않은 Requirement가 들어 있습니다.")
+
+    gap_ids = {g.id for g in reviewed.open_gaps}
+    for item in prd.open_issues:
+        if any(i not in by_id for i in item.source_requirement_ids) or not set(item.source_gap_ids) <= gap_ids:
+            errors.append(f"{item.id}의 출처 ID가 인계 Requirement·Gap에 없습니다.")
 
     if not prd.overview.summary.strip():
         errors.append("Product Overview가 비어 있습니다.")

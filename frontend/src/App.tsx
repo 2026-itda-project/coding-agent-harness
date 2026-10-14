@@ -71,16 +71,18 @@ type ReviewAction =
   | { type: 'accept'; ids: string[] }
   | { type: 'edit'; id: string; description: string; category: string; acceptance_criteria: string[]; confirm: boolean }
   | { type: 'add'; category: string; description: string; acceptance_criteria: string[] }
+  | { type: 'resolve_gap'; gap_id: string; category?: string; description: string; acceptance_criteria: string[] }
   | { type: 'approve' }
 
 type ReviewedRequirements = {
   project_id: string
   run_id: string
   requirements: Requirement[]
+  open_gaps: Gap[]
   metrics: Record<string, number>
 }
 
-type PRDItem = { id: string; description: string; source_requirement_ids: string[] }
+type PRDItem = { id: string; description: string; source_requirement_ids: string[]; source_gap_ids?: string[] }
 
 type PRD = {
   project_id: string
@@ -107,8 +109,9 @@ const PRD_SECTIONS = [
   ['8. Acceptance Criteria', 'acceptance_criteria'], ['9. Assumptions', 'assumptions'], ['10. Open Issues', 'open_issues'],
 ] as const
 
-// 수정·추가 폼 하나만 연다. id가 ''이면 새 Requirement 추가
-type Draft = { id: string; category: string; description: string; ac: string; confirm: boolean }
+// 수정·추가 폼 하나만 연다. id가 ''이면 새 Requirement 추가, gapId가 있으면 남은 Gap의 결정 입력
+// (category ''는 서버가 Gap 분류에서 정한다)
+type Draft = { id: string; category: string; description: string; ac: string; confirm: boolean; gapId?: string }
 
 // detail 형식: {code, message} | 문자열(빈 입력) | 배열(FastAPI 요청 스키마 422)
 async function post<T>(url: string, body: unknown): Promise<T> {
@@ -222,7 +225,8 @@ export default function App() {
       return
     }
     const fields = { category: draft.category, description, acceptance_criteria: draft.ac.split('\n').map(line => line.trim()).filter(Boolean) }
-    review(draft.id ? { type: 'edit', id: draft.id, ...fields, confirm: draft.confirm } : { type: 'add', ...fields })
+    if (draft.gapId) review({ type: 'resolve_gap', gap_id: draft.gapId, ...fields, category: draft.category || undefined })
+    else review(draft.id ? { type: 'edit', id: draft.id, ...fields, confirm: draft.confirm } : { type: 'add', ...fields })
   }
 
   function reset() {
@@ -238,11 +242,15 @@ export default function App() {
   const editable = state?.phase === 'review' && !loading
   const pending = state?.requirements.filter(r => r.status === 'needs_clarification' && r.blocking) ?? []
   const proposals = state?.requirements.filter(r => r.status === 'proposed') ?? []
+  // backend workflow.open_gaps와 같은 규칙: 미결정 Requirement에 연결된 Gap은 그 Requirement가 Open Issue로 간다
+  const unresolvedIds = new Set(state?.requirements.filter(r => r.status === 'needs_clarification').map(r => r.id))
+  const openGaps = state?.gaps.filter(g => !g.blocking && !g.related_requirement_ids.some(id => unresolvedIds.has(id))) ?? []
 
   const draftForm = draft && (
     <form onSubmit={saveDraft}>
       <label>category{' '}
         <select value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })}>
+          {draft.gapId && <option value="">Gap 분류 기준</option>}
           {CATEGORIES.map(category => <option key={category}>{category}</option>)}
         </select>
       </label>
@@ -285,7 +293,7 @@ export default function App() {
             {items.map(item => (
               <li key={item.id}>
                 <strong>{item.id}</strong>{item.target_id && ` → ${item.target_id}`} — {item.description}
-                <small>출처: {item.source_requirement_ids.join(', ')}</small>
+                <small>출처: {[...(item.source_gap_ids ?? []), ...item.source_requirement_ids].join(', ') || '서비스 전반'}</small>
               </li>
             ))}
           </ul>
@@ -351,10 +359,28 @@ export default function App() {
               })}
               {state.phase === 'review' && (
                 <>
-                  {draft?.id === ''
+                  {draft?.id === '' && !draft.gapId
                     ? <div key="add-form"><h3>요구사항 추가</h3>{draftForm}</div>
                     : <button key="add" type="button" disabled={!editable || !!draft}
                         onClick={() => setDraft({ id: '', category: 'functional', description: '', ac: '', confirm: false })}>요구사항 추가</button>}
+                  <h3>남은 확인 사항 ({openGaps.length})</h3>
+                  <p>진행을 막지 않지만 아직 정하지 않은 사항입니다. 그대로 승인하면 PRD의 Open Issues로 인계됩니다. 지금 정했다면 결정을 입력하세요. 입력한 결정은 요구사항으로 추가됩니다.</p>
+                  {openGaps.length === 0 ? <p>없음</p> : (
+                    <ul>
+                      {openGaps.map(gap => (
+                        <li key={gap.id}>
+                          <strong>{gap.id}</strong> [{gap.category}] — {gap.description}
+                          <small>관련 요구사항: {gap.related_requirement_ids.join(', ') || '서비스 전반'}</small>
+                          {draft?.gapId === gap.id ? draftForm : editable && (
+                            <span className="actions">
+                              <button type="button" disabled={!!draft}
+                                onClick={() => setDraft({ id: '', category: '', description: '', ac: '', confirm: false, gapId: gap.id })}>결정 입력</button>
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <h3>승인</h3>
                   {pending.length > 0 && (
                     <p className="error">진행 보류 항목({pending.map(r => r.id).join(', ')})을 수정 화면에서 확정해야 승인할 수 있습니다.</p>

@@ -37,7 +37,7 @@
 | PRD | `/api/prd`, 규칙 기반 `build_prd`·`validate_prd`, PRD UI | Sonnet 생성과 M2 상태·출처 계약 검증 |
 | M2 실행 | Spec / Task / Context / Agent / Sandbox / Retry 미구현 | PRD 이후 실행·자동화·검증 연결 |
 
-`backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계는 [NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17)을 참조하며 중복 작업을 만들지 않습니다.
+`backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계([NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17))는 `ReviewedRequirements.open_gaps`로 PRD Open Issues까지 전달하도록 보완했습니다.
 
 ## 기존 M1 실행과 계약
 
@@ -216,8 +216,9 @@ Gap은 `AGENTS.md`의 8개 우선 확인 영역인 `user_role`, `core_flow`, `pe
 | `type` | 필드 | 동작 |
 | --- | --- | --- |
 | `accept` | `ids` | `proposed`만 `confirmed`·`blocking=false`로 변경. 1개면 개별, 여러 개면 일괄 수락. `source`는 유지 |
-| `edit` | `id`, `description?`, `category?`, `acceptance_criteria?`, `confirm` | 내용 수정, `edit_count` +1. `confirm=true`면 `confirmed`·`blocking=false`. `source`는 바꾸지 않으며 `proposed`를 만들 수 없음 |
+| `edit` | `id`, `description?`, `category?`, `acceptance_criteria?`, `confirm` | 내용 수정, `edit_count` +1. `confirm=true`면 `confirmed`·`blocking=false`. `needs_clarification`을 확정하면 연결된 Gap도 해소된 것으로 보고 `gaps`에서 제거. `source`는 바꾸지 않으며 `proposed`를 만들 수 없음 |
 | `add` | `category`, `description`, `acceptance_criteria` | 새 `confirmed` Requirement(`source=review_input`), `edit_count` +1 |
+| `resolve_gap` | `gap_id`, `description`, `category?`, `acceptance_criteria` | 남은 Gap(아래 `open_gaps` 대상)에 사용자가 결정을 입력. 결정은 새 `confirmed` Requirement(`source=review_input`)가 되고 Gap은 `gaps`에서 제거, `edit_count` +1. `category`를 생략하면 Gap 분류에서 정함. 빈 결정은 거부 |
 | `approve` | 없음 | `needs_clarification`이면서 `blocking=true`인 항목이 있으면 거부. 수락하지 않은 `proposed`가 있어도 승인. `phase=approved`, `reviewed` 반환 |
 
 삭제 작업은 없습니다. 사용자가 확인하지 않은 `proposed`도 삭제하지 않습니다(AGENTS 9장).
@@ -243,6 +244,9 @@ Gap은 `AGENTS.md`의 8개 우선 확인 영역인 `user_role`, `core_flow`, `pe
     { "project_id": "<UUID>", "id": "REQ-003", "category": "state", "description": "...", "status": "confirmed", "source": "ai_proposal", "blocking": false, "acceptance_criteria": [] },
     { "project_id": "<UUID>", "id": "REQ-004", "category": "permission", "description": "...", "status": "proposed", "source": "ai_proposal", "blocking": false, "acceptance_criteria": [] }
   ],
+  "open_gaps": [
+    { "id": "GAP-006", "related_requirement_ids": ["REQ-003"], "category": "exception_handling", "description": "...", "blocking": false }
+  ],
   "metrics": { "question_count": 6, "turn_count": 3, "edit_count": 1, "unaccepted_proposal_count": 1 }
 }
 ```
@@ -257,13 +261,17 @@ Gap은 `AGENTS.md`의 8개 우선 확인 영역인 `user_role`, `core_flow`, `pe
 PRD 단계에서 참고할 점:
 - 현재 M1에서 수락하지 않은 `proposed`는 `blocking=false`이므로 "미해결 Blocking Requirement"가 아니며 PRD의 **Assumptions**로 전달됩니다. M2에서는 AI 기본값 표시와 `status`·`source`를 유지하면서 본문·구현 범위에도 포함하도록 변경합니다.
 - `blocking=true`인 `needs_clarification`은 승인 조건상 인계물에 없습니다. `blocking=false`인 `needs_clarification`은 **Open Issues** 후보입니다.
+- `open_gaps`는 승인 시점에 남은 non-blocking Gap입니다. Requirement로 변환하지 않고 Gap 원본(ID·관련 Requirement ID)을 그대로 전달합니다. blocking Gap(질문·Proposal로 처리됨)과 `needs_clarification` Requirement에 연결된 Gap(그 Requirement가 Open Issue로 전달됨)은 중복을 피하려고 제외합니다. 필드가 없는 기존 인계 JSON은 `open_gaps=[]`로 처리합니다.
+- Review 화면은 승인 전에 `open_gaps`로 넘어갈 Gap을 "남은 확인 사항"으로 보여줍니다. 사용자가 결정을 입력하면(`resolve_gap`) 그 결정이 Requirement로 기록되고 Gap은 인계에서 빠집니다. 결정 없이 Gap만 지우는 작업은 없습니다. 미결정 사항은 Open Issue 또는 결정 Requirement 중 하나로 반드시 남습니다.
 - `confirmed` + `ai_proposal`은 사용자가 승인한 AI 제안입니다. 그대로 수락했는지 수정 후 확정했는지는 항목 단위로 구분되지 않습니다.
 - Acceptance Criteria는 최초 입력에 명시된 것과 사용자가 Review에서 입력한 것만 있습니다. Clarification과 AI Proposal은 AC를 만들지 않으므로 대부분 비어 있습니다.
 
 실제 SnowChat 실행 기록은 [Review 인계 JSON](docs/examples/review-handoff.json)입니다. 대표 데모 입력으로 2026-09-26에 실행했고, Gap 분석 Prompt 수정 전 결과입니다. 1라운드에 답변하고 2·3라운드는 건너뛰었습니다(질문 6 → 9 → 9, Proposal 9개 중 4개 수락). REQ-029의 AC는 Review 수정 기능을 확인하면서 사용자가 입력한 값이며, 항목 내용(기간 중복 금지)과는 관련이 없습니다. 답변 반영의 AC 제한을 추가하기 전 실행이라 REQ-006~020에는 LLM이 만든 AC가 들어 있습니다. 현재 동작에서는 이 AC가 생기지 않으며, 사용자가 확정한 AC로 보지 않습니다. 이 파일은 테스트 fixture로 사용하지 않습니다.
 
+`open_gaps` 인계의 실제 SnowChat 실행 기록은 [open-gaps-handoff.json](docs/examples/open-gaps-handoff.json)입니다. 2026-10-14에 `gpt-5.6-sol`로 실행했습니다. 핵심 규칙을 명시하고 알림 방식만 미정으로 둔 상세 휴가관리 입력(`text`)을 썼고, 1라운드는 스크립트가 미리 정한 답변을 넣고 2·3라운드는 건너뛰었습니다. 파일에는 승인 시점 Gap(`gaps_at_approval`), 인계물(`reviewed`), PRD, 검증 결과, 단계별 usage가 있습니다. non-blocking GAP-004는 `ISSUE-002`로 전달됐고, `needs_clarification` REQ-013에 연결된 GAP-005는 중복이라 제외됐으며 REQ-013이 `ISSUE-001`이 됐습니다. LLM 출력은 실행마다 달라지므로 테스트 fixture로 사용하지 않습니다.
+
 ## 현재 PRD API
 
-`POST /api/prd`는 `{text, reviewed}`를 받아 `{prd, validation}`을 반환합니다. `reviewed`는 위 `ReviewedRequirements`입니다. `backend/app/prd.py`는 Requirement를 Section별로 분류하고 ID·Acceptance 참조를 조립하며 LLM을 호출하지 않습니다. `validation`에는 `passed`, `errors`, `warnings`가 있습니다. UI는 검증 결과와 PRD를 표시하고 통과 시 JSON을 제공합니다.
+`POST /api/prd`는 `{text, reviewed}`를 받아 `{prd, validation}`을 반환합니다. `reviewed`는 위 `ReviewedRequirements`입니다. `backend/app/prd.py`는 Requirement를 Section별로 분류하고 ID·Acceptance 참조를 조립하며 LLM을 호출하지 않습니다. `open_gaps`는 Open Issues 항목(`ISSUE-`)이 되며 `source_gap_ids`에 Gap ID, `source_requirement_ids`에 관련 Requirement ID를 기록합니다. 검증은 Open Issue의 출처 ID가 인계물에 있는지도 확인합니다. `validation`에는 `passed`, `errors`, `warnings`가 있습니다. UI는 검증 결과와 PRD를 표시하고 통과 시 JSON을 제공합니다.
 
 이 경로와 기존 계약은 M1 현황입니다. M2에서는 Sonnet이 PRD를 생성하고 AI 기본값·출처 및 최소 검증 정책에 맞는 계약을 정의합니다. 기존 `PRD` 스키마에는 항목별 `status`·`source`가 없으므로 이를 이미 보존하는 계약이라고 가정하지 않습니다.

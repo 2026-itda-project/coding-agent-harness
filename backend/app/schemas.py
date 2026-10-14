@@ -142,12 +142,23 @@ class AddAction(BaseModel):
     acceptance_criteria: list[str] = Field(default_factory=list)
 
 
+class ResolveGapAction(BaseModel):
+    """Review에서 사용자가 남은 Gap의 결정을 직접 입력한다. 결정은 새 confirmed Requirement가 된다."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    type: Literal["resolve_gap"]
+    gap_id: str
+    description: str
+    category: RequirementCategory | None = None
+    acceptance_criteria: list[str] = Field(default_factory=list)
+
+
 class ApproveAction(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     type: Literal["approve"]
 
 
-ReviewAction = Annotated[AcceptAction | EditAction | AddAction | ApproveAction, Field(discriminator="type")]
+ReviewAction = Annotated[AcceptAction | EditAction | AddAction | ResolveGapAction | ApproveAction,
+                         Field(discriminator="type")]
 
 
 class ReviewedRequirements(BaseModel):
@@ -155,6 +166,8 @@ class ReviewedRequirements(BaseModel):
     project_id: str
     run_id: str
     requirements: list[Requirement]
+    # 승인 시점에 남은 non-blocking Gap. PRD Open Issues로 전달한다. 기존 인계 JSON 호환을 위해 기본값은 빈 배열.
+    open_gaps: list[Gap] = Field(default_factory=list)
     metrics: dict
 
 
@@ -181,6 +194,7 @@ class PRDItem(BaseModel):
     id: str
     description: str
     source_requirement_ids: list[str]
+    source_gap_ids: list[str] = Field(default_factory=list)
 
 
 class AcceptanceCriterion(BaseModel):
