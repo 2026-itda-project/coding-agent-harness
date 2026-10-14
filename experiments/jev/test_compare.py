@@ -110,3 +110,54 @@ class CompareTests(unittest.TestCase):
             self.assertEqual(len(requests),62)
             self.assertEqual(requests[0]['case_id'],'EXPLICIT-19')
             self.assertEqual(rows[0]['planned_calls'],62)
+
+    def test_v3_conflict_override_and_strict_validation(self):
+        import copy
+        base = {'type':'choice', 'choice':'ready', 'confidence':.9,
+                'probabilities':{'ready':1.,'ai_refine':0.,'ask_user':0.,'defer_to_spec':0.}}
+        raw = {'model':run.MODEL, 'answers':{'decision':base, 'conflict':{'type':'noul','noul':.5}},
+               'usage':{'input_tokens':100,'output_tokens':50}}
+        result = compare.parse_v3(raw)
+        self.assertEqual(result['decision'], 'ask_user')
+        self.assertEqual(result['base_decision'], 'ready')
+        self.assertIsNone(result['confidence'])
+        self.assertIsNone(result['probabilities'])
+        raw['answers']['conflict']['noul'] = .49
+        self.assertEqual(compare.parse_v3(raw)['decision'], 'ready')
+        for bad in (True, -.1, 1.1, float('nan'), '0.9', None):
+            invalid = copy.deepcopy(raw)
+            invalid['answers']['conflict']['noul'] = bad
+            with self.assertRaises(ValueError):
+                compare.parse_v3(invalid)
+        for answers in ({'decision':base}, {**raw['answers'],'extra':base},
+                        {**raw['answers'],'conflict':{'type':'choice','noul':.9}},
+                        {**raw['answers'],'decision':{**base,'confidence':2}}):
+            with self.assertRaises(ValueError):
+                compare.parse_v3({**raw,'answers':answers})
+        # A no-conflict check cannot erase an ask_user decision from the base classifier.
+        raw['answers']['decision'] = {**base, 'choice':'ask_user',
+            'probabilities':{'ready':0.,'ai_refine':0.,'ask_user':1.,'defer_to_spec':0.}}
+        self.assertEqual(compare.parse_v3(raw)['decision'], 'ask_user')
+
+    def test_v3_full_suite_uses_two_questions_one_call_and_preserves_base(self):
+        base = {'type':'choice','choice':'ready','confidence':1.,
+                'probabilities':{k:float(k=='ready') for k in run.OPTIONS}}
+        raw = {'model':run.MODEL, 'answers':{'decision':base,'conflict':{'type':'noul','noul':.8}},
+               'usage':{'input_tokens':1000,'output_tokens':70}}
+        v2 = json.loads((run.ROOT/'versions/v2/prompt.json').read_text())['jev_question']
+        cases = run.load_cases()
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict('os.environ', {'TYPESAFE_API_KEY':'test'}, clear=True), patch.object(compare,'sonnet_call',side_effect=AssertionError), patch.object(run,'call_api',return_value=raw) as jev, patch('sys.stdout',new_callable=io.StringIO):
+                self.assertEqual(compare.main(['--version','v3','--suite','original120','--live','--out',str(Path(tmp)/'out')]),0)
+            self.assertEqual(jev.call_count,120)
+            for case, call in zip(cases, jev.call_args_list):
+                payload = call.args[0]
+                self.assertEqual(set(payload['questions']), {'decision','conflict'})
+                self.assertEqual(payload['questions']['decision'],v2)
+                self.assertEqual(payload['state'], {'user_input':case['user_input'],'requirement':case['requirement']})
+            rows=[json.loads(s) for s in (Path(tmp)/'out/calls.jsonl').read_text().splitlines()]
+            results=[r for r in rows if r['type']=='result']
+            self.assertTrue(all(r['decision']=='ask_user' and r['base_decision']=='ready' for r in results))
+            self.assertEqual(rows[-1]['providers']['jev']['unnecessary_questions'],61)
+            self.assertAlmostEqual(rows[-1]['known_cost_usd'],.00504)
+            self.assertTrue(rows[-1]['complete'])

@@ -1,0 +1,244 @@
+{
+  "type": "summary",
+  "stop_reason": null,
+  "known_cost_usd": 0.005239668000000001,
+  "complete": true,
+  "providers": {
+    "jev": {
+      "attempted": 120,
+      "valid": 120,
+      "errors": 0,
+      "correct": 110,
+      "required_questions_found": 54,
+      "required_questions_total_valid": 59,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 61,
+      "median_latency_ms": 192.56547650002176,
+      "cost_usd": 0.005239668,
+      "input_tokens": 124754,
+      "output_tokens": 8374,
+      "confusion": {
+        "ready": {
+          "ready": 41
+        },
+        "ai_refine": {
+          "ai_refine": 14
+        },
+        "ask_user": {
+          "ask_user": 54,
+          "ai_refine": 3,
+          "ready": 2
+        },
+        "defer_to_spec": {
+          "ai_refine": 5,
+          "defer_to_spec": 1
+        }
+      }
+    }
+  },
+  "by_split": {
+    "dev": {
+      "attempted": 60,
+      "valid": 60,
+      "errors": 0,
+      "correct": 55,
+      "required_questions_found": 28,
+      "required_questions_total_valid": 30,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 30,
+      "median_latency_ms": 191.09449600000517,
+      "cost_usd": 0.00261975,
+      "input_tokens": 62375,
+      "output_tokens": 4188,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {
+          "ai_refine": 7
+        },
+        "ask_user": {
+          "ask_user": 28,
+          "ai_refine": 2
+        },
+        "defer_to_spec": {
+          "ai_refine": 3
+        }
+      }
+    },
+    "test": {
+      "attempted": 60,
+      "valid": 60,
+      "errors": 0,
+      "correct": 55,
+      "required_questions_found": 26,
+      "required_questions_total_valid": 29,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 31,
+      "median_latency_ms": 197.30753999999706,
+      "cost_usd": 0.002619918,
+      "input_tokens": 62379,
+      "output_tokens": 4186,
+      "confusion": {
+        "ready": {
+          "ready": 21
+        },
+        "ai_refine": {
+          "ai_refine": 7
+        },
+        "ask_user": {
+          "ai_refine": 1,
+          "ask_user": 26,
+          "ready": 2
+        },
+        "defer_to_spec": {
+          "ai_refine": 2,
+          "defer_to_spec": 1
+        }
+      }
+    }
+  },
+  "by_category": {
+    "context_resolved": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 20,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 186.35041150002962,
+      "cost_usd": 0.000879774,
+      "input_tokens": 20947,
+      "output_tokens": 1380,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {},
+        "ask_user": {},
+        "defer_to_spec": {}
+      }
+    },
+    "contradictory_requirements": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 19,
+      "required_questions_found": 18,
+      "required_questions_total_valid": 19,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 1,
+      "median_latency_ms": 199.52652999995735,
+      "cost_usd": 0.000879228,
+      "input_tokens": 20934,
+      "output_tokens": 1391,
+      "confusion": {
+        "ready": {
+          "ready": 1
+        },
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 18,
+          "ready": 1
+        },
+        "defer_to_spec": {}
+      }
+    },
+    "explicit_requirements": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 20,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 190.73735699998906,
+      "cost_usd": 0.0008694000000000001,
+      "input_tokens": 20700,
+      "output_tokens": 1380,
+      "confusion": {
+        "ready": {
+          "ready": 20
+        },
+        "ai_refine": {},
+        "ask_user": {},
+        "defer_to_spec": {}
+      }
+    },
+    "implicit_core_gap": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 17,
+      "required_questions_found": 17,
+      "required_questions_total_valid": 20,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 0,
+      "median_latency_ms": 197.11182449998432,
+      "cost_usd": 0.0008690220000000001,
+      "input_tokens": 20691,
+      "output_tokens": 1403,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 17,
+          "ai_refine": 3
+        },
+        "defer_to_spec": {}
+      }
+    },
+    "routine_defaults": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 15,
+      "required_questions_found": 0,
+      "required_questions_total_valid": 0,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 20,
+      "median_latency_ms": 193.17790000002333,
+      "cost_usd": 0.000871752,
+      "input_tokens": 20756,
+      "output_tokens": 1421,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {
+          "ai_refine": 14
+        },
+        "ask_user": {},
+        "defer_to_spec": {
+          "ai_refine": 5,
+          "defer_to_spec": 1
+        }
+      }
+    },
+    "unsupported_scope": {
+      "attempted": 20,
+      "valid": 20,
+      "errors": 0,
+      "correct": 19,
+      "required_questions_found": 19,
+      "required_questions_total_valid": 20,
+      "unnecessary_questions": 0,
+      "non_question_total_valid": 0,
+      "median_latency_ms": 197.49339800000598,
+      "cost_usd": 0.000870492,
+      "input_tokens": 20726,
+      "output_tokens": 1399,
+      "confusion": {
+        "ready": {},
+        "ai_refine": {},
+        "ask_user": {
+          "ask_user": 19,
+          "ready": 1
+        },
+        "defer_to_spec": {}
+      }
+    }
+  },
+  "reference_only": "Sonnet v0 covers only the original 16-case pilot, not this suite"
+}

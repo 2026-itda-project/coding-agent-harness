@@ -1,0 +1,3757 @@
+[
+  {
+    "case_id": "CORE-01",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ask_user",
+    "confidence": 0.69,
+    "probabilities": {
+      "ready": 0.05,
+      "ai_refine": 0.18,
+      "ask_user": 0.77,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.69,
+    "base_probabilities": {
+      "ready": 0.05,
+      "ai_refine": 0.18,
+      "ask_user": 0.77,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 207.66188799984775
+  },
+  {
+    "case_id": "CORE-02",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ask_user",
+    "confidence": 0.49,
+    "probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.29,
+      "ask_user": 0.62,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.49,
+    "base_probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.29,
+      "ask_user": 0.62,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 256.60307799989823
+  },
+  {
+    "case_id": "CORE-03",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1040,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.368e-05,
+    "decision": "ask_user",
+    "confidence": 0.52,
+    "probabilities": {
+      "ready": 0.08,
+      "ai_refine": 0.28,
+      "ask_user": 0.64,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.52,
+    "base_probabilities": {
+      "ready": 0.08,
+      "ai_refine": 0.28,
+      "ask_user": 0.64,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 185.14792600012697
+  },
+  {
+    "case_id": "CORE-04",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ask_user",
+    "confidence": 0.45,
+    "probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.32,
+      "ask_user": 0.59,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.45,
+    "base_probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.32,
+      "ask_user": 0.59,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 195.51735000004555
+  },
+  {
+    "case_id": "CORE-05",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1033,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3386e-05,
+    "decision": "ai_refine",
+    "confidence": 0.39,
+    "probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.54,
+      "ask_user": 0.32,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.39,
+    "base_probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.54,
+      "ask_user": 0.32,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 199.09046099996885
+  },
+  {
+    "case_id": "CORE-06",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ask_user",
+    "confidence": 0.71,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.19,
+      "ask_user": 0.78,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.71,
+    "base_probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.19,
+      "ask_user": 0.78,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 190.50702600020486
+  },
+  {
+    "case_id": "CORE-07",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1030,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.326e-05,
+    "decision": "ai_refine",
+    "confidence": 0.28,
+    "probabilities": {
+      "ready": 0.21,
+      "ai_refine": 0.46,
+      "ask_user": 0.32,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.28,
+    "base_probabilities": {
+      "ready": 0.21,
+      "ai_refine": 0.46,
+      "ask_user": 0.32,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.1761390000538
+  },
+  {
+    "case_id": "CORE-08",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1040,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.368e-05,
+    "decision": "ask_user",
+    "confidence": 0.57,
+    "probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.22,
+      "ask_user": 0.6799999999999999,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.57,
+    "base_probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.22,
+      "ask_user": 0.6799999999999999,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 181.54426399996737
+  },
+  {
+    "case_id": "CORE-09",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1032,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3344000000000004e-05,
+    "decision": "ask_user",
+    "confidence": 0.43,
+    "probabilities": {
+      "ready": 0.19,
+      "ai_refine": 0.24,
+      "ask_user": 0.57,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.43,
+    "base_probabilities": {
+      "ready": 0.19,
+      "ai_refine": 0.24,
+      "ask_user": 0.57,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 182.0257419999507
+  },
+  {
+    "case_id": "CORE-10",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ask_user",
+    "confidence": 0.8,
+    "probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.13,
+      "ask_user": 0.85,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.8,
+    "base_probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.13,
+      "ask_user": 0.85,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 207.19846900010452
+  },
+  {
+    "case_id": "CORE-11",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ai_refine",
+    "confidence": 0.27,
+    "probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.45,
+      "ask_user": 0.45,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.27,
+    "base_probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.45,
+      "ask_user": 0.45,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 191.40103700010513
+  },
+  {
+    "case_id": "CORE-12",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1031,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3302e-05,
+    "decision": "ask_user",
+    "confidence": 0.43,
+    "probabilities": {
+      "ready": 0.21,
+      "ai_refine": 0.22,
+      "ask_user": 0.57,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.43,
+    "base_probabilities": {
+      "ready": 0.21,
+      "ai_refine": 0.22,
+      "ask_user": 0.57,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 421.11625500001537
+  },
+  {
+    "case_id": "CORE-13",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1029,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3218000000000005e-05,
+    "decision": "ask_user",
+    "confidence": 0.48,
+    "probabilities": {
+      "ready": 0.08,
+      "ai_refine": 0.31,
+      "ask_user": 0.61,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.48,
+    "base_probabilities": {
+      "ready": 0.08,
+      "ai_refine": 0.31,
+      "ask_user": 0.61,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 227.61880500002007
+  },
+  {
+    "case_id": "CORE-14",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1037,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3554000000000003e-05,
+    "decision": "ask_user",
+    "confidence": 0.57,
+    "probabilities": {
+      "ready": 0.04,
+      "ai_refine": 0.28,
+      "ask_user": 0.68,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.57,
+    "base_probabilities": {
+      "ready": 0.04,
+      "ai_refine": 0.28,
+      "ask_user": 0.68,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 189.87547799997628
+  },
+  {
+    "case_id": "CORE-15",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1029,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3218000000000005e-05,
+    "decision": "ask_user",
+    "confidence": 0.28,
+    "probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.36,
+      "ask_user": 0.46,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.28,
+    "base_probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.36,
+      "ask_user": 0.46,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.26022499984174
+  },
+  {
+    "case_id": "CORE-16",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ask_user",
+    "confidence": 0.67,
+    "probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.19,
+      "ask_user": 0.75,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.67,
+    "base_probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.19,
+      "ask_user": 0.75,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 198.7062989999231
+  },
+  {
+    "case_id": "CORE-17",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1033,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3386e-05,
+    "decision": "ask_user",
+    "confidence": 0.56,
+    "probabilities": {
+      "ready": 0.07,
+      "ai_refine": 0.26,
+      "ask_user": 0.67,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.56,
+    "base_probabilities": {
+      "ready": 0.07,
+      "ai_refine": 0.26,
+      "ask_user": 0.67,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 220.50575699995534
+  },
+  {
+    "case_id": "CORE-18",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ask_user",
+    "confidence": 0.44,
+    "probabilities": {
+      "ready": 0.04,
+      "ai_refine": 0.37,
+      "ask_user": 0.58,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.44,
+    "base_probabilities": {
+      "ready": 0.04,
+      "ai_refine": 0.37,
+      "ask_user": 0.58,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 354.14754400017046
+  },
+  {
+    "case_id": "CORE-19",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ask_user",
+    "confidence": 0.23,
+    "probabilities": {
+      "ready": 0.23,
+      "ai_refine": 0.35,
+      "ask_user": 0.42,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.23,
+    "base_probabilities": {
+      "ready": 0.23,
+      "ai_refine": 0.35,
+      "ask_user": 0.42,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 215.9411820000514
+  },
+  {
+    "case_id": "CORE-20",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "implicit_core_gap",
+    "usage": {
+      "input_tokens": 1044,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3848000000000004e-05,
+    "decision": "ask_user",
+    "confidence": 0.89,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.07,
+      "ask_user": 0.92,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.89,
+    "base_probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.07,
+      "ask_user": 0.92,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.11,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 194.78988300011224
+  },
+  {
+    "case_id": "DEFAULT-01",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1042,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3764e-05,
+    "decision": "ai_refine",
+    "confidence": 0.76,
+    "probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.82,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.08
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.76,
+    "base_probabilities": {
+      "ready": 0.09,
+      "ai_refine": 0.82,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.08
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 192.54631800004063
+  },
+  {
+    "case_id": "DEFAULT-02",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1037,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3554000000000003e-05,
+    "decision": "ai_refine",
+    "confidence": 0.89,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.92,
+      "ask_user": 0.05,
+      "defer_to_spec": 0.02
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.89,
+    "base_probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.92,
+      "ask_user": 0.05,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 187.183498999957
+  },
+  {
+    "case_id": "DEFAULT-03",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1044,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3848000000000004e-05,
+    "decision": "ai_refine",
+    "confidence": 0.8,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.85,
+      "ask_user": 0.1,
+      "defer_to_spec": 0.02
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.8,
+    "base_probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.85,
+      "ask_user": 0.1,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.13,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 181.45562099994095
+  },
+  {
+    "case_id": "DEFAULT-04",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1037,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3554000000000003e-05,
+    "decision": "ai_refine",
+    "confidence": 0.64,
+    "probabilities": {
+      "ready": 0.0,
+      "ai_refine": 0.73,
+      "ask_user": 0.06,
+      "defer_to_spec": 0.21
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.64,
+    "base_probabilities": {
+      "ready": 0.0,
+      "ai_refine": 0.73,
+      "ask_user": 0.06,
+      "defer_to_spec": 0.21
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 193.80948200000603
+  },
+  {
+    "case_id": "DEFAULT-05",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1030,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.326e-05,
+    "decision": "ai_refine",
+    "confidence": 0.91,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.93,
+      "ask_user": 0.05,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.91,
+    "base_probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.93,
+      "ask_user": 0.05,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 191.46517699982724
+  },
+  {
+    "case_id": "DEFAULT-06",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ai_refine",
+    "confidence": 0.73,
+    "probabilities": {
+      "ready": 0.07,
+      "ai_refine": 0.8,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.11
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.73,
+    "base_probabilities": {
+      "ready": 0.07,
+      "ai_refine": 0.8,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.11
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 202.7211670001634
+  },
+  {
+    "case_id": "DEFAULT-07",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1039,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3638000000000005e-05,
+    "decision": "ai_refine",
+    "confidence": 0.35,
+    "probabilities": {
+      "ready": 0.42,
+      "ai_refine": 0.51,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.04
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.35,
+    "base_probabilities": {
+      "ready": 0.42,
+      "ai_refine": 0.51,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 337.9549070000394
+  },
+  {
+    "case_id": "DEFAULT-08",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1030,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.326e-05,
+    "decision": "ai_refine",
+    "confidence": 0.65,
+    "probabilities": {
+      "ready": 0.16,
+      "ai_refine": 0.74,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.08
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.65,
+    "base_probabilities": {
+      "ready": 0.16,
+      "ai_refine": 0.74,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.08
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 374.40678600000865
+  },
+  {
+    "case_id": "DEFAULT-09",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3722e-05,
+    "decision": "ai_refine",
+    "confidence": 0.92,
+    "probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.94,
+      "ask_user": 0.05,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.92,
+    "base_probabilities": {
+      "ready": 0.01,
+      "ai_refine": 0.94,
+      "ask_user": 0.05,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 195.6960640000034
+  },
+  {
+    "case_id": "DEFAULT-10",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "split": "dev",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1040,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.368e-05,
+    "decision": "ai_refine",
+    "confidence": 0.31,
+    "probabilities": {
+      "ready": 0.37,
+      "ai_refine": 0.48,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.12
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.31,
+    "base_probabilities": {
+      "ready": 0.37,
+      "ai_refine": 0.48,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.12
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 190.74940800010154
+  },
+  {
+    "case_id": "DEFAULT-11",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1043,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.380600000000001e-05,
+    "decision": "ai_refine",
+    "confidence": 0.91,
+    "probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.93,
+      "ask_user": 0.04,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.91,
+    "base_probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.93,
+      "ask_user": 0.04,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 338.2983079998212
+  },
+  {
+    "case_id": "DEFAULT-12",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1038,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3596e-05,
+    "decision": "ai_refine",
+    "confidence": 0.87,
+    "probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.9,
+      "ask_user": 0.07,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.87,
+    "base_probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.9,
+      "ask_user": 0.07,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 207.01635699992949
+  },
+  {
+    "case_id": "DEFAULT-13",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1043,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.380600000000001e-05,
+    "decision": "ai_refine",
+    "confidence": 0.91,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.93,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.02
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.91,
+    "base_probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.93,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 198.49304900003517
+  },
+  {
+    "case_id": "DEFAULT-14",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ai_refine",
+    "confidence": 0.95,
+    "probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.96,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.95,
+    "base_probabilities": {
+      "ready": 0.02,
+      "ai_refine": 0.96,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 183.93680600001971
+  },
+  {
+    "case_id": "DEFAULT-15",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1033,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3386e-05,
+    "decision": "ai_refine",
+    "confidence": 0.59,
+    "probabilities": {
+      "ready": 0.22,
+      "ai_refine": 0.69,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.08
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.59,
+    "base_probabilities": {
+      "ready": 0.22,
+      "ai_refine": 0.69,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.08
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 190.89408400009233
+  },
+  {
+    "case_id": "DEFAULT-16",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ai_refine",
+    "confidence": 0.84,
+    "probabilities": {
+      "ready": 0.0,
+      "ai_refine": 0.88,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.1
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.84,
+    "base_probabilities": {
+      "ready": 0.0,
+      "ai_refine": 0.88,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.1
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 185.1987760001066
+  },
+  {
+    "case_id": "DEFAULT-17",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ai_refine",
+    "confidence": 0.92,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.94,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.02
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.92,
+    "base_probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.94,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 200.65827700000227
+  },
+  {
+    "case_id": "DEFAULT-18",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 72
+    },
+    "cost_usd": 4.3722e-05,
+    "decision": "defer_to_spec",
+    "confidence": 0.31,
+    "probabilities": {
+      "ready": 0.17,
+      "ai_refine": 0.34,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.48
+    },
+    "base_decision": "defer_to_spec",
+    "base_confidence": 0.31,
+    "base_probabilities": {
+      "ready": 0.17,
+      "ai_refine": 0.34,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.48
+    },
+    "conflict_probability": 0.13,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 188.25130599998374
+  },
+  {
+    "case_id": "DEFAULT-19",
+    "expected": "ai_refine",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1040,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.368e-05,
+    "decision": "ai_refine",
+    "confidence": 0.68,
+    "probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.76,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.04
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.68,
+    "base_probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.76,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 191.91309000007095
+  },
+  {
+    "case_id": "DEFAULT-20",
+    "expected": "defer_to_spec",
+    "provider": "jev",
+    "split": "test",
+    "category": "routine_defaults",
+    "usage": {
+      "input_tokens": 1039,
+      "output_tokens": 71
+    },
+    "cost_usd": 4.3638000000000005e-05,
+    "decision": "ai_refine",
+    "confidence": 0.24,
+    "probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.43,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.36
+    },
+    "base_decision": "ai_refine",
+    "base_confidence": 0.24,
+    "base_probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.43,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.36
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 195.24796399991828
+  },
+  {
+    "case_id": "EXPLICIT-01",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1032,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3344000000000004e-05,
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.0,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.97,
+    "base_probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.0,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.04062899999008
+  },
+  {
+    "case_id": "EXPLICIT-02",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1038,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3596e-05,
+    "decision": "ready",
+    "confidence": 0.99,
+    "probabilities": {
+      "ready": 0.99,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.99,
+    "base_probabilities": {
+      "ready": 0.99,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 179.46951899989472
+  },
+  {
+    "case_id": "EXPLICIT-03",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1037,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3554000000000003e-05,
+    "decision": "ready",
+    "confidence": 1.0,
+    "probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ready",
+    "base_confidence": 1.0,
+    "base_probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 196.7932939999173
+  },
+  {
+    "case_id": "EXPLICIT-04",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1029,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3218000000000005e-05,
+    "decision": "ready",
+    "confidence": 1.0,
+    "probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ready",
+    "base_confidence": 1.0,
+    "base_probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 196.18151399981798
+  },
+  {
+    "case_id": "EXPLICIT-05",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1039,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3638000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.79,
+    "probabilities": {
+      "ready": 0.84,
+      "ai_refine": 0.08,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.07
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.79,
+    "base_probabilities": {
+      "ready": 0.84,
+      "ai_refine": 0.08,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.07
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 280.69959800018296
+  },
+  {
+    "case_id": "EXPLICIT-06",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1030,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.326e-05,
+    "decision": "ready",
+    "confidence": 0.63,
+    "probabilities": {
+      "ready": 0.72,
+      "ai_refine": 0.14,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.11
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.63,
+    "base_probabilities": {
+      "ready": 0.72,
+      "ai_refine": 0.14,
+      "ask_user": 0.03,
+      "defer_to_spec": 0.11
+    },
+    "conflict_probability": 0.13,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 204.65708799997628
+  },
+  {
+    "case_id": "EXPLICIT-07",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1033,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3386e-05,
+    "decision": "ready",
+    "confidence": 0.84,
+    "probabilities": {
+      "ready": 0.88,
+      "ai_refine": 0.04,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.06
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.84,
+    "base_probabilities": {
+      "ready": 0.88,
+      "ai_refine": 0.04,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.06
+    },
+    "conflict_probability": 0.15,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 192.5846350000029
+  },
+  {
+    "case_id": "EXPLICIT-08",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1039,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3638000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.88,
+    "probabilities": {
+      "ready": 0.91,
+      "ai_refine": 0.05,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.03
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.88,
+    "base_probabilities": {
+      "ready": 0.91,
+      "ai_refine": 0.05,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.03
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 184.0790559999732
+  },
+  {
+    "case_id": "EXPLICIT-09",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.02
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.97,
+    "base_probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 178.616970000121
+  },
+  {
+    "case_id": "EXPLICIT-10",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1025,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.305e-05,
+    "decision": "ready",
+    "confidence": 0.8,
+    "probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.06,
+      "ask_user": 0.04,
+      "defer_to_spec": 0.05
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.8,
+    "base_probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.06,
+      "ask_user": 0.04,
+      "defer_to_spec": 0.05
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 181.2272249999296
+  },
+  {
+    "case_id": "EXPLICIT-11",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3722e-05,
+    "decision": "ready",
+    "confidence": 1.0,
+    "probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ready",
+    "base_confidence": 1.0,
+    "base_probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 197.10923200000252
+  },
+  {
+    "case_id": "EXPLICIT-12",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1029,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3218000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.91,
+    "probabilities": {
+      "ready": 0.9299999999999999,
+      "ai_refine": 0.02,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.04
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.91,
+    "base_probabilities": {
+      "ready": 0.9299999999999999,
+      "ai_refine": 0.02,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 189.59769599996434
+  },
+  {
+    "case_id": "EXPLICIT-13",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ready",
+    "confidence": 0.89,
+    "probabilities": {
+      "ready": 0.92,
+      "ai_refine": 0.03,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.03
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.89,
+    "base_probabilities": {
+      "ready": 0.92,
+      "ai_refine": 0.03,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.03
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 388.0020340000101
+  },
+  {
+    "case_id": "EXPLICIT-14",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3722e-05,
+    "decision": "ready",
+    "confidence": 0.6,
+    "probabilities": {
+      "ready": 0.7,
+      "ai_refine": 0.18,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.11
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.6,
+    "base_probabilities": {
+      "ready": 0.7,
+      "ai_refine": 0.18,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.11
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 209.10066500005087
+  },
+  {
+    "case_id": "EXPLICIT-15",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.05,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.08
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.83,
+    "base_probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.05,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.08
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 184.12945299996863
+  },
+  {
+    "case_id": "EXPLICIT-16",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1031,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3302e-05,
+    "decision": "ready",
+    "confidence": 0.99,
+    "probabilities": {
+      "ready": 0.99,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.99,
+    "base_probabilities": {
+      "ready": 0.99,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.121508000042
+  },
+  {
+    "case_id": "EXPLICIT-17",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ready",
+    "confidence": 0.61,
+    "probabilities": {
+      "ready": 0.71,
+      "ai_refine": 0.14,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.13
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.61,
+    "base_probabilities": {
+      "ready": 0.71,
+      "ai_refine": 0.14,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.13
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 181.70378499985418
+  },
+  {
+    "case_id": "EXPLICIT-18",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3722e-05,
+    "decision": "ready",
+    "confidence": 0.89,
+    "probabilities": {
+      "ready": 0.92,
+      "ai_refine": 0.03,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.04
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.89,
+    "base_probabilities": {
+      "ready": 0.92,
+      "ai_refine": 0.03,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 286.9479280000178
+  },
+  {
+    "case_id": "EXPLICIT-19",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ready",
+    "confidence": 0.84,
+    "probabilities": {
+      "ready": 0.88,
+      "ai_refine": 0.03,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.08
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.84,
+    "base_probabilities": {
+      "ready": 0.88,
+      "ai_refine": 0.03,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.08
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 191.87701800001378
+  },
+  {
+    "case_id": "EXPLICIT-20",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "explicit_requirements",
+    "usage": {
+      "input_tokens": 1039,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3638000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.96,
+    "probabilities": {
+      "ready": 0.97,
+      "ai_refine": 0.0,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.02
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.96,
+    "base_probabilities": {
+      "ready": 0.97,
+      "ai_refine": 0.0,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.1,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 188.2215449998057
+  },
+  {
+    "case_id": "CONTEXT-01",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1046,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3932e-05,
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.97,
+    "base_probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.63857100000314
+  },
+  {
+    "case_id": "CONTEXT-02",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1050,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.41e-05,
+    "decision": "ready",
+    "confidence": 0.67,
+    "probabilities": {
+      "ready": 0.75,
+      "ai_refine": 0.1,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.14
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.67,
+    "base_probabilities": {
+      "ready": 0.75,
+      "ai_refine": 0.1,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.14
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.42933799992534
+  },
+  {
+    "case_id": "CONTEXT-03",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1054,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4268000000000004e-05,
+    "decision": "ready",
+    "confidence": 0.96,
+    "probabilities": {
+      "ready": 0.97,
+      "ai_refine": 0.01,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.96,
+    "base_probabilities": {
+      "ready": 0.97,
+      "ai_refine": 0.01,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 190.45788699986588
+  },
+  {
+    "case_id": "CONTEXT-04",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1042,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3764e-05,
+    "decision": "ready",
+    "confidence": 0.87,
+    "probabilities": {
+      "ready": 0.9,
+      "ai_refine": 0.03,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.05
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.87,
+    "base_probabilities": {
+      "ready": 0.9,
+      "ai_refine": 0.03,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.05
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 188.33313200002522
+  },
+  {
+    "case_id": "CONTEXT-05",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1051,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4142000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.95,
+    "probabilities": {
+      "ready": 0.96,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.03
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.95,
+    "base_probabilities": {
+      "ready": 0.96,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.03
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 272.429498000065
+  },
+  {
+    "case_id": "CONTEXT-06",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1053,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4226000000000007e-05,
+    "decision": "ready",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.07,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.05
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.83,
+    "base_probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.07,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.05
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.2714850001339
+  },
+  {
+    "case_id": "CONTEXT-07",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1047,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3974e-05,
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.02,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.97,
+    "base_probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.02,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.03978900000584
+  },
+  {
+    "case_id": "CONTEXT-08",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1039,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3638000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.97,
+    "base_probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 186.20009699998263
+  },
+  {
+    "case_id": "CONTEXT-09",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1052,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4184e-05,
+    "decision": "ready",
+    "confidence": 0.93,
+    "probabilities": {
+      "ready": 0.95,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.04
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.93,
+    "base_probabilities": {
+      "ready": 0.95,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 178.28213100005996
+  },
+  {
+    "case_id": "CONTEXT-10",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "dev",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1040,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.368e-05,
+    "decision": "ready",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.07,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.05
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.83,
+    "base_probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.07,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.05
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 182.65971799996805
+  },
+  {
+    "case_id": "CONTEXT-11",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1045,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.389e-05,
+    "decision": "ready",
+    "confidence": 1.0,
+    "probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ready",
+    "base_confidence": 1.0,
+    "base_probabilities": {
+      "ready": 1.0,
+      "ai_refine": 0.0,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 183.9060640002117
+  },
+  {
+    "case_id": "CONTEXT-12",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1046,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3932e-05,
+    "decision": "ready",
+    "confidence": 0.84,
+    "probabilities": {
+      "ready": 0.88,
+      "ai_refine": 0.04,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.08
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.84,
+    "base_probabilities": {
+      "ready": 0.88,
+      "ai_refine": 0.04,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.08
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 183.01774899987322
+  },
+  {
+    "case_id": "CONTEXT-13",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1037,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3554000000000003e-05,
+    "decision": "ready",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.07,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.04
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.83,
+    "base_probabilities": {
+      "ready": 0.87,
+      "ai_refine": 0.07,
+      "ask_user": 0.02,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 197.5058479999916
+  },
+  {
+    "case_id": "CONTEXT-14",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1046,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3932e-05,
+    "decision": "ready",
+    "confidence": 0.97,
+    "probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.97,
+    "base_probabilities": {
+      "ready": 0.98,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 1197.9254640000363
+  },
+  {
+    "case_id": "CONTEXT-15",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1052,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4184e-05,
+    "decision": "ready",
+    "confidence": 0.8,
+    "probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.07,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.07
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.8,
+    "base_probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.07,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.07
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 189.22658500014222
+  },
+  {
+    "case_id": "CONTEXT-16",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1047,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3974e-05,
+    "decision": "ready",
+    "confidence": 0.8,
+    "probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.05,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.09
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.8,
+    "base_probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.05,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.09
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 185.45287400002053
+  },
+  {
+    "case_id": "CONTEXT-17",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1045,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.389e-05,
+    "decision": "ready",
+    "confidence": 0.68,
+    "probabilities": {
+      "ready": 0.76,
+      "ai_refine": 0.09,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.14
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.68,
+    "base_probabilities": {
+      "ready": 0.76,
+      "ai_refine": 0.09,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.14
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 214.92236599988246
+  },
+  {
+    "case_id": "CONTEXT-18",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1057,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4394e-05,
+    "decision": "ready",
+    "confidence": 0.95,
+    "probabilities": {
+      "ready": 0.96,
+      "ai_refine": 0.02,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.95,
+    "base_probabilities": {
+      "ready": 0.96,
+      "ai_refine": 0.02,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 179.7337670000161
+  },
+  {
+    "case_id": "CONTEXT-19",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1053,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4226000000000007e-05,
+    "decision": "ready",
+    "confidence": 0.92,
+    "probabilities": {
+      "ready": 0.94,
+      "ai_refine": 0.03,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.02
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.92,
+    "base_probabilities": {
+      "ready": 0.94,
+      "ai_refine": 0.03,
+      "ask_user": 0.01,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.09,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 188.05726999994477
+  },
+  {
+    "case_id": "CONTEXT-20",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "context_resolved",
+    "usage": {
+      "input_tokens": 1045,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.389e-05,
+    "decision": "ready",
+    "confidence": 0.8,
+    "probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.04,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.11
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.8,
+    "base_probabilities": {
+      "ready": 0.85,
+      "ai_refine": 0.04,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.11
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 182.61695500018504
+  },
+  {
+    "case_id": "CONFLICT-01",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1050,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.41e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.65,
+    "base_probabilities": {
+      "ready": 0.23,
+      "ai_refine": 0.02,
+      "ask_user": 0.74,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.9,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 182.82520599996133
+  },
+  {
+    "case_id": "CONFLICT-02",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1052,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.4184e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.59,
+    "base_probabilities": {
+      "ready": 0.3,
+      "ai_refine": 0.01,
+      "ask_user": 0.69,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.82,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 195.59265099996992
+  },
+  {
+    "case_id": "CONFLICT-03",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1047,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3974e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ready",
+    "base_confidence": 0.43,
+    "base_probabilities": {
+      "ready": 0.57,
+      "ai_refine": 0.06,
+      "ask_user": 0.35,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.85,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 404.479044000027
+  },
+  {
+    "case_id": "CONFLICT-04",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1040,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.368e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.76,
+    "base_probabilities": {
+      "ready": 0.17,
+      "ai_refine": 0.01,
+      "ask_user": 0.82,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.87,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 184.18543600000703
+  },
+  {
+    "case_id": "CONFLICT-05",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1056,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.4352000000000005e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.27,
+    "base_probabilities": {
+      "ready": 0.42,
+      "ai_refine": 0.09,
+      "ask_user": 0.45,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.71,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 208.56074499988608
+  },
+  {
+    "case_id": "CONFLICT-06",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1046,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3932e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ready",
+    "base_confidence": 0.73,
+    "base_probabilities": {
+      "ready": 0.8,
+      "ai_refine": 0.03,
+      "ask_user": 0.15,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.86,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 191.14155000011124
+  },
+  {
+    "case_id": "CONFLICT-07",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1047,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3974e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ready",
+    "base_confidence": 0.44,
+    "base_probabilities": {
+      "ready": 0.58,
+      "ai_refine": 0.02,
+      "ask_user": 0.38,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.73,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 187.17405799998232
+  },
+  {
+    "case_id": "CONFLICT-08",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1048,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.401600000000001e-05,
+    "decision": "ask_user",
+    "confidence": 0.45,
+    "probabilities": {
+      "ready": 0.39,
+      "ai_refine": 0.01,
+      "ask_user": 0.59,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.45,
+    "base_probabilities": {
+      "ready": 0.39,
+      "ai_refine": 0.01,
+      "ask_user": 0.59,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.47,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 190.11041999988265
+  },
+  {
+    "case_id": "CONFLICT-09",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1045,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.389e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.37,
+    "base_probabilities": {
+      "ready": 0.43,
+      "ai_refine": 0.02,
+      "ask_user": 0.53,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.8,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 898.160923000205
+  },
+  {
+    "case_id": "CONFLICT-10",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1047,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3974e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ready",
+    "base_confidence": 0.64,
+    "base_probabilities": {
+      "ready": 0.73,
+      "ai_refine": 0.14,
+      "ask_user": 0.05,
+      "defer_to_spec": 0.08
+    },
+    "conflict_probability": 0.65,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 250.69695399997727
+  },
+  {
+    "case_id": "CONFLICT-11",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1044,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3848000000000004e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.44,
+    "base_probabilities": {
+      "ready": 0.39,
+      "ai_refine": 0.01,
+      "ask_user": 0.58,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.92,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 188.64945900008934
+  },
+  {
+    "case_id": "CONFLICT-12",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1042,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3764e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.49,
+    "base_probabilities": {
+      "ready": 0.35,
+      "ai_refine": 0.01,
+      "ask_user": 0.62,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.88,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 291.0381359999974
+  },
+  {
+    "case_id": "CONFLICT-13",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1040,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.368e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.63,
+    "base_probabilities": {
+      "ready": 0.27,
+      "ai_refine": 0.01,
+      "ask_user": 0.72,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.9,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 198.4876249998706
+  },
+  {
+    "case_id": "CONFLICT-14",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1048,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.401600000000001e-05,
+    "decision": "ready",
+    "confidence": 0.87,
+    "probabilities": {
+      "ready": 0.9,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.09
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.87,
+    "base_probabilities": {
+      "ready": 0.9,
+      "ai_refine": 0.01,
+      "ask_user": 0.0,
+      "defer_to_spec": 0.09
+    },
+    "conflict_probability": 0.22,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 356.75124499994126
+  },
+  {
+    "case_id": "CONFLICT-15",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1056,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.4352000000000005e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.32,
+    "base_probabilities": {
+      "ready": 0.48,
+      "ai_refine": 0.01,
+      "ask_user": 0.49,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.89,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 326.17424599993683
+  },
+  {
+    "case_id": "CONFLICT-16",
+    "expected": "ready",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1049,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.4058e-05,
+    "decision": "ready",
+    "confidence": 0.76,
+    "probabilities": {
+      "ready": 0.82,
+      "ai_refine": 0.01,
+      "ask_user": 0.13,
+      "defer_to_spec": 0.04
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.76,
+    "base_probabilities": {
+      "ready": 0.82,
+      "ai_refine": 0.01,
+      "ask_user": 0.13,
+      "defer_to_spec": 0.04
+    },
+    "conflict_probability": 0.39,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 208.91168799994375
+  },
+  {
+    "case_id": "CONFLICT-17",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3722e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ask_user",
+    "base_confidence": 0.47,
+    "base_probabilities": {
+      "ready": 0.37,
+      "ai_refine": 0.01,
+      "ask_user": 0.6,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.88,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 232.81576899989886
+  },
+  {
+    "case_id": "CONFLICT-18",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1046,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3932e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ready",
+    "base_confidence": 0.56,
+    "base_probabilities": {
+      "ready": 0.67,
+      "ai_refine": 0.03,
+      "ask_user": 0.25,
+      "defer_to_spec": 0.05
+    },
+    "conflict_probability": 0.83,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 190.55652099996223
+  },
+  {
+    "case_id": "CONFLICT-19",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1048,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.401600000000001e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ready",
+    "base_confidence": 0.6,
+    "base_probabilities": {
+      "ready": 0.7,
+      "ai_refine": 0.04,
+      "ask_user": 0.24,
+      "defer_to_spec": 0.02
+    },
+    "conflict_probability": 0.67,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 200.5654350000441
+  },
+  {
+    "case_id": "CONFLICT-20",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "contradictory_requirements",
+    "usage": {
+      "input_tokens": 1042,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3764e-05,
+    "decision": "ask_user",
+    "confidence": null,
+    "probabilities": null,
+    "base_decision": "ready",
+    "base_confidence": 0.47,
+    "base_probabilities": {
+      "ready": 0.6,
+      "ai_refine": 0.01,
+      "ask_user": 0.36,
+      "defer_to_spec": 0.03
+    },
+    "conflict_probability": 0.77,
+    "conflict_override": true,
+    "status": "ok",
+    "latency_ms": 196.42896300001667
+  },
+  {
+    "case_id": "SCOPE-01",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ask_user",
+    "confidence": 0.87,
+    "probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.0,
+      "ask_user": 0.9,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.87,
+    "base_probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.0,
+      "ask_user": 0.9,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 202.79877300004046
+  },
+  {
+    "case_id": "SCOPE-02",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ask_user",
+    "confidence": 0.84,
+    "probabilities": {
+      "ready": 0.12,
+      "ai_refine": 0.0,
+      "ask_user": 0.88,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.84,
+    "base_probabilities": {
+      "ready": 0.12,
+      "ai_refine": 0.0,
+      "ask_user": 0.88,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 204.17924100001983
+  },
+  {
+    "case_id": "SCOPE-03",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1037,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3554000000000003e-05,
+    "decision": "ask_user",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.0,
+      "ask_user": 0.87,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.83,
+    "base_probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.0,
+      "ask_user": 0.87,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 194.96662699998524
+  },
+  {
+    "case_id": "SCOPE-04",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1037,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3554000000000003e-05,
+    "decision": "ask_user",
+    "confidence": 0.64,
+    "probabilities": {
+      "ready": 0.25,
+      "ai_refine": 0.01,
+      "ask_user": 0.73,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.64,
+    "base_probabilities": {
+      "ready": 0.25,
+      "ai_refine": 0.01,
+      "ask_user": 0.73,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 185.46758699994825
+  },
+  {
+    "case_id": "SCOPE-05",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1046,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3932e-05,
+    "decision": "ask_user",
+    "confidence": 0.91,
+    "probabilities": {
+      "ready": 0.07,
+      "ai_refine": 0.0,
+      "ask_user": 0.93,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.91,
+    "base_probabilities": {
+      "ready": 0.07,
+      "ai_refine": 0.0,
+      "ask_user": 0.93,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 188.74376299982032
+  },
+  {
+    "case_id": "SCOPE-06",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3722e-05,
+    "decision": "ask_user",
+    "confidence": 0.87,
+    "probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.0,
+      "ask_user": 0.9,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.87,
+    "base_probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.0,
+      "ask_user": 0.9,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 200.0706920000539
+  },
+  {
+    "case_id": "SCOPE-07",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1027,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3134e-05,
+    "decision": "ask_user",
+    "confidence": 0.93,
+    "probabilities": {
+      "ready": 0.05,
+      "ai_refine": 0.0,
+      "ask_user": 0.95,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.93,
+    "base_probabilities": {
+      "ready": 0.05,
+      "ai_refine": 0.0,
+      "ask_user": 0.95,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 185.7396319999225
+  },
+  {
+    "case_id": "SCOPE-08",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ask_user",
+    "confidence": 0.75,
+    "probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.0,
+      "ask_user": 0.81,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.75,
+    "base_probabilities": {
+      "ready": 0.18,
+      "ai_refine": 0.0,
+      "ask_user": 0.81,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 191.0474419998991
+  },
+  {
+    "case_id": "SCOPE-09",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ask_user",
+    "confidence": 0.79,
+    "probabilities": {
+      "ready": 0.15,
+      "ai_refine": 0.0,
+      "ask_user": 0.84,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.79,
+    "base_probabilities": {
+      "ready": 0.15,
+      "ai_refine": 0.0,
+      "ask_user": 0.84,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 196.2293110000246
+  },
+  {
+    "case_id": "SCOPE-10",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "dev",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3428000000000005e-05,
+    "decision": "ask_user",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.02,
+      "ask_user": 0.87,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.83,
+    "base_probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.02,
+      "ask_user": 0.87,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.16,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 191.53821399982007
+  },
+  {
+    "case_id": "SCOPE-11",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1030,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.326e-05,
+    "decision": "ask_user",
+    "confidence": 0.84,
+    "probabilities": {
+      "ready": 0.11,
+      "ai_refine": 0.0,
+      "ask_user": 0.88,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.84,
+    "base_probabilities": {
+      "ready": 0.11,
+      "ai_refine": 0.0,
+      "ask_user": 0.88,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 201.13893200004895
+  },
+  {
+    "case_id": "SCOPE-12",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1029,
+      "output_tokens": 69
+    },
+    "cost_usd": 4.3218000000000005e-05,
+    "decision": "ready",
+    "confidence": 0.41,
+    "probabilities": {
+      "ready": 0.56,
+      "ai_refine": 0.01,
+      "ask_user": 0.38,
+      "defer_to_spec": 0.05
+    },
+    "base_decision": "ready",
+    "base_confidence": 0.41,
+    "base_probabilities": {
+      "ready": 0.56,
+      "ai_refine": 0.01,
+      "ask_user": 0.38,
+      "defer_to_spec": 0.05
+    },
+    "conflict_probability": 0.06,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 201.80883300008645
+  },
+  {
+    "case_id": "SCOPE-13",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1038,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3596e-05,
+    "decision": "ask_user",
+    "confidence": 0.96,
+    "probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.0,
+      "ask_user": 0.97,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.96,
+    "base_probabilities": {
+      "ready": 0.03,
+      "ai_refine": 0.0,
+      "ask_user": 0.97,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 198.75748499998735
+  },
+  {
+    "case_id": "SCOPE-14",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.347000000000001e-05,
+    "decision": "ask_user",
+    "confidence": 0.87,
+    "probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.0,
+      "ask_user": 0.9,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.87,
+    "base_probabilities": {
+      "ready": 0.1,
+      "ai_refine": 0.0,
+      "ask_user": 0.9,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 204.73944399986976
+  },
+  {
+    "case_id": "SCOPE-15",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1042,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3764e-05,
+    "decision": "ask_user",
+    "confidence": 0.77,
+    "probabilities": {
+      "ready": 0.17,
+      "ai_refine": 0.0,
+      "ask_user": 0.83,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.77,
+    "base_probabilities": {
+      "ready": 0.17,
+      "ai_refine": 0.0,
+      "ask_user": 0.83,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 188.81808800006183
+  },
+  {
+    "case_id": "SCOPE-16",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ask_user",
+    "confidence": 0.84,
+    "probabilities": {
+      "ready": 0.12,
+      "ai_refine": 0.0,
+      "ask_user": 0.88,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.84,
+    "base_probabilities": {
+      "ready": 0.12,
+      "ai_refine": 0.0,
+      "ask_user": 0.88,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.05,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 199.58075999988978
+  },
+  {
+    "case_id": "SCOPE-17",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1038,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3596e-05,
+    "decision": "ask_user",
+    "confidence": 0.93,
+    "probabilities": {
+      "ready": 0.05,
+      "ai_refine": 0.0,
+      "ask_user": 0.95,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.93,
+    "base_probabilities": {
+      "ready": 0.05,
+      "ai_refine": 0.0,
+      "ask_user": 0.95,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 204.60506399990663
+  },
+  {
+    "case_id": "SCOPE-18",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1033,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3386e-05,
+    "decision": "ask_user",
+    "confidence": 0.83,
+    "probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.0,
+      "ask_user": 0.87,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.83,
+    "base_probabilities": {
+      "ready": 0.13,
+      "ai_refine": 0.0,
+      "ask_user": 0.87,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.07,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 190.79076100001657
+  },
+  {
+    "case_id": "SCOPE-19",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1046,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3932e-05,
+    "decision": "ask_user",
+    "confidence": 0.91,
+    "probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.01,
+      "ask_user": 0.93,
+      "defer_to_spec": 0.0
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.91,
+    "base_probabilities": {
+      "ready": 0.06,
+      "ai_refine": 0.01,
+      "ask_user": 0.93,
+      "defer_to_spec": 0.0
+    },
+    "conflict_probability": 0.08,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 216.68159000000742
+  },
+  {
+    "case_id": "SCOPE-20",
+    "expected": "ask_user",
+    "provider": "jev",
+    "split": "test",
+    "category": "unsupported_scope",
+    "usage": {
+      "input_tokens": 1036,
+      "output_tokens": 70
+    },
+    "cost_usd": 4.3512e-05,
+    "decision": "ask_user",
+    "confidence": 0.67,
+    "probabilities": {
+      "ready": 0.23,
+      "ai_refine": 0.01,
+      "ask_user": 0.75,
+      "defer_to_spec": 0.01
+    },
+    "base_decision": "ask_user",
+    "base_confidence": 0.67,
+    "base_probabilities": {
+      "ready": 0.23,
+      "ai_refine": 0.01,
+      "ask_user": 0.75,
+      "defer_to_spec": 0.01
+    },
+    "conflict_probability": 0.11,
+    "conflict_override": false,
+    "status": "ok",
+    "latency_ms": 185.90389700011656
+  }
+]

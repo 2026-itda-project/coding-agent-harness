@@ -1,4 +1,4 @@
-"""Fixed 16-case paired pilot. No fallback, retries, extraction, or prose generation."""
+"""Frozen Jev comparison suites. No fallback, retries, extraction, or prose generation."""
 import argparse
 from collections import Counter
 import hashlib
@@ -74,6 +74,23 @@ def parse_sonnet(raw):
     return result
 
 
+def parse_v3(raw):
+    if not isinstance(raw, dict) or not isinstance(raw.get('answers'), dict) or set(raw['answers']) != {'decision', 'conflict'}:
+        raise ValueError('invalid_answer_ids')
+    base = run.parse_response({**raw, 'answers': {'decision': raw['answers']['decision']}})
+    conflict = raw['answers']['conflict']
+    if not isinstance(conflict, dict) or conflict.get('type') != 'noul' or not run.unit_interval(conflict.get('noul')):
+        raise ValueError('invalid_conflict_probability')
+    override = conflict['noul'] >= 0.5
+    return {**base, 'base_decision': base['decision'],
+            'base_confidence': base['confidence'], 'base_probabilities': base['probabilities'],
+            'conflict_probability': conflict['noul'], 'conflict_override': override,
+            'decision': 'ask_user' if override else base['decision'],
+            # A routing override has no calibrated four-label distribution or confidence.
+            'confidence': None if override else base['confidence'],
+            'probabilities': None if override else base['probabilities']}
+
+
 def summary(records):
     report = {}
     for provider in PRICES:
@@ -101,7 +118,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--live', action='store_true')
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--version', choices=('v0', 'v1', 'v2'), default='v0', help='v0: paired baseline; v1/v2: Jev only, saved Sonnet baseline')
+    parser.add_argument('--version', choices=('v0', 'v1', 'v2', 'v3'), default='v0', help='v0: paired baseline; v1/v2/v3: Jev only, saved Sonnet baseline')
     parser.add_argument('--suite', choices=('pilot', 'original120'), default='pilot')
     parser.add_argument('--start-index', type=int, default=0, help='Skip completed original120 cases; zero-based, no automatic replay')
     args = parser.parse_args(argv)
@@ -115,7 +132,12 @@ def main(argv=None):
     prompt_bytes = (run.ROOT / 'versions' / args.version / 'prompt.json').read_bytes()
     if args.version == 'v0' and hashlib.sha256(prompt_bytes).hexdigest() != baseline['prompt_sha256']:
         parser.error('baseline_prompt_changed')
-    question = json.loads(prompt_bytes)['jev_question']
+    prompt = json.loads(prompt_bytes)
+    question = prompt['jev_question']
+    if args.version == 'v3':
+        v2 = json.loads((run.ROOT/'versions/v2/prompt.json').read_text())
+        if question != v2['jev_question'] or prompt.get('conflict_question', {}).get('type') != 'noul':
+            parser.error('v3_must_preserve_v2_and_add_conflict_check')
     if question.get('type') != 'choice' or set(question.get('criteria', {})) != set(run.OPTIONS):
         parser.error('invalid_prompt')
     only_jev = args.version != 'v0'
@@ -126,11 +148,11 @@ def main(argv=None):
     if any(c['split'] != 'dev' for c in cases):
         parser.error('pilot_must_use_dev')
     if args.suite == 'original120':
-        if args.version != 'v2':
-            parser.error('original120 currently requires frozen v2')
-        config = json.loads((run.ROOT/'versions/v2/config.json').read_text())
+        if args.version not in ('v2', 'v3'):
+            parser.error('original120 requires frozen v2 or v3')
+        config = json.loads((run.ROOT/'versions'/args.version/'config.json').read_text())
         if hashlib.sha256(prompt_bytes).hexdigest() != config['prompt_sha256']:
-            parser.error('v2_prompt_changed')
+            parser.error('frozen_prompt_changed')
         candidate = (run.ROOT/'evaluation/cases.proposed.json').read_bytes()
         if hashlib.sha256(candidate).hexdigest() != baseline['original_candidate_sha256']:
             parser.error('candidate_changed')
@@ -172,6 +194,8 @@ def main(argv=None):
         for index, case in enumerate(cases):
             jev_payload = {'model': run.MODEL, 'state': {'user_input': case['user_input'],
                            'requirement': case['requirement']}, 'questions': {'decision': question}}
+            if args.version == 'v3':
+                jev_payload['questions']['conflict'] = prompt['conflict_question']
             payloads = {'jev': jev_payload, 'sonnet': sonnet_request(jev_payload)}
             # Alternate order to reduce provider-order bias.
             order = ('jev',) if only_jev else (('jev', 'sonnet') if index % 2 == 0 else ('sonnet', 'jev'))
@@ -195,10 +219,12 @@ def main(argv=None):
                     row['usage'] = raw.get('usage')
                     row['cost_usd'] = cost(provider, row['usage'])
                     spent += row['cost_usd']
-                    parsed = run.parse_response(raw) if provider == 'jev' else parse_sonnet(raw)
+                    parsed = (parse_v3(raw) if args.version == 'v3' else run.parse_response(raw)) if provider == 'jev' else parse_sonnet(raw)
                     row['decision'] = parsed['decision']
                     if provider == 'jev':
                         row.update(confidence=parsed['confidence'], probabilities=parsed['probabilities'])
+                        if args.version == 'v3':
+                            row.update({k: parsed[k] for k in ('base_decision', 'base_confidence', 'base_probabilities', 'conflict_probability', 'conflict_override')})
                     row['status'] = 'ok'
                     if row['cost_usd'] > allowance:
                         stop = 'input_allowance_underestimated'

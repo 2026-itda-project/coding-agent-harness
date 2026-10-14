@@ -4,7 +4,9 @@
 
 제품 코드와 분리한 실험이다. Python 표준 라이브러리만 사용한다. 공식 제품 정책·Jev 도입 여부는 바꾸지 않는다.
 
-## 현재 상태: v2 120개 확대 평가 완료
+## 현재 상태: v3 120개 회귀 평가 완료
+
+[v3 결과](versions/v3/report.md): v2 영어 분류에 명시 충돌 검사를 추가해 110/120(91.67%), 필수 질문 54/59, 과잉 질문 0/61. 비용 USD 0.005239668. 독립 평가·제품 도입은 미완료.
 
 [기존 120개 확대 결과](versions/v2/original120/report.md): 102/120(85%), dev/test 각각 51/60. 필수 질문은 46/59를 회수했고 충돌 확인 누락이 남았다. 비용 USD 0.004231668, Sonnet 호출 없음. 소규모 16/16과 구분해서 해석한다.
 
@@ -169,3 +171,14 @@ uv run --no-project --env-file .env python experiments/jev/compare.py --version 
 ```
 
 이 suite는 고정 140개 수정안 중 기존 120개의 정답을 사용한다. 원문·대상은 원본과 일치해야 하며 v2 프롬프트 해시도 검사한다. 일부 완료 후 이어 실행할 때는 실제 완료 응답을 확인하고 `--start-index`로 다음 사례 위치를 지정한다. 이 옵션 자체가 이전 로그를 합산하거나 전 실행 비용을 검사하는 것은 아니다. 예산 검사는 실행별이며 통합 결과는 원본 로그를 중복 없이 검증해 작성한다.
+
+
+### Jev v3 — 명시 충돌 독립 검사
+
+```bash
+python3 experiments/jev/compare.py --version v3 --suite original120 --out experiments/jev/results/v3-dry-new
+# 비용 안내 후 Jev 120회 실행. 요청당 4분류 + 충돌 질문, Sonnet 호출 없음.
+uv run --no-project --env-file .env python experiments/jev/compare.py --version v3 --suite original120 --live --out experiments/jev/results/v3-live-new
+```
+
+v2 4분류 지시를 유지하고 noul 충돌 확률 >= 0.5이면 ask_user로 분기한다. 최종 분기의 확률을 합성하지 않으며 원래 판단과 충돌 확률을 따로 기록한다. 예산 검사 USD 0.05, 실패 시 중단하며 자동 재시도하지 않는다. [사전 계획](versions/v3/plan.md)과 [실제 결과](versions/v3/report.md)를 구분한다.
