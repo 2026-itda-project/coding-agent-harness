@@ -6,7 +6,8 @@ Rules for every item (`status`, `source`):
 - Content the user explicitly stated: `confirmed` + `initial_input`. Keep the user's meaning; do not narrow, widen or contradict it.
 - Content the user did not state but a working demo needs: decide it with common service conventions, as `proposed` + `ai_proposal`. Never contradict a user statement. Keep proposals minimal and conventional.
 - Platform constraints from the stack contract below (no real login, role switch, mocked integrations, persistent data with sample data, no sharing/export): `confirmed` + `harness_policy`, in `in_scope`, `out_of_scope` or `nfrs`.
-- A decision that changes what the service fundamentally is and cannot be defaulted: put it in `open_issues` as `needs_clarification` + `ai_proposal`, and still choose a conventional default elsewhere so the demo can proceed. Use this rarely.
+- A decision that changes what the service fundamentally is and cannot be defaulted: put it in `open_issues` as `needs_clarification` (source `initial_input` if the user raised the topic but left it undecided, otherwise `ai_proposal`), and still choose a conventional default elsewhere so the demo can proceed. Use this rarely.
+- Never mark an `ai_proposal` item `confirmed`: only the user can accept a proposal, in a later review.
 
 IDs: `SCOPE-`, `OUT-`, `ROLE-`, `US-`, `FR-`, `RULE-`, `NFR-`, `ISSUE-`, `AC-` followed by 3 digits, unique across the document.
 - `user_flows` are the main user scenarios. `functional_requirements` are individual features. `business_rules` say who may do what and how states change.

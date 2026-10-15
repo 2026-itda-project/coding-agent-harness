@@ -10,10 +10,10 @@ from unittest.mock import patch
 
 from app.llm import claude
 from app.llm.errors import AnalysisError
-from app.m2 import agent, run, stages
+from app.m2 import agent, run, stages, verify
 from app.m2.context import build_context
-from app.m2.contracts import (PRD, Plan, Spec, check_plan, check_prd, check_spec, order_tasks,
-                              output_schema)
+from app.m2.contracts import (PRD, Plan, Spec, check_generated_prd, check_plan, check_prd, check_spec,
+                              order_tasks, output_schema)
 
 
 def item(id_, status="confirmed", source="initial_input"):
@@ -71,6 +71,22 @@ class ContractTest(unittest.TestCase):
         errors = " | ".join(check_prd(PRD.model_validate(data)))
         for part in ("duplicate id FR-001", "FR-009 must start with ROLE-", "US-002", "NFR-001", "FR-003 has no"):
             self.assertIn(part, errors)
+
+    def test_status_source_combinations(self):
+        data = prd_data()
+        data["functional_requirements"].append(item("FR-003", "confirmed", "ai_proposal"))      # accepted in Review
+        data["acceptance_criteria"].append({"id": "AC-003", "description": "된다", "target_ids": ["FR-003"]})
+        data["open_issues"] = [item("ISSUE-001", "needs_clarification", "initial_input"),
+                               item("ISSUE-002", "needs_clarification", "ai_proposal")]
+        prd = PRD.model_validate(data)
+        self.assertEqual(check_prd(prd), [])
+        self.assertEqual(check_generated_prd(prd), ["FR-003: confirmed ai_proposal without user acceptance"])
+        bad = prd_data()
+        bad["roles"].append(item("ROLE-002", "proposed", "initial_input"))
+        bad["nfrs"].append(item("NFR-001", "proposed", "harness_policy"))
+        errors = " | ".join(check_prd(PRD.model_validate(bad)))
+        self.assertIn("ROLE-002: proposed status requires ai_proposal", errors)
+        self.assertIn("NFR-001", errors)
 
     def test_spec_reference_errors(self):
         prd = PRD.model_validate(prd_data())
@@ -130,10 +146,12 @@ class ClaudeParseTest(unittest.TestCase):
 
     def test_budget_stops_before_overspending(self):
         with patch.dict(os.environ, {"OPUS_MODEL": "claude-opus-5-5"}):
-            budget = run.Budget(1.0, [{"cost_usd": 0.5}])
+            budget = run.Budget(1.0, lambda: [0.5])
             budget.reserve("opus", max_output=10_000, max_input=10_000)   # 0.5 + 0.24 <= 1.0
             with self.assertRaises(SystemExit):
                 budget.reserve("opus", max_output=30_000, max_input=10_000)  # 0.5 + 0.64 > 1.0
+            with self.assertRaises(SystemExit):  # an unknown cost is never counted as 0
+                run.Budget(10.0, lambda: [0.1, None]).reserve("opus")
 
 
     def test_cost_uses_price_table(self):
@@ -160,6 +178,19 @@ class WorkspaceTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.app = agent.init_workspace(Path(self.tmp.name) / "app")
+
+    def test_planted_git_hooks_never_run_on_host(self):
+        self.assertFalse((self.app / ".git").exists())  # repository lives outside the work tree
+        marker = Path(self.tmp.name) / "hook-ran"
+        hooks = self.app / ".git/hooks"
+        hooks.mkdir(parents=True)
+        for hook in ("pre-commit", "post-commit"):
+            (hooks / hook).write_text(f"#!/bin/sh\ntouch {marker}\n")
+            (hooks / hook).chmod(0o755)
+        record = self.run_fake(False)
+        self.assertEqual(record["status"], "done")
+        self.assertFalse(marker.exists())
+        self.assertNotIn(".git/hooks/pre-commit", " ".join(record["files"]))
 
     def test_workspace_is_local_git_outside_harness(self):
         self.assertEqual(agent.git(self.app, "remote").strip(), "")
@@ -190,6 +221,19 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(ctx["previous_tasks"], [{"task_id": "TASK-001"}])
         self.assertIn("prd.json#AC-001", ctx["sources"]["requirements"])
 
+    def test_context_skips_links_to_outside_files(self):
+        secret = Path(self.tmp.name) / "outside-secret.txt"
+        secret.write_text("TOP-SECRET")
+        (self.app / "key.txt").symlink_to(secret)
+        (self.app / "ok.txt").write_text("fine")
+        agent.git(self.app, "add", "-A")
+        agent.git(self.app, "commit", "-q", "-m", "link")
+        prd, spec, plan = PRD.model_validate(prd_data()), Spec.model_validate(spec_data()), Plan.model_validate(plan_data())
+        ctx = build_context(plan.tasks[0], prd, spec, self.app, {}, "/sandbox.sh")
+        self.assertNotIn("TOP-SECRET", json.dumps(ctx))
+        self.assertEqual(ctx["repository"]["skipped"], {"key.txt": "symlink"})
+        self.assertEqual(ctx["repository"]["contents"]["ok.txt"], "fine")
+
     def run_fake(self, is_error, write=True):
         def runner(command, cwd, **kw):
             self.assertIn("--bare", command)
@@ -214,3 +258,55 @@ class WorkspaceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VerifyJudgeTest(unittest.TestCase):
+    def record(self, after_root=200, persist_passed=True, first_passed=True):
+        check = lambda cid, ok: {"id": cid, "passed": ok}
+        return {"root_status": 200, "root_status_after_restart": after_root,
+                "checks": [check("CHK-001", first_passed)],
+                "checks_after_restart": [check("CHK-001", persist_passed)] if after_root == 200 else []}
+
+    def test_restart_failure_and_unrun_checks_fail(self):
+        spec = Spec.model_validate(spec_data())  # one check, rerun after restart -> 2 planned
+        self.assertEqual(verify.judge(self.record(), spec)["status"], "passed")
+        failed = verify.judge(self.record(after_root=None), spec)
+        self.assertEqual(failed["status"], "checks_failed")
+        self.assertIn("1 planned checks did not run", failed["failures"])
+        self.assertEqual(verify.judge(self.record(persist_passed=False), spec)["failures"], ["CHK-001 failed"])
+
+
+class ResumeAttemptsTest(unittest.TestCase):
+    def test_every_attempt_is_kept_and_counted(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5",
+                                                                           "OPUS_MODEL": "claude-opus-5-5"}):
+            run_dir = Path(tmp) / "run"
+            app = agent.init_workspace(run_dir / "app")
+            art = run_dir / "artifacts"
+            for name, data in (("prd", prd_data()), ("spec", spec_data()), ("plan", plan_data())):
+                run.dump(art / f"{name}.json", data)
+            run.dump(run_dir / "run.json", {"run_id": "t", "stages": {}, "calls": [], "tasks": {}, "attempts": []})
+
+            def failing(task, context, app_dir, budget):
+                (Path(app_dir) / f"try-{len(list(app_dir.iterdir()))}.txt").write_text("x")
+                agent.git(app_dir, "add", "-A")
+                base = agent.git(app_dir, "rev-parse", "HEAD").strip()
+                agent.git(app_dir, "commit", "-q", "-m", "try")
+                return {"task_id": task.id, "title": task.title, "status": "failed", "base_commit": base,
+                        "commit": agent.git(app_dir, "rev-parse", "HEAD").strip(), "files": [],
+                        "agent": {"total_cost_usd": 0.4}}
+
+            args = ["run", "--resume", str(run_dir), "--until", "code", "--budget-usd", "1.0", "--task-budget-usd", "0.3"]
+            with patch.object(agent, "run_task", failing):
+                for _ in range(2):
+                    with self.assertRaises(SystemExit):
+                        run.main(args)
+                with self.assertRaises(SystemExit) as stop:  # 0.8 spent + 0.3 reserve > 1.0
+                    run.main(args)
+            self.assertIn("budget stop", str(stop.exception))
+            state = run.load(run_dir / "run.json")
+            self.assertEqual([a["attempt"] for a in state["attempts"]], [1, 2])
+            self.assertEqual(state["cost_usd"]["agent"], 0.8)
+            for n in (1, 2):
+                self.assertTrue((art / f"agent/TASK-001-attempt-{n}.json").exists())
+                self.assertTrue((art / f"diffs/TASK-001-attempt-{n}.diff").exists())

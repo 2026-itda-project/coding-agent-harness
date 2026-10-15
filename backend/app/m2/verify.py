@@ -85,9 +85,22 @@ def verify(app_dir, spec, name, keep_running=False):
         if not keep_running:
             subprocess.run(["docker", "rm", "-f", name], capture_output=True)
     record["preview_url"] = base if keep_running else None
-    all_checks = record["checks"] + record["checks_after_restart"]
-    record["passed"] = sum(c["passed"] for c in all_checks)
-    record["total"] = len(all_checks)
-    record["status"] = ("passed" if record["root_status"] == 200 and all_checks and record["passed"] == record["total"]
-                        else "checks_failed")
+    return judge(record, spec)
+
+
+def judge(record, spec):
+    """Pass only if both starts answered and every planned check ran and passed; a check that
+    never ran is a failure, not a missing number."""
+    planned = len(spec.checks) + sum(c.rerun_after_restart for c in spec.checks)
+    ran = record["checks"] + record["checks_after_restart"]
+    failures = []
+    if record["root_status"] != 200:
+        failures.append(f"app did not start: GET / -> {record['root_status']}")
+    if record["root_status_after_restart"] != 200:
+        failures.append(f"app did not come back after restart: GET / -> {record['root_status_after_restart']}")
+    if len(ran) < planned:
+        failures.append(f"{planned - len(ran)} planned checks did not run")
+    failures += [f"{c['id']} failed" for c in ran if not c["passed"]]
+    record.update(passed=sum(c["passed"] for c in ran), total=planned, failures=failures,
+                  status="passed" if planned and not failures else "checks_failed")
     return record

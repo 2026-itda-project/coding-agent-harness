@@ -36,12 +36,14 @@ Docker 샌드박스에서 빌드·실행 -> Spec의 HTTP 점검 -> 재시작 후
 | --- | --- | --- |
 | `initial_input` | `confirmed` | 사용자가 입력에서 명시 |
 | `ai_proposal` | `proposed` | 사용자가 말하지 않아 AI가 관례대로 정한 기본값. 본문과 구현에 포함하고 출처를 유지 |
-| `ai_proposal` | `needs_clarification` | `open_issues`에만. 서비스 성격이 달라지는 미결정 |
+| `ai_proposal` | `confirmed` | 사용자가 Review에서 수락한 AI 제안. 출처는 유지. 입력에서 바로 생성한 PRD에는 나올 수 없다 |
+| `initial_input` 또는 `ai_proposal` | `needs_clarification` | `open_issues`에만. 서비스 성격이 달라지는 미결정 |
 | `harness_policy` | `confirmed` | 생성 범위 제약(역할 전환, 모의 연동, 데이터 유지 등) |
 
 검증 규칙 (`check_prd`):
 - ID가 문서 전체에서 유일하고 섹션 접두사와 맞는다. 설명이 비어 있지 않다.
-- `proposed`와 `ai_proposal`은 함께 쓴다. `needs_clarification`은 `open_issues`에만 있다. `harness_policy`는 `confirmed`다.
+- `proposed`는 반드시 `ai_proposal`이다(역방향은 강제하지 않는다). `needs_clarification`은 `open_issues`에만 있다. `harness_policy`는 `confirmed`다.
+- 입력에서 바로 생성한 PRD(`check_generated_prd`)에는 `confirmed + ai_proposal`이 있으면 안 된다. 사용자 수락이 없었기 때문이다.
 - AC의 `target_ids`는 존재하는 항목이다. 모든 `FR-`에 AC가 하나 이상 있다.
 - roles, user_flows, functional_requirements가 비어 있지 않다.
 
@@ -61,15 +63,18 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 
 ## 5. 작업 폴더와 실행 경계 (E5·E6)
 
-- 위치: `HARNESS_WORKSPACE_ROOT`(기본 `~/dev/2026-itda-project/harness-workspaces`)`/<run_id>/`. `app/`이 생성 코드(로컬 Git, 원격 없음), `artifacts/`가 실행 기록이다. Harness 저장소 안 경로는 거부한다.
-- Agent: `claude --bare -p`, `--permission-mode dontAsk`, 허용 도구는 작업 폴더 안으로 제한한 Read, Edit, Write(`./**`)와 샌드박스 스크립트 실행뿐이다. 폴더 밖 읽기는 거부됨을 확인했다(2026-10-15). Glob, Grep은 폴더 밖을 검색할 수 있어 허용하지 않으며, 검색은 샌드박스 안에서 한다. 생성물 Git에는 `.git/info/exclude`로 `node_modules/`, `data/`, `.venv/` 등을 항상 제외한다. `--bare`라서 인증은 `ANTHROPIC_API_KEY`만 사용한다(API 과금). Task별 `--max-budget-usd`.
+- 위치: `HARNESS_WORKSPACE_ROOT`(기본 `~/dev/2026-itda-project/harness-workspaces`)`/<run_id>/`. `app/`이 생성 코드, `app.git/`이 그 로컬 Git 저장소(원격 없음), `artifacts/`가 실행 기록이다. Git 저장소를 작업 폴더 밖에 두므로 샌드박스와 Agent는 hook이나 Git 설정을 건드릴 수 없고, Harness가 호스트에서 실행하는 Git 명령이 생성 코드에 의해 조작되지 않는다. Harness 저장소 안 경로는 거부한다.
+- Agent: `claude --bare -p`, `--permission-mode dontAsk`, 허용 도구는 작업 폴더 안으로 제한한 Read, Edit, Write(`./**`)와 샌드박스 스크립트 실행뿐이다. 폴더 밖 읽기는 거부됨을 확인했다(2026-10-15). Glob, Grep은 폴더 밖을 검색할 수 있어 허용하지 않으며, 검색은 샌드박스 안에서 한다. 생성물 Git에는 `app.git/info/exclude`로 `.git`, `node_modules/`, `data/`, `.venv/` 등을 항상 제외한다. `--bare`라서 인증은 `ANTHROPIC_API_KEY`만 사용한다(API 과금). Task별 `--max-budget-usd`.
 - Agent는 호스트의 작업 폴더만 수정한다. 명령은 `backend/app/m2/sandbox/sandbox.sh`로만 실행하며, 작업 폴더만 마운트한 Docker 컨테이너(`harness-sandbox:m2-1`)에서 돈다. 패키지 설치를 위해 네트워크는 열려 있다.
 - E6 빌드·실행도 같은 이미지에서 한다. 포트는 `127.0.0.1`에만 연다.
+- Context에는 작업 폴더 안의 실제 파일만 넣는다. 심볼릭 링크나 폴더 밖으로 이어지는 경로는 읽지 않고 `repository.skipped`에 이유를 남긴다.
+- Task의 모든 시도를 `agent/TASK-xxx-attempt-N.json`, `diffs/TASK-xxx-attempt-N.diff`로 남기고, 예산은 모든 시도의 비용을 합산한다. 비용을 알 수 없는 기록이 있으면 다음 유료 호출을 시작하지 않는다.
 
 ## 6. Acceptance 판정 (E6)
 
 - 자동: Spec `checks`의 `http_steps`(상태 코드, 응답 포함 문자열). 재시작 후 `rerun_after_restart` 점검을 다시 실행해 데이터 유지를 확인한다.
 - 수동: 각 점검의 `manual_steps`를 브라우저에서 확인한다(`--keep-running`으로 미리보기 유지).
+- 자동 판정 통과 조건: 최초 실행과 재시작 후 모두 `GET /`가 200이고, 계획된 점검(최초 전체 + 재시작 후 지속성 점검)이 모두 실행되어 통과. 실행되지 않은 점검은 실패로 `failures`에 기록한다.
 - 완료 판정은 빌드 성공이 아니라 자동 점검 전부 통과와 수동 점검 기록이다. 시나리오별 체크리스트는 픽스처 폴더에 둔다.
 
 ## 7. 실행

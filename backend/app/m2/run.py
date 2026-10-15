@@ -18,7 +18,7 @@ from app.llm import claude
 from app.llm.errors import AnalysisError
 from app.m2 import agent, stages, verify
 from app.m2.context import build_context
-from app.m2.contracts import PRD, Plan, Spec, check_prd, order_tasks
+from app.m2.contracts import PRD, Plan, Spec, check_generated_prd, check_prd, order_tasks
 
 STAGES = ("spec", "plan", "code", "verify")
 WORKSPACE_ROOT = Path(os.getenv("HARNESS_WORKSPACE_ROOT") or Path.home() / "dev/2026-itda-project/harness-workspaces")
@@ -42,27 +42,33 @@ def load(path):
 
 
 class Budget:
-    """Pre-call budget check from recorded costs; not a provider-side billing cap."""
+    """Pre-call budget check from recorded costs; not a provider-side billing cap.
+    `costs` returns every recorded cost of the run, including failed and earlier attempts."""
 
-    def __init__(self, limit, log):
-        self.limit, self.log = limit, log
+    def __init__(self, limit, costs):
+        self.limit, self.costs = limit, costs
 
     def spent(self):
-        return sum(r.get("cost_usd") or 0 for r in self.log)
+        costs = self.costs()
+        if any(c is None for c in costs):
+            raise SystemExit("budget stop: a recorded call has unknown cost; not starting another paid call")
+        return sum(costs)
+
+    def check(self, need, what):
+        spent = self.spent()
+        if spent + need > self.limit:
+            raise SystemExit(f"budget stop before {what}: spent {spent:.4f} + reserve {need:.4f} > {self.limit} USD")
 
     def reserve(self, role, max_output=32000, max_input=60000):
-        model = claude.model_for(role)
-        incoming, outgoing = claude.PRICES[model]
-        need = (max_input * incoming + max_output * outgoing) / 1_000_000
-        if self.spent() + need > self.limit:
-            raise SystemExit(f"budget stop: spent {self.spent():.4f} + reserve {need:.4f} > {self.limit} USD")
+        incoming, outgoing = claude.PRICES[claude.model_for(role)]
+        self.check((max_input * incoming + max_output * outgoing) / 1_000_000, role)
 
 
 def cmd_prd(args):
     out = Path(args.out)
     user_input = Path(args.input).read_text()
     log = []
-    Budget(args.budget_usd, log).reserve("sonnet", max_input=10000)
+    Budget(args.budget_usd, lambda: [r.get("cost_usd") for r in log]).reserve("sonnet", max_input=10000)
     try:
         prd = stages.generate_prd(user_input, log)
     except stages.ContractError as exc:
@@ -75,7 +81,7 @@ def cmd_prd(args):
         "generated_at": now(), "input_file": Path(args.input).name, "input_sha256": sha(user_input),
         "prompt_sha256": sha(stages.prompt("prd_generation") + stages.prompt("stack_contract")),
         "prd_sha256": sha((out / "prd.json").read_text()), "calls": log,
-        "contract_check": {"errors": check_prd(prd)}})
+        "contract_check": {"errors": check_generated_prd(prd)}})
     print(f"PRD saved to {out / 'prd.json'}; cost {sum(r.get('cost_usd') or 0 for r in log):.4f} USD")
 
 
@@ -93,16 +99,21 @@ def cmd_run(args):
         state = {"run_id": run_id, "started_at": now(), "prd_source": str(Path(args.prd).resolve()),
                  "prd_sha256": sha(prd_text), "models": {"sonnet": claude.model_for("sonnet"),
                                                           "opus": claude.model_for("opus")},
-                 "stages": {}, "calls": [], "tasks": {}}
+                 "stages": {}, "calls": [], "tasks": {}, "attempts": []}
     art = run_dir / "artifacts"
     app_dir = run_dir / "app"
     log = state["calls"]
-    budget = Budget(args.budget_usd, log)
+    attempts = state.setdefault("attempts", list(state["tasks"].values()))  # older runs kept only the last try
+    budget = Budget(args.budget_usd, lambda: [r.get("cost_usd") for r in log]
+                    + [a["agent"].get("total_cost_usd") for a in attempts])
     until = STAGES.index(args.until)
 
     def save():
-        state["cost_usd"] = {"messages_api": round(budget.spent(), 6),
-                             "agent": round(sum(t["agent"].get("total_cost_usd") or 0 for t in state["tasks"].values()), 6)}
+        msg = [r.get("cost_usd") for r in log]
+        agt = [a["agent"].get("total_cost_usd") for a in attempts]
+        state["cost_usd"] = {"messages_api": round(sum(c for c in msg if c is not None), 6),
+                             "agent": round(sum(c for c in agt if c is not None), 6),
+                             "unknown_cost_records": sum(c is None for c in msg + agt)}
         dump(run_dir / "run.json", state)
 
     prd = PRD.model_validate(load(art / "prd.json"))
@@ -127,23 +138,25 @@ def cmd_run(args):
             for tid in state["task_order"]:
                 if state["tasks"].get(tid, {}).get("status") == "done":
                     continue
-                agent_spent = sum(t["agent"].get("total_cost_usd") or 0 for t in state["tasks"].values())
-                if budget.spent() + agent_spent + args.task_budget_usd > args.budget_usd:
-                    raise SystemExit(f"budget stop before {tid}")
+                budget.check(args.task_budget_usd, tid)
                 done = {k: {"task_id": k, "title": v["title"], "commit": v["commit"], "files": v["files"],
-                            "summary": v["agent"].get("result")} for k, v in state["tasks"].items()
+                            "attempt": v.get("attempt", 1), "summary": v["agent"].get("result")}
+                        for k, v in state["tasks"].items()
                         if v["status"] == "done"}
                 context = build_context(tasks[tid], prd, spec, app_dir, done, agent.SANDBOX)
                 dump(art / f"contexts/{tid}.json", context)
                 record = agent.run_task(tasks[tid], context, app_dir, args.task_budget_usd)
+                record["attempt"] = sum(a["task_id"] == tid for a in attempts) + 1
+                attempts.append(record)
                 state["tasks"][tid] = record
-                dump(art / f"agent/{tid}.json", record)
-                (art / f"diffs/{tid}.diff").parent.mkdir(parents=True, exist_ok=True)
-                (art / f"diffs/{tid}.diff").write_text(agent.git(app_dir, "diff", record["base_commit"], record["commit"]))
+                name = f"{tid}-attempt-{record['attempt']}"
+                dump(art / f"agent/{name}.json", record)
+                (art / f"diffs/{name}.diff").parent.mkdir(parents=True, exist_ok=True)
+                (art / f"diffs/{name}.diff").write_text(agent.git(app_dir, "diff", record["base_commit"], record["commit"]))
                 save()
                 if record["status"] != "done":
                     state["stages"]["code"] = f"failed at {tid}"
-                    raise SystemExit(f"{tid} failed; see {art / f'agent/{tid}.json'}")
+                    raise SystemExit(f"{tid} failed; see {art / f'agent/{name}.json'}")
             state["stages"]["code"] = "done"
         if until >= 3:
             result = verify.verify(app_dir, spec, f"harness-{state['run_id']}", keep_running=args.keep_running)

@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from app.llm import claude
-from app.m2.contracts import PRD, Plan, Spec, check_plan, check_prd, check_spec, output_schema
+from app.m2.contracts import PRD, Plan, Spec, check_generated_prd, check_plan, check_spec, output_schema
 
 PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
 
@@ -37,7 +37,7 @@ def generate(stage, role, system, payload, model_cls, checker, log, effort, cons
 
 def generate_prd(user_input, log):
     system = prompt("prd_generation") + "\n\n" + prompt("stack_contract")
-    return generate("prd", "sonnet", system, {"user_input": user_input}, PRD, check_prd, log, effort=None)
+    return generate("prd", "sonnet", system, {"user_input": user_input}, PRD, check_generated_prd, log, effort=None)
 
 
 def generate_spec(prd, log):

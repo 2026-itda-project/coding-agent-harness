@@ -66,8 +66,10 @@ def check_prd(prd):
                 errors.append(f"{item.id} must start with {prefix} in {section}")
             if not item.description.strip():
                 errors.append(f"{item.id} empty description")
-            if (item.status == "proposed") != (item.source == "ai_proposal"):
-                errors.append(f"{item.id}: proposed status and ai_proposal source must go together")
+            # ai_proposal may be proposed (not yet accepted), confirmed (accepted in Review) or an
+            # open needs_clarification; proposed content is always an AI proposal.
+            if item.status == "proposed" and item.source != "ai_proposal":
+                errors.append(f"{item.id}: proposed status requires ai_proposal source")
             if item.source == "harness_policy" and item.status != "confirmed":
                 errors.append(f"{item.id}: harness_policy items are confirmed platform constraints")
             if (item.status == "needs_clarification") != (section == "open_issues"):
@@ -86,6 +88,13 @@ def check_prd(prd):
         if not getattr(prd, name):
             errors.append(f"{name} is empty")
     return errors
+
+
+def check_generated_prd(prd):
+    """A PRD generated straight from user input had no Review, so no AI proposal can be accepted yet."""
+    return check_prd(prd) + [f"{i.id}: confirmed ai_proposal without user acceptance"
+                             for i in prd_items(prd).values()
+                             if i.status == "confirmed" and i.source == "ai_proposal"]
 
 
 # ---------- Spec (E2) ----------

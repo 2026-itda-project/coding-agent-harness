@@ -13,12 +13,19 @@ HARNESS_REPO = Path(__file__).resolve().parents[3]
 SANDBOX = str(Path(__file__).resolve().parent / "sandbox" / "sandbox.sh")
 SANDBOX_IMAGE = "harness-sandbox:m2-1"
 # Same exclusions as the stack contract's .gitignore, enforced even if the agent forgets it.
-GIT_EXCLUDE = "node_modules/\nfrontend/dist/\ndata/\n.venv/\n__pycache__/\n.env\n"
+GIT_EXCLUDE = ".git\nnode_modules/\nfrontend/dist/\ndata/\n.venv/\n__pycache__/\n.env\n"
 AGENT_TIMEOUT_S = 1800
 
 
+def git_dir(app_dir):
+    return Path(app_dir).parent / "app.git"
+
+
 def git(app_dir, *args):
-    return subprocess.run(["git", *args], cwd=app_dir, capture_output=True, text=True, check=True).stdout
+    # The repository lives next to the work tree, not inside it: the sandbox mounts only the
+    # work tree, so generated code can never plant hooks or config that the host git would run.
+    return subprocess.run(["git", f"--git-dir={git_dir(app_dir)}", f"--work-tree={app_dir}", *args],
+                          cwd=app_dir, capture_output=True, text=True, check=True).stdout
 
 
 def init_workspace(app_dir):
@@ -26,10 +33,11 @@ def init_workspace(app_dir):
     if app_dir == HARNESS_REPO or HARNESS_REPO in app_dir.parents:
         raise ValueError("작업 폴더는 Harness 저장소 밖이어야 합니다.")
     app_dir.mkdir(parents=True, exist_ok=False)
-    git(app_dir, "init", "-q", "-b", "main")
+    subprocess.run(["git", "init", "-q", "-b", "main", "--bare", str(git_dir(app_dir))], check=True)
+    git(app_dir, "config", "core.bare", "false")
     git(app_dir, "config", "user.name", "harness-agent")
     git(app_dir, "config", "user.email", "harness-agent@localhost")
-    (app_dir / ".git/info/exclude").write_text(GIT_EXCLUDE)
+    (git_dir(app_dir) / "info/exclude").write_text(GIT_EXCLUDE)
     git(app_dir, "commit", "-q", "--allow-empty", "-m", "init: empty workspace")
     return app_dir
 
