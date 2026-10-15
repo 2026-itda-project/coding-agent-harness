@@ -21,6 +21,9 @@ type Gap = {
   related_requirement_ids: string[]
 }
 
+// Review에서 Requirement와 연결된 Gap (결정 입력·추천 연결)
+type GapLink = { gap: Gap; requirement_id: string }
+
 type Analysis = {
   project_id: string
   run_id: string
@@ -53,6 +56,7 @@ type WorkflowState = Analysis & {
   questions: ClarificationQuestion[]
   history: ClarificationRound[]
   edit_count: number
+  gap_links: GapLink[]
 }
 
 // backend RequirementCategory와 같은 값
@@ -72,6 +76,8 @@ type ReviewAction =
   | { type: 'edit'; id: string; description: string; category: string; acceptance_criteria: string[]; confirm: boolean }
   | { type: 'add'; category: string; description: string; acceptance_criteria: string[] }
   | { type: 'resolve_gap'; gap_id: string; category?: string; description: string; acceptance_criteria: string[] }
+  | { type: 'link_gap'; gap_ids: string[] }
+  | { type: 'unlink_gap'; gap_id: string }
   | { type: 'approve' }
 
 type ReviewedRequirements = {
@@ -79,6 +85,7 @@ type ReviewedRequirements = {
   run_id: string
   requirements: Requirement[]
   open_gaps: Gap[]
+  gap_links: GapLink[]
   metrics: Record<string, number>
 }
 
@@ -173,7 +180,7 @@ export default function App() {
       setLoading('')
       return
     }
-    const initial: WorkflowState = { ...analysis, text, phase: 'clarifying', questions: [], history: [], edit_count: 0 }
+    const initial: WorkflowState = { ...analysis, text, phase: 'clarifying', questions: [], history: [], edit_count: 0, gap_links: [] }
     setState(initial)
     await step(initial)
   }
@@ -242,9 +249,11 @@ export default function App() {
   const editable = state?.phase === 'review' && !loading
   const pending = state?.requirements.filter(r => r.status === 'needs_clarification' && r.blocking) ?? []
   const proposals = state?.requirements.filter(r => r.status === 'proposed') ?? []
-  // backend workflow.open_gaps와 같은 규칙: 미결정 Requirement에 연결된 Gap은 그 Requirement가 Open Issue로 간다
-  const unresolvedIds = new Set(state?.requirements.filter(r => r.status === 'needs_clarification').map(r => r.id))
-  const openGaps = state?.gaps.filter(g => !g.blocking && !g.related_requirement_ids.some(id => unresolvedIds.has(id))) ?? []
+  // backend workflow.open_gaps·suggested_requirement_id와 같은 규칙: 남은 non-blocking Gap 전부, 관련 Requirement가 하나면 연결 추천
+  const openGaps = state?.gaps.filter(g => !g.blocking) ?? []
+  const suggestionFor = (gap: Gap) =>
+    gap.related_requirement_ids.length === 1 ? state?.requirements.find(r => r.id === gap.related_requirement_ids[0]) : undefined
+  const suggested = openGaps.filter(gap => suggestionFor(gap))
 
   const draftForm = draft && (
     <form onSubmit={saveDraft}>
@@ -273,6 +282,16 @@ export default function App() {
         <span className={r.source === 'ai_proposal' ? 'badge ai' : 'badge'}>{SOURCE_LABELS[r.source] ?? r.source}</span>
         {r.blocking && ' · 진행 보류'} — {r.description}
         {r.acceptance_criteria.length > 0 && <small>AC: {r.acceptance_criteria.join(' / ')}</small>}
+        {state?.gap_links.filter(l => l.requirement_id === r.id).map(l => (
+          <small key={l.gap.id}>
+            연결된 확인 사항: {l.gap.id} {l.gap.description}
+            {editable && !draft && (
+              <span className="actions">
+                <button type="button" onClick={() => review({ type: 'unlink_gap', gap_id: l.gap.id })}>연결 취소</button>
+              </span>
+            )}
+          </small>
+        ))}
         {draft?.id === r.id ? draftForm : editable && (
           <span className="actions">
             {r.status === 'proposed' && <button key="accept" type="button" onClick={() => review({ type: 'accept', ids: [r.id] })}>수락</button>}
@@ -364,15 +383,26 @@ export default function App() {
                     : <button key="add" type="button" disabled={!editable || !!draft}
                         onClick={() => setDraft({ id: '', category: 'functional', description: '', ac: '', confirm: false })}>요구사항 추가</button>}
                   <h3>남은 확인 사항 ({openGaps.length})</h3>
-                  <p>진행을 막지 않지만 아직 정하지 않은 사항입니다. 그대로 승인하면 PRD의 Open Issues로 인계됩니다. 지금 정했다면 결정을 입력하세요. 입력한 결정은 요구사항으로 추가됩니다.</p>
+                  <p>진행을 막지 않지만 아직 정하지 않은 사항입니다. 그대로 승인하면 PRD의 Open Issues로 인계됩니다. 지금 정했다면 결정을 입력하세요. 입력한 결정은 요구사항으로 추가됩니다. 이미 있는 요구사항과 같은 내용이면 추천대로 연결해 하나로 합칠 수 있습니다.</p>
+                  {editable && suggested.length > 0 && (
+                    <button type="button" disabled={!!draft}
+                      onClick={() => review({ type: 'link_gap', gap_ids: suggested.map(gap => gap.id) })}>추천 모두 연결 ({suggested.length})</button>
+                  )}
                   {openGaps.length === 0 ? <p>없음</p> : (
                     <ul>
                       {openGaps.map(gap => (
                         <li key={gap.id}>
                           <strong>{gap.id}</strong> [{gap.category}] — {gap.description}
                           <small>관련 요구사항: {gap.related_requirement_ids.join(', ') || '서비스 전반'}</small>
+                          {suggestionFor(gap) && (
+                            <small>추천: {suggestionFor(gap)!.id} "{suggestionFor(gap)!.description}"와 같은 내용으로 보이면 연결하세요.</small>
+                          )}
                           {draft?.gapId === gap.id ? draftForm : editable && (
                             <span className="actions">
+                              {suggestionFor(gap) && (
+                                <button type="button" disabled={!!draft}
+                                  onClick={() => review({ type: 'link_gap', gap_ids: [gap.id] })}>추천대로 연결</button>
+                              )}
                               <button type="button" disabled={!!draft}
                                 onClick={() => setDraft({ id: '', category: '', description: '', ac: '', confirm: false, gapId: gap.id })}>결정 입력</button>
                             </span>

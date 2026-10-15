@@ -1,11 +1,12 @@
 {
   "text": "사내 휴가관리 서비스를 만들어줘. 역할은 직원과 관리자 두 가지다. 직원은 휴가 종류(연차, 반차, 병가)와 시작일·종료일을 입력해 신청한다. 신청은 대기 상태로 시작하고, 직속 관리자만 자기 팀원의 신청을 승인 또는 반려한다. 승인되면 승인 상태, 반려되면 반려 상태로 끝난다. 직원은 대기 상태일 때만 신청을 수정하거나 취소할 수 있고, 취소하면 취소 상태가 된다. 반려된 신청은 재사용하지 않고 새로 신청한다. 승인 시 잔여 연차에서 차감한다. 알림 방식은 추후 결정.",
-  "reviewed": {
-    "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-    "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+  "state_at_review": {
+    "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+    "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+    "clarification_round": 3,
     "requirements": [
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-001",
         "category": "scope",
         "description": "사내 휴가관리 서비스를 만든다.",
@@ -15,7 +16,7 @@
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-002",
         "category": "role",
         "description": "직원 역할이 있다.",
@@ -25,7 +26,7 @@
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-003",
         "category": "role",
         "description": "관리자 역할이 있다.",
@@ -35,98 +36,118 @@
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-004",
         "category": "functional",
-        "description": "직원은 휴가 종류(연차, 반차, 병가)와 시작일·종료일을 입력해 휴가를 신청한다.",
+        "description": "직원은 휴가 종류와 시작일·종료일을 입력해 휴가를 신청한다.",
         "status": "confirmed",
         "source": "initial_input",
         "blocking": false,
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-005",
-        "category": "state",
-        "description": "신청은 대기 상태로 시작한다.",
+        "category": "business_rule",
+        "description": "휴가 종류는 연차, 반차, 병가다.",
         "status": "confirmed",
         "source": "initial_input",
         "blocking": false,
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-006",
-        "category": "permission",
-        "description": "직속 관리자만 자기 팀원의 신청을 승인 또는 반려할 수 있다.",
-        "status": "confirmed",
-        "source": "initial_input",
-        "blocking": false,
-        "acceptance_criteria": []
-      },
-      {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-        "id": "REQ-007",
         "category": "state",
-        "description": "신청이 승인되면 승인 상태로 끝난다.",
+        "description": "휴가 신청은 대기 상태로 시작한다.",
         "status": "confirmed",
         "source": "initial_input",
         "blocking": false,
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-007",
+        "category": "permission",
+        "description": "직속 관리자만 자기 팀원의 휴가 신청을 승인 또는 반려할 수 있다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-008",
         "category": "state",
-        "description": "신청이 반려되면 반려 상태로 끝난다.",
+        "description": "휴가 신청이 승인되면 승인 상태로 끝난다.",
         "status": "confirmed",
         "source": "initial_input",
         "blocking": false,
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-009",
-        "category": "permission",
-        "description": "직원은 신청이 대기 상태일 때만 신청을 수정하거나 취소할 수 있다.",
-        "status": "confirmed",
-        "source": "initial_input",
-        "blocking": false,
-        "acceptance_criteria": []
-      },
-      {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-        "id": "REQ-010",
         "category": "state",
-        "description": "신청을 취소하면 취소 상태가 된다.",
+        "description": "휴가 신청이 반려되면 반려 상태로 끝난다.",
         "status": "confirmed",
         "source": "initial_input",
         "blocking": false,
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-010",
+        "category": "permission",
+        "description": "직원은 대기 상태인 휴가 신청만 수정할 수 있다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-011",
-        "category": "business_rule",
-        "description": "반려된 신청은 재사용하지 않고 새로 신청한다.",
+        "category": "permission",
+        "description": "직원은 대기 상태인 휴가 신청만 취소할 수 있다.",
         "status": "confirmed",
         "source": "initial_input",
         "blocking": false,
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-012",
-        "category": "business_rule",
-        "description": "승인 시 잔여 연차에서 차감한다.",
+        "category": "state",
+        "description": "휴가 신청을 취소하면 취소 상태가 된다.",
         "status": "confirmed",
         "source": "initial_input",
         "blocking": false,
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-013",
+        "category": "business_rule",
+        "description": "반려된 휴가 신청은 재사용하지 않고 새로 신청한다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-014",
+        "category": "business_rule",
+        "description": "휴가 신청 승인 시 잔여 연차에서 차감한다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-015",
         "category": "functional",
         "description": "알림 방식은 추후 결정한다.",
         "status": "needs_clarification",
@@ -135,8 +156,8 @@
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-        "id": "REQ-014",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-016",
         "category": "scope",
         "description": "사내 직원 대상 휴가 신청·승인만 범위에 포함한다.",
         "status": "confirmed",
@@ -145,30 +166,789 @@
         "acceptance_criteria": []
       },
       {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-        "id": "REQ-015",
-        "category": "state",
-        "description": "대기 상태의 신청을 수정하면 수정된 내용으로 대기 상태를 유지하고 기존 승인 절차를 이어간다.",
-        "status": "proposed",
-        "source": "ai_proposal",
-        "blocking": false,
-        "acceptance_criteria": []
-      },
-      {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-        "id": "REQ-016",
-        "category": "state",
-        "description": "취소 상태는 최종 상태이며, 취소된 신청은 관리자가 승인하거나 반려할 수 없다.",
-        "status": "proposed",
-        "source": "ai_proposal",
-        "blocking": false,
-        "acceptance_criteria": []
-      },
-      {
-        "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
         "id": "REQ-017",
+        "category": "business_rule",
+        "description": "연차는 1일당 1일, 반차는 1회당 0.5일을 잔여 연차에서 차감하고 병가는 차감하지 않는다.",
+        "status": "proposed",
+        "source": "ai_proposal",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-018",
         "category": "exception",
-        "description": "잔여 연차가 신청에 필요한 일수보다 부족하면 신청 단계에서 제출을 막는다.",
+        "description": "잔여 연차가 부족해도 대기 상태로 신청할 수 있지만 관리자는 승인할 수 없으며, 잔여 연차의 음수는 허용하지 않는다.",
+        "status": "proposed",
+        "source": "ai_proposal",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-019",
+        "category": "scope",
+        "description": "관리자가 직원별 잔여 연차의 초기값을 등록하고 필요할 때 추가하거나 수정하며, 서비스가 승인에 따른 차감 내역과 현재 잔여량을 직접 관리한다.",
+        "status": "proposed",
+        "source": "ai_proposal",
+        "blocking": false,
+        "acceptance_criteria": []
+      }
+    ],
+    "gaps": [
+      {
+        "id": "GAP-001",
+        "related_requirement_ids": [
+          "REQ-005",
+          "REQ-014"
+        ],
+        "category": "business_rule",
+        "description": "승인 시 잔여 연차를 차감한다는 규칙이 연차·반차·병가 중 어디에 적용되는지 불명확하다. 특히 반차가 연차 잔여량에서 차감되는지와 병가도 연차를 소비하는지를 결정해야 휴가 종류별 승인 결과를 정의할 수 있다.",
+        "blocking": true
+      },
+      {
+        "id": "GAP-002",
+        "related_requirement_ids": [
+          "REQ-008",
+          "REQ-014"
+        ],
+        "category": "exception_handling",
+        "description": "차감할 잔여 연차가 부족한 신청에 대한 처리가 정해지지 않았다. 신청 자체를 허용하지 않을지, 대기 신청은 허용하되 승인을 막을지, 음수 잔여량을 허용할지에 따라 승인 가능 여부와 최종 상태가 달라진다.",
+        "blocking": true
+      },
+      {
+        "id": "GAP-003",
+        "related_requirement_ids": [
+          "REQ-014",
+          "REQ-016"
+        ],
+        "category": "service_scope",
+        "description": "차감 기준이 되는 직원별 잔여 연차의 초기값과 갱신 주체가 정해지지 않았다. 이 서비스가 잔여 연차를 직접 관리하는지, 아니면 범위 밖에서 제공된 값을 사용하기만 하는지 결정해야 차감 기능과 서비스 경계를 정의할 수 있다.",
+        "blocking": true
+      },
+      {
+        "id": "GAP-004",
+        "related_requirement_ids": [
+          "REQ-004",
+          "REQ-005",
+          "REQ-014"
+        ],
+        "category": "business_rule",
+        "description": "시작일·종료일을 기준으로 차감 일수를 계산하는 세부 규칙이 없다. 주말·공휴일 제외 여부, 시작일과 종료일의 포함 여부, 반차의 차감 단위가 정해져야 정확한 잔여 연차 계산이 가능하다.",
+        "blocking": false
+      },
+      {
+        "id": "GAP-005",
+        "related_requirement_ids": [
+          "REQ-015"
+        ],
+        "category": "service_scope",
+        "description": "신청·승인·반려·취소 등의 상태 변경을 알릴 대상과 알림 방식이 추후 결정 사항으로 남아 있어 알림 기능의 범위를 아직 확정할 수 없다.",
+        "blocking": false
+      }
+    ],
+    "clarification_needed": false,
+    "analysis_mode": "snowchat",
+    "usage": [
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "requirement_extraction",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:35:12.746775+00:00",
+        "usage": {
+          "completion_tokens": 1395,
+          "prompt_tokens": 701,
+          "total_tokens": 2096,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 298,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 0,
+            "cached_tokens": 0,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 701,
+        "output_tokens": 1395,
+        "latency": 13.125,
+        "ended_at": "2026-10-15T03:35:25.871652+00:00"
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "gap_analysis",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:35:25.871898+00:00",
+        "usage": {
+          "completion_tokens": 1222,
+          "prompt_tokens": 2970,
+          "total_tokens": 4192,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 840,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 1465,
+            "cached_tokens": 1502,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 2970,
+        "output_tokens": 1222,
+        "latency": 17.7,
+        "ended_at": "2026-10-15T03:35:43.572330+00:00"
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "question_generation",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:35:43.657312+00:00",
+        "usage": {
+          "completion_tokens": 178,
+          "prompt_tokens": 2013,
+          "total_tokens": 2191,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 0,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 2010,
+            "cached_tokens": 0,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 2013,
+        "output_tokens": 178,
+        "latency": 3.699,
+        "ended_at": "2026-10-15T03:35:47.356746+00:00"
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "requirement_update",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:35:47.701345+00:00",
+        "usage": {
+          "completion_tokens": 143,
+          "prompt_tokens": 2466,
+          "total_tokens": 2609,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 48,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 2463,
+            "cached_tokens": 0,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 2466,
+        "output_tokens": 143,
+        "latency": 3.579,
+        "ended_at": "2026-10-15T03:35:51.280063+00:00"
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "gap_analysis",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:35:51.280525+00:00",
+        "usage": {
+          "completion_tokens": 1489,
+          "prompt_tokens": 3061,
+          "total_tokens": 4550,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 985,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 1556,
+            "cached_tokens": 1502,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 3061,
+        "output_tokens": 1489,
+        "latency": 23.228,
+        "ended_at": "2026-10-15T03:36:14.508299+00:00"
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "question_generation",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:36:14.508828+00:00",
+        "usage": {
+          "completion_tokens": 317,
+          "prompt_tokens": 2236,
+          "total_tokens": 2553,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 0,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 2233,
+            "cached_tokens": 0,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 2236,
+        "output_tokens": 317,
+        "latency": 4.516,
+        "ended_at": "2026-10-15T03:36:19.025195+00:00"
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "question_generation",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:36:19.117988+00:00",
+        "usage": {
+          "completion_tokens": 749,
+          "prompt_tokens": 2236,
+          "total_tokens": 2985,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 463,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 0,
+            "cached_tokens": 2233,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 2236,
+        "output_tokens": 749,
+        "latency": 9.607,
+        "ended_at": "2026-10-15T03:36:28.724799+00:00"
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+        "stage": "question_generation",
+        "model": "gpt-5.6-sol",
+        "success": true,
+        "cost": null,
+        "started_at": "2026-10-15T03:36:28.816156+00:00",
+        "usage": {
+          "completion_tokens": 257,
+          "prompt_tokens": 2236,
+          "total_tokens": 2493,
+          "completion_tokens_details": {
+            "accepted_prediction_tokens": 0,
+            "audio_tokens": 0,
+            "reasoning_tokens": 0,
+            "rejected_prediction_tokens": 0,
+            "text_tokens": null
+          },
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 0,
+            "cached_tokens": 2233,
+            "image_tokens": null,
+            "text_tokens": null
+          }
+        },
+        "input_tokens": 2236,
+        "output_tokens": 257,
+        "latency": 5.051,
+        "ended_at": "2026-10-15T03:36:33.866898+00:00"
+      }
+    ],
+    "text": "사내 휴가관리 서비스를 만들어줘. 역할은 직원과 관리자 두 가지다. 직원은 휴가 종류(연차, 반차, 병가)와 시작일·종료일을 입력해 신청한다. 신청은 대기 상태로 시작하고, 직속 관리자만 자기 팀원의 신청을 승인 또는 반려한다. 승인되면 승인 상태, 반려되면 반려 상태로 끝난다. 직원은 대기 상태일 때만 신청을 수정하거나 취소할 수 있고, 취소하면 취소 상태가 된다. 반려된 신청은 재사용하지 않고 새로 신청한다. 승인 시 잔여 연차에서 차감한다. 알림 방식은 추후 결정.",
+    "phase": "review",
+    "questions": [],
+    "history": [
+      {
+        "round": 1,
+        "gaps": [
+          {
+            "id": "GAP-001",
+            "related_requirement_ids": [
+              "REQ-014"
+            ],
+            "category": "service_scope",
+            "description": "차감에 사용할 직원별 잔여 연차의 최초 값과 이후 부여·조정 값을 이 서비스에서 관리하는지, 아니면 다른 시스템이나 별도 절차에서 제공받는지가 정해지지 않았다. 이 범위가 결정되지 않으면 승인 시 연차를 차감하는 핵심 동작과 관리자 권한 범위를 정의할 수 없다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-002",
+            "related_requirement_ids": [
+              "REQ-014"
+            ],
+            "category": "business_rule",
+            "description": "차감할 잔여 연차가 부족한 신청을 제출하거나 승인할 수 있는지, 아니면 어느 단계에서 차단할지가 정해지지 않았다. 이는 신청 및 승인 가능 여부를 바꾸는 핵심 자격 규칙이다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-003",
+            "related_requirement_ids": [
+              "REQ-005",
+              "REQ-014"
+            ],
+            "category": "business_rule",
+            "description": "연차·반차·병가별 차감량과 시작일·종료일 사이의 차감 일수 산정 방식이 정해지지 않았다. 승인 시 차감한다는 원칙은 확정됐지만 실제 잔액 계산 규칙은 추가 정의가 필요하다.",
+            "blocking": false
+          },
+          {
+            "id": "GAP-004",
+            "related_requirement_ids": [
+              "REQ-015"
+            ],
+            "category": "service_scope",
+            "description": "신청, 승인, 반려, 수정 또는 취소 시 알림을 제공할지와 제공한다면 어떤 방식으로 할지가 추후 결정 사항으로 남아 있어 알림 기능의 범위를 아직 명세할 수 없다.",
+            "blocking": false
+          }
+        ],
+        "questions": [
+          {
+            "gap_id": "GAP-001",
+            "question": "직원별 잔여 연차의 최초 등록과 이후 부여·조정을 이 서비스에서 관리할까요, 아니면 다른 시스템이나 별도 절차에서 받은 값만 사용할까요?",
+            "ai_proposal": "관리자는 이 서비스에서 직원별 최초 잔여 연차를 등록하고 이후 연차 부여 및 수동 조정을 관리할 수 있어야 한다."
+          },
+          {
+            "gap_id": "GAP-002",
+            "question": "잔여 연차가 신청 일수보다 부족할 때 신청 제출과 관리자 승인을 허용할까요, 아니면 신청 단계 또는 승인 단계 중 어디에서 차단할까요?",
+            "ai_proposal": "잔여 연차가 신청 일수보다 부족하면 직원이 신청을 제출할 수 없어야 한다."
+          }
+        ],
+        "answers": [
+          {
+            "gap_id": "GAP-001",
+            "answer": "사내 직원 대상 휴가 신청·승인만 범위에 포함한다."
+          },
+          {
+            "gap_id": "GAP-002",
+            "answer": ""
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "gaps": [
+          {
+            "id": "GAP-001",
+            "related_requirement_ids": [
+              "REQ-005",
+              "REQ-014"
+            ],
+            "category": "business_rule",
+            "description": "승인 시 잔여 연차를 차감한다는 규칙이 연차·반차·병가 중 어디에 적용되는지 불명확하다. 특히 반차가 연차 잔여량에서 차감되는지와 병가도 연차를 소비하는지를 결정해야 휴가 종류별 승인 결과를 정의할 수 있다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-002",
+            "related_requirement_ids": [
+              "REQ-008",
+              "REQ-014"
+            ],
+            "category": "exception_handling",
+            "description": "차감할 잔여 연차가 부족한 신청에 대한 처리가 정해지지 않았다. 신청 자체를 허용하지 않을지, 대기 신청은 허용하되 승인을 막을지, 음수 잔여량을 허용할지에 따라 승인 가능 여부와 최종 상태가 달라진다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-003",
+            "related_requirement_ids": [
+              "REQ-014",
+              "REQ-016"
+            ],
+            "category": "service_scope",
+            "description": "차감 기준이 되는 직원별 잔여 연차의 초기값과 갱신 주체가 정해지지 않았다. 이 서비스가 잔여 연차를 직접 관리하는지, 아니면 범위 밖에서 제공된 값을 사용하기만 하는지 결정해야 차감 기능과 서비스 경계를 정의할 수 있다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-004",
+            "related_requirement_ids": [
+              "REQ-004",
+              "REQ-005",
+              "REQ-014"
+            ],
+            "category": "business_rule",
+            "description": "시작일·종료일을 기준으로 차감 일수를 계산하는 세부 규칙이 없다. 주말·공휴일 제외 여부, 시작일과 종료일의 포함 여부, 반차의 차감 단위가 정해져야 정확한 잔여 연차 계산이 가능하다.",
+            "blocking": false
+          },
+          {
+            "id": "GAP-005",
+            "related_requirement_ids": [
+              "REQ-015"
+            ],
+            "category": "service_scope",
+            "description": "신청·승인·반려·취소 등의 상태 변경을 알릴 대상과 알림 방식이 추후 결정 사항으로 남아 있어 알림 기능의 범위를 아직 확정할 수 없다.",
+            "blocking": false
+          }
+        ],
+        "questions": [
+          {
+            "gap_id": "GAP-001",
+            "question": "휴가 종류별 차감 기준을 어떻게 할까요? 연차는 며칠, 반차는 며칠을 잔여 연차에서 차감하고, 병가도 잔여 연차에서 차감할지 알려주세요.",
+            "ai_proposal": "연차는 사용 일수만큼, 반차는 0.5일을 잔여 연차에서 차감하고 병가는 잔여 연차에서 차감하지 않는다."
+          },
+          {
+            "gap_id": "GAP-002",
+            "question": "잔여 연차가 부족할 때 신청과 승인을 어떻게 처리할까요? 신청부터 막을지, 신청은 받되 승인을 막을지, 또는 잔여 연차가 음수가 되도록 승인할지 정해주세요.",
+            "ai_proposal": "잔여 연차가 부족해도 대기 상태로 신청할 수 있지만 관리자는 해당 신청을 승인할 수 없다."
+          },
+          {
+            "gap_id": "GAP-003",
+            "question": "직원별 잔여 연차는 이 서비스에서 직접 관리할까요, 아니면 외부에서 받은 값을 사용만 할까요? 직접 관리한다면 초기 잔여량을 누가 어떤 기준으로 등록하고 이후 조정할 수 있는지도 알려주세요.",
+            "ai_proposal": "이 서비스에서 직원별 잔여 연차를 관리하며, 관리자가 연도별 초기 잔여량을 등록하고 필요할 때 조정할 수 있다."
+          }
+        ],
+        "answers": [
+          {
+            "gap_id": "GAP-001",
+            "answer": ""
+          },
+          {
+            "gap_id": "GAP-002",
+            "answer": ""
+          },
+          {
+            "gap_id": "GAP-003",
+            "answer": ""
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "gaps": [
+          {
+            "id": "GAP-001",
+            "related_requirement_ids": [
+              "REQ-005",
+              "REQ-014"
+            ],
+            "category": "business_rule",
+            "description": "승인 시 잔여 연차를 차감한다는 규칙이 연차·반차·병가 중 어디에 적용되는지 불명확하다. 특히 반차가 연차 잔여량에서 차감되는지와 병가도 연차를 소비하는지를 결정해야 휴가 종류별 승인 결과를 정의할 수 있다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-002",
+            "related_requirement_ids": [
+              "REQ-008",
+              "REQ-014"
+            ],
+            "category": "exception_handling",
+            "description": "차감할 잔여 연차가 부족한 신청에 대한 처리가 정해지지 않았다. 신청 자체를 허용하지 않을지, 대기 신청은 허용하되 승인을 막을지, 음수 잔여량을 허용할지에 따라 승인 가능 여부와 최종 상태가 달라진다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-003",
+            "related_requirement_ids": [
+              "REQ-014",
+              "REQ-016"
+            ],
+            "category": "service_scope",
+            "description": "차감 기준이 되는 직원별 잔여 연차의 초기값과 갱신 주체가 정해지지 않았다. 이 서비스가 잔여 연차를 직접 관리하는지, 아니면 범위 밖에서 제공된 값을 사용하기만 하는지 결정해야 차감 기능과 서비스 경계를 정의할 수 있다.",
+            "blocking": true
+          },
+          {
+            "id": "GAP-004",
+            "related_requirement_ids": [
+              "REQ-004",
+              "REQ-005",
+              "REQ-014"
+            ],
+            "category": "business_rule",
+            "description": "시작일·종료일을 기준으로 차감 일수를 계산하는 세부 규칙이 없다. 주말·공휴일 제외 여부, 시작일과 종료일의 포함 여부, 반차의 차감 단위가 정해져야 정확한 잔여 연차 계산이 가능하다.",
+            "blocking": false
+          },
+          {
+            "id": "GAP-005",
+            "related_requirement_ids": [
+              "REQ-015"
+            ],
+            "category": "service_scope",
+            "description": "신청·승인·반려·취소 등의 상태 변경을 알릴 대상과 알림 방식이 추후 결정 사항으로 남아 있어 알림 기능의 범위를 아직 확정할 수 없다.",
+            "blocking": false
+          }
+        ],
+        "questions": [
+          {
+            "gap_id": "GAP-001",
+            "question": "연차·반차·병가 각각 승인 시 잔여 연차에서 차감할지, 차감한다면 하루 또는 1회당 얼마를 차감할지 알려주세요.",
+            "ai_proposal": "연차는 사용 일수만큼, 반차는 0.5일을 잔여 연차에서 차감하고 병가는 차감하지 않는다."
+          },
+          {
+            "gap_id": "GAP-002",
+            "question": "잔여 연차가 부족한 경우 신청 자체를 막을지, 신청은 받되 승인을 막을지, 또는 음수 잔여량까지 승인할지 정해주세요.",
+            "ai_proposal": "차감 대상 휴가의 잔여 연차가 부족하면 신청과 승인을 허용하지 않는다."
+          },
+          {
+            "gap_id": "GAP-003",
+            "question": "직원별 잔여 연차를 이 서비스에서 관리할지 외부에서 제공된 값을 사용할지, 서비스에서 관리한다면 최초 잔여량을 누가 어떤 기준으로 입력하고 이후 누가 갱신할지 알려주세요.",
+            "ai_proposal": "이 서비스에서 직원별 잔여 연차를 관리하며, 관리자가 최초 잔여량을 입력하고 이후 변경 사항을 갱신한다."
+          }
+        ],
+        "answers": [
+          {
+            "gap_id": "GAP-001",
+            "answer": ""
+          },
+          {
+            "gap_id": "GAP-002",
+            "answer": ""
+          },
+          {
+            "gap_id": "GAP-003",
+            "answer": ""
+          }
+        ]
+      }
+    ],
+    "edit_count": 0,
+    "gap_links": []
+  },
+  "review_actions": [
+    {
+      "type": "link_gap",
+      "gap_ids": [
+        "GAP-005"
+      ]
+    }
+  ],
+  "reviewed": {
+    "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+    "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+    "requirements": [
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-001",
+        "category": "scope",
+        "description": "사내 휴가관리 서비스를 만든다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-002",
+        "category": "role",
+        "description": "직원 역할이 있다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-003",
+        "category": "role",
+        "description": "관리자 역할이 있다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-004",
+        "category": "functional",
+        "description": "직원은 휴가 종류와 시작일·종료일을 입력해 휴가를 신청한다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-005",
+        "category": "business_rule",
+        "description": "휴가 종류는 연차, 반차, 병가다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-006",
+        "category": "state",
+        "description": "휴가 신청은 대기 상태로 시작한다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-007",
+        "category": "permission",
+        "description": "직속 관리자만 자기 팀원의 휴가 신청을 승인 또는 반려할 수 있다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-008",
+        "category": "state",
+        "description": "휴가 신청이 승인되면 승인 상태로 끝난다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-009",
+        "category": "state",
+        "description": "휴가 신청이 반려되면 반려 상태로 끝난다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-010",
+        "category": "permission",
+        "description": "직원은 대기 상태인 휴가 신청만 수정할 수 있다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-011",
+        "category": "permission",
+        "description": "직원은 대기 상태인 휴가 신청만 취소할 수 있다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-012",
+        "category": "state",
+        "description": "휴가 신청을 취소하면 취소 상태가 된다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-013",
+        "category": "business_rule",
+        "description": "반려된 휴가 신청은 재사용하지 않고 새로 신청한다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-014",
+        "category": "business_rule",
+        "description": "휴가 신청 승인 시 잔여 연차에서 차감한다.",
+        "status": "confirmed",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-015",
+        "category": "functional",
+        "description": "알림 방식은 추후 결정한다.",
+        "status": "needs_clarification",
+        "source": "initial_input",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-016",
+        "category": "scope",
+        "description": "사내 직원 대상 휴가 신청·승인만 범위에 포함한다.",
+        "status": "confirmed",
+        "source": "clarification_answer",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-017",
+        "category": "business_rule",
+        "description": "연차는 1일당 1일, 반차는 1회당 0.5일을 잔여 연차에서 차감하고 병가는 차감하지 않는다.",
+        "status": "proposed",
+        "source": "ai_proposal",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-018",
+        "category": "exception",
+        "description": "잔여 연차가 부족해도 대기 상태로 신청할 수 있지만 관리자는 승인할 수 없으며, 잔여 연차의 음수는 허용하지 않는다.",
+        "status": "proposed",
+        "source": "ai_proposal",
+        "blocking": false,
+        "acceptance_criteria": []
+      },
+      {
+        "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+        "id": "REQ-019",
+        "category": "scope",
+        "description": "관리자가 직원별 잔여 연차의 초기값을 등록하고 필요할 때 추가하거나 수정하며, 서비스가 승인에 따른 차감 내역과 현재 잔여량을 직접 관리한다.",
         "status": "proposed",
         "source": "ai_proposal",
         "blocking": false,
@@ -180,11 +960,26 @@
         "id": "GAP-004",
         "related_requirement_ids": [
           "REQ-004",
-          "REQ-012"
+          "REQ-005",
+          "REQ-014"
         ],
         "category": "business_rule",
-        "description": "연차·반차·병가별로 잔여 연차에서 차감할 수량과 시작일·종료일을 기준으로 한 차감 계산 규칙이 정해지지 않았다. 승인 시 차감 기능 구현에는 필요하지만 세부 계산 정책이므로 핵심 흐름을 막지는 않는다.",
+        "description": "시작일·종료일을 기준으로 차감 일수를 계산하는 세부 규칙이 없다. 주말·공휴일 제외 여부, 시작일과 종료일의 포함 여부, 반차의 차감 단위가 정해져야 정확한 잔여 연차 계산이 가능하다.",
         "blocking": false
+      }
+    ],
+    "gap_links": [
+      {
+        "gap": {
+          "id": "GAP-005",
+          "related_requirement_ids": [
+            "REQ-015"
+          ],
+          "category": "service_scope",
+          "description": "신청·승인·반려·취소 등의 상태 변경을 알릴 대상과 알림 방식이 추후 결정 사항으로 남아 있어 알림 기능의 범위를 아직 확정할 수 없다.",
+          "blocking": false
+        },
+        "requirement_id": "REQ-015"
       }
     ],
     "metrics": {
@@ -195,8 +990,8 @@
     }
   },
   "prd": {
-    "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-    "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+    "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+    "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
     "overview": {
       "summary": "사내 휴가관리 서비스를 만들어줘. 역할은 직원과 관리자 두 가지다. 직원은 휴가 종류(연차, 반차, 병가)와 시작일·종료일을 입력해 신청한다. 신청은 대기 상태로 시작하고, 직속 관리자만 자기 팀원의 신청을 승인 또는 반려한다. 승인되면 승인 상태, 반려되면 반려 상태로 끝난다. 직원은 대기 상태일 때만 신청을 수정하거나 취소할 수 있고, 취소하면 취소 상태가 된다. 반려된 신청은 재사용하지 않고 새로 신청한다. 승인 시 잔여 연차에서 차감한다. 알림 방식은 추후 결정.",
       "problem": "",
@@ -215,7 +1010,7 @@
         "id": "SCOPE-002",
         "description": "사내 직원 대상 휴가 신청·승인만 범위에 포함한다.",
         "source_requirement_ids": [
-          "REQ-014"
+          "REQ-016"
         ],
         "source_gap_ids": []
       }
@@ -243,7 +1038,7 @@
     "functional_requirements": [
       {
         "id": "FR-001",
-        "description": "직원은 휴가 종류(연차, 반차, 병가)와 시작일·종료일을 입력해 휴가를 신청한다.",
+        "description": "직원은 휴가 종류와 시작일·종료일을 입력해 휴가를 신청한다.",
         "source_requirement_ids": [
           "REQ-004"
         ],
@@ -253,7 +1048,7 @@
     "business_rules": [
       {
         "id": "RULE-001",
-        "description": "신청은 대기 상태로 시작한다.",
+        "description": "휴가 종류는 연차, 반차, 병가다.",
         "source_requirement_ids": [
           "REQ-005"
         ],
@@ -261,7 +1056,7 @@
       },
       {
         "id": "RULE-002",
-        "description": "직속 관리자만 자기 팀원의 신청을 승인 또는 반려할 수 있다.",
+        "description": "휴가 신청은 대기 상태로 시작한다.",
         "source_requirement_ids": [
           "REQ-006"
         ],
@@ -269,7 +1064,7 @@
       },
       {
         "id": "RULE-003",
-        "description": "신청이 승인되면 승인 상태로 끝난다.",
+        "description": "직속 관리자만 자기 팀원의 휴가 신청을 승인 또는 반려할 수 있다.",
         "source_requirement_ids": [
           "REQ-007"
         ],
@@ -277,7 +1072,7 @@
       },
       {
         "id": "RULE-004",
-        "description": "신청이 반려되면 반려 상태로 끝난다.",
+        "description": "휴가 신청이 승인되면 승인 상태로 끝난다.",
         "source_requirement_ids": [
           "REQ-008"
         ],
@@ -285,7 +1080,7 @@
       },
       {
         "id": "RULE-005",
-        "description": "직원은 신청이 대기 상태일 때만 신청을 수정하거나 취소할 수 있다.",
+        "description": "휴가 신청이 반려되면 반려 상태로 끝난다.",
         "source_requirement_ids": [
           "REQ-009"
         ],
@@ -293,7 +1088,7 @@
       },
       {
         "id": "RULE-006",
-        "description": "신청을 취소하면 취소 상태가 된다.",
+        "description": "직원은 대기 상태인 휴가 신청만 수정할 수 있다.",
         "source_requirement_ids": [
           "REQ-010"
         ],
@@ -301,7 +1096,7 @@
       },
       {
         "id": "RULE-007",
-        "description": "반려된 신청은 재사용하지 않고 새로 신청한다.",
+        "description": "직원은 대기 상태인 휴가 신청만 취소할 수 있다.",
         "source_requirement_ids": [
           "REQ-011"
         ],
@@ -309,9 +1104,25 @@
       },
       {
         "id": "RULE-008",
-        "description": "승인 시 잔여 연차에서 차감한다.",
+        "description": "휴가 신청을 취소하면 취소 상태가 된다.",
         "source_requirement_ids": [
           "REQ-012"
+        ],
+        "source_gap_ids": []
+      },
+      {
+        "id": "RULE-009",
+        "description": "반려된 휴가 신청은 재사용하지 않고 새로 신청한다.",
+        "source_requirement_ids": [
+          "REQ-013"
+        ],
+        "source_gap_ids": []
+      },
+      {
+        "id": "RULE-010",
+        "description": "휴가 신청 승인 시 잔여 연차에서 차감한다.",
+        "source_requirement_ids": [
+          "REQ-014"
         ],
         "source_gap_ids": []
       }
@@ -321,25 +1132,25 @@
     "assumptions": [
       {
         "id": "ASM-001",
-        "description": "대기 상태의 신청을 수정하면 수정된 내용으로 대기 상태를 유지하고 기존 승인 절차를 이어간다.",
+        "description": "연차는 1일당 1일, 반차는 1회당 0.5일을 잔여 연차에서 차감하고 병가는 차감하지 않는다.",
         "source_requirement_ids": [
-          "REQ-015"
+          "REQ-017"
         ],
         "source_gap_ids": []
       },
       {
         "id": "ASM-002",
-        "description": "취소 상태는 최종 상태이며, 취소된 신청은 관리자가 승인하거나 반려할 수 없다.",
+        "description": "잔여 연차가 부족해도 대기 상태로 신청할 수 있지만 관리자는 승인할 수 없으며, 잔여 연차의 음수는 허용하지 않는다.",
         "source_requirement_ids": [
-          "REQ-016"
+          "REQ-018"
         ],
         "source_gap_ids": []
       },
       {
         "id": "ASM-003",
-        "description": "잔여 연차가 신청에 필요한 일수보다 부족하면 신청 단계에서 제출을 막는다.",
+        "description": "관리자가 직원별 잔여 연차의 초기값을 등록하고 필요할 때 추가하거나 수정하며, 서비스가 승인에 따른 차감 내역과 현재 잔여량을 직접 관리한다.",
         "source_requirement_ids": [
-          "REQ-017"
+          "REQ-019"
         ],
         "source_gap_ids": []
       }
@@ -347,18 +1158,21 @@
     "open_issues": [
       {
         "id": "ISSUE-001",
-        "description": "알림 방식은 추후 결정한다.",
+        "description": "알림 방식은 추후 결정한다. / 신청·승인·반려·취소 등의 상태 변경을 알릴 대상과 알림 방식이 추후 결정 사항으로 남아 있어 알림 기능의 범위를 아직 확정할 수 없다.",
         "source_requirement_ids": [
-          "REQ-013"
+          "REQ-015"
         ],
-        "source_gap_ids": []
+        "source_gap_ids": [
+          "GAP-005"
+        ]
       },
       {
         "id": "ISSUE-002",
-        "description": "연차·반차·병가별로 잔여 연차에서 차감할 수량과 시작일·종료일을 기준으로 한 차감 계산 규칙이 정해지지 않았다. 승인 시 차감 기능 구현에는 필요하지만 세부 계산 정책이므로 핵심 흐름을 막지는 않는다.",
+        "description": "시작일·종료일을 기준으로 차감 일수를 계산하는 세부 규칙이 없다. 주말·공휴일 제외 여부, 시작일과 종료일의 포함 여부, 반차의 차감 단위가 정해져야 정확한 잔여 연차 계산이 가능하다.",
         "source_requirement_ids": [
           "REQ-004",
-          "REQ-012"
+          "REQ-005",
+          "REQ-014"
         ],
         "source_gap_ids": [
           "GAP-004"
@@ -373,75 +1187,23 @@
       "FR-001에 Acceptance Criteria가 없습니다."
     ]
   },
-  "gaps_at_approval": [
-    {
-      "id": "GAP-001",
-      "related_requirement_ids": [
-        "REQ-005",
-        "REQ-009"
-      ],
-      "category": "state_change",
-      "description": "대기 상태의 신청을 수정한 뒤 신청이 계속 대기 상태로 유지되어 수정된 내용으로 승인 절차가 이어지는지, 아니면 별도의 재신청이나 승인 절차 초기화가 필요한지 정해지지 않았다. 이 결정이 없으면 수정 시 핵심 상태 전이를 정의할 수 없다.",
-      "blocking": true
-    },
-    {
-      "id": "GAP-002",
-      "related_requirement_ids": [
-        "REQ-006",
-        "REQ-010"
-      ],
-      "category": "state_change",
-      "description": "취소 상태가 최종 상태인지, 취소된 신청에 대해 관리자가 이후 승인 또는 반려할 수 있는지 정해지지 않았다. 취소 이후 처리 가능 여부가 불명확해 신청 생명주기를 확정할 수 없다.",
-      "blocking": true
-    },
-    {
-      "id": "GAP-003",
-      "related_requirement_ids": [
-        "REQ-004",
-        "REQ-007",
-        "REQ-012"
-      ],
-      "category": "exception_handling",
-      "description": "잔여 연차가 신청에 필요한 수량보다 부족할 때 신청을 막을지, 관리자의 승인을 막고 대기 상태로 둘지, 음수 잔여 연차를 허용할지 정해지지 않았다. 이에 따라 신청 및 승인 흐름의 성공 여부와 결과 상태가 달라진다.",
-      "blocking": true
-    },
-    {
-      "id": "GAP-004",
-      "related_requirement_ids": [
-        "REQ-004",
-        "REQ-012"
-      ],
-      "category": "business_rule",
-      "description": "연차·반차·병가별로 잔여 연차에서 차감할 수량과 시작일·종료일을 기준으로 한 차감 계산 규칙이 정해지지 않았다. 승인 시 차감 기능 구현에는 필요하지만 세부 계산 정책이므로 핵심 흐름을 막지는 않는다.",
-      "blocking": false
-    },
-    {
-      "id": "GAP-005",
-      "related_requirement_ids": [
-        "REQ-013"
-      ],
-      "category": "service_scope",
-      "description": "알림 방식이 추후 결정으로 남아 있어 인앱 알림 또는 외부 채널 사용 여부와 알림 기능의 구체적인 범위를 확정할 수 없다.",
-      "blocking": false
-    }
-  ],
   "usage": [
     {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
       "stage": "requirement_extraction",
       "model": "gpt-5.6-sol",
       "success": true,
       "cost": null,
-      "started_at": "2026-10-14T12:53:49.053693+00:00",
+      "started_at": "2026-10-15T03:35:12.746775+00:00",
       "usage": {
-        "completion_tokens": 1466,
-        "prompt_tokens": 703,
-        "total_tokens": 2169,
+        "completion_tokens": 1395,
+        "prompt_tokens": 701,
+        "total_tokens": 2096,
         "completion_tokens_details": {
           "accepted_prediction_tokens": 0,
           "audio_tokens": 0,
-          "reasoning_tokens": 486,
+          "reasoning_tokens": 298,
           "rejected_prediction_tokens": 0,
           "text_tokens": null
         },
@@ -453,55 +1215,55 @@
           "text_tokens": null
         }
       },
-      "input_tokens": 703,
-      "output_tokens": 1466,
-      "latency": 16.014,
-      "ended_at": "2026-10-14T12:54:05.068075+00:00"
+      "input_tokens": 701,
+      "output_tokens": 1395,
+      "latency": 13.125,
+      "ended_at": "2026-10-15T03:35:25.871652+00:00"
     },
     {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
       "stage": "gap_analysis",
       "model": "gpt-5.6-sol",
       "success": true,
       "cost": null,
-      "started_at": "2026-10-14T12:54:05.069961+00:00",
+      "started_at": "2026-10-15T03:35:25.871898+00:00",
       "usage": {
-        "completion_tokens": 1880,
-        "prompt_tokens": 2823,
-        "total_tokens": 4703,
+        "completion_tokens": 1222,
+        "prompt_tokens": 2970,
+        "total_tokens": 4192,
         "completion_tokens_details": {
           "accepted_prediction_tokens": 0,
           "audio_tokens": 0,
-          "reasoning_tokens": 1440,
+          "reasoning_tokens": 840,
           "rejected_prediction_tokens": 0,
           "text_tokens": null
         },
         "prompt_tokens_details": {
           "audio_tokens": 0,
-          "cache_write_tokens": 1318,
+          "cache_write_tokens": 1465,
           "cached_tokens": 1502,
           "image_tokens": null,
           "text_tokens": null
         }
       },
-      "input_tokens": 2823,
-      "output_tokens": 1880,
-      "latency": 30.517,
-      "ended_at": "2026-10-14T12:54:35.587899+00:00"
+      "input_tokens": 2970,
+      "output_tokens": 1222,
+      "latency": 17.7,
+      "ended_at": "2026-10-15T03:35:43.572330+00:00"
     },
     {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
       "stage": "question_generation",
       "model": "gpt-5.6-sol",
       "success": true,
       "cost": null,
-      "started_at": "2026-10-14T12:54:35.622449+00:00",
+      "started_at": "2026-10-15T03:35:43.657312+00:00",
       "usage": {
-        "completion_tokens": 172,
-        "prompt_tokens": 1876,
-        "total_tokens": 2048,
+        "completion_tokens": 178,
+        "prompt_tokens": 2013,
+        "total_tokens": 2191,
         "completion_tokens_details": {
           "accepted_prediction_tokens": 0,
           "audio_tokens": 0,
@@ -511,125 +1273,157 @@
         },
         "prompt_tokens_details": {
           "audio_tokens": 0,
-          "cache_write_tokens": 1873,
+          "cache_write_tokens": 2010,
           "cached_tokens": 0,
           "image_tokens": null,
           "text_tokens": null
         }
       },
-      "input_tokens": 1876,
-      "output_tokens": 172,
-      "latency": 3.759,
-      "ended_at": "2026-10-14T12:54:39.381374+00:00"
+      "input_tokens": 2013,
+      "output_tokens": 178,
+      "latency": 3.699,
+      "ended_at": "2026-10-15T03:35:47.356746+00:00"
     },
     {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
       "stage": "requirement_update",
       "model": "gpt-5.6-sol",
       "success": true,
       "cost": null,
-      "started_at": "2026-10-14T12:54:39.411340+00:00",
+      "started_at": "2026-10-15T03:35:47.701345+00:00",
       "usage": {
-        "completion_tokens": 155,
-        "prompt_tokens": 2331,
-        "total_tokens": 2486,
+        "completion_tokens": 143,
+        "prompt_tokens": 2466,
+        "total_tokens": 2609,
         "completion_tokens_details": {
           "accepted_prediction_tokens": 0,
           "audio_tokens": 0,
-          "reasoning_tokens": 58,
+          "reasoning_tokens": 48,
           "rejected_prediction_tokens": 0,
           "text_tokens": null
         },
         "prompt_tokens_details": {
           "audio_tokens": 0,
-          "cache_write_tokens": 2328,
+          "cache_write_tokens": 2463,
           "cached_tokens": 0,
           "image_tokens": null,
           "text_tokens": null
         }
       },
-      "input_tokens": 2331,
-      "output_tokens": 155,
-      "latency": 3.444,
-      "ended_at": "2026-10-14T12:54:42.855068+00:00"
+      "input_tokens": 2466,
+      "output_tokens": 143,
+      "latency": 3.579,
+      "ended_at": "2026-10-15T03:35:51.280063+00:00"
     },
     {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
       "stage": "gap_analysis",
       "model": "gpt-5.6-sol",
       "success": true,
       "cost": null,
-      "started_at": "2026-10-14T12:54:42.855154+00:00",
+      "started_at": "2026-10-15T03:35:51.280525+00:00",
       "usage": {
-        "completion_tokens": 2023,
-        "prompt_tokens": 2916,
-        "total_tokens": 4939,
+        "completion_tokens": 1489,
+        "prompt_tokens": 3061,
+        "total_tokens": 4550,
         "completion_tokens_details": {
           "accepted_prediction_tokens": 0,
           "audio_tokens": 0,
-          "reasoning_tokens": 1536,
+          "reasoning_tokens": 985,
           "rejected_prediction_tokens": 0,
           "text_tokens": null
         },
         "prompt_tokens_details": {
           "audio_tokens": 0,
-          "cache_write_tokens": 1411,
+          "cache_write_tokens": 1556,
           "cached_tokens": 1502,
           "image_tokens": null,
           "text_tokens": null
         }
       },
-      "input_tokens": 2916,
-      "output_tokens": 2023,
-      "latency": 32.99,
-      "ended_at": "2026-10-14T12:55:15.845875+00:00"
+      "input_tokens": 3061,
+      "output_tokens": 1489,
+      "latency": 23.228,
+      "ended_at": "2026-10-15T03:36:14.508299+00:00"
     },
     {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
       "stage": "question_generation",
       "model": "gpt-5.6-sol",
       "success": true,
       "cost": null,
-      "started_at": "2026-10-14T12:55:15.845976+00:00",
+      "started_at": "2026-10-15T03:36:14.508828+00:00",
       "usage": {
-        "completion_tokens": 320,
-        "prompt_tokens": 2076,
-        "total_tokens": 2396,
+        "completion_tokens": 317,
+        "prompt_tokens": 2236,
+        "total_tokens": 2553,
         "completion_tokens_details": {
           "accepted_prediction_tokens": 0,
           "audio_tokens": 0,
-          "reasoning_tokens": 54,
+          "reasoning_tokens": 0,
           "rejected_prediction_tokens": 0,
           "text_tokens": null
         },
         "prompt_tokens_details": {
           "audio_tokens": 0,
-          "cache_write_tokens": 2073,
+          "cache_write_tokens": 2233,
           "cached_tokens": 0,
           "image_tokens": null,
           "text_tokens": null
         }
       },
-      "input_tokens": 2076,
-      "output_tokens": 320,
-      "latency": 5.309,
-      "ended_at": "2026-10-14T12:55:21.155145+00:00"
+      "input_tokens": 2236,
+      "output_tokens": 317,
+      "latency": 4.516,
+      "ended_at": "2026-10-15T03:36:19.025195+00:00"
     },
     {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
       "stage": "question_generation",
       "model": "gpt-5.6-sol",
       "success": true,
       "cost": null,
-      "started_at": "2026-10-14T12:55:21.231405+00:00",
+      "started_at": "2026-10-15T03:36:19.117988+00:00",
       "usage": {
-        "completion_tokens": 265,
-        "prompt_tokens": 2076,
-        "total_tokens": 2341,
+        "completion_tokens": 749,
+        "prompt_tokens": 2236,
+        "total_tokens": 2985,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 463,
+          "rejected_prediction_tokens": 0,
+          "text_tokens": null
+        },
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cache_write_tokens": 0,
+          "cached_tokens": 2233,
+          "image_tokens": null,
+          "text_tokens": null
+        }
+      },
+      "input_tokens": 2236,
+      "output_tokens": 749,
+      "latency": 9.607,
+      "ended_at": "2026-10-15T03:36:28.724799+00:00"
+    },
+    {
+      "project_id": "c7499750-def4-42d7-9bbf-56fe9ed3b42f",
+      "run_id": "c6f16ab2-3771-4b49-bc78-292ec3643717",
+      "stage": "question_generation",
+      "model": "gpt-5.6-sol",
+      "success": true,
+      "cost": null,
+      "started_at": "2026-10-15T03:36:28.816156+00:00",
+      "usage": {
+        "completion_tokens": 257,
+        "prompt_tokens": 2236,
+        "total_tokens": 2493,
         "completion_tokens_details": {
           "accepted_prediction_tokens": 0,
           "audio_tokens": 0,
@@ -640,47 +1434,15 @@
         "prompt_tokens_details": {
           "audio_tokens": 0,
           "cache_write_tokens": 0,
-          "cached_tokens": 2073,
+          "cached_tokens": 2233,
           "image_tokens": null,
           "text_tokens": null
         }
       },
-      "input_tokens": 2076,
-      "output_tokens": 265,
-      "latency": 4.195,
-      "ended_at": "2026-10-14T12:55:25.426875+00:00"
-    },
-    {
-      "project_id": "1537276a-4235-4f2c-a4d0-a6424a3b29c5",
-      "run_id": "68bc13e1-de67-4af7-b270-69597b804f50",
-      "stage": "question_generation",
-      "model": "gpt-5.6-sol",
-      "success": true,
-      "cost": null,
-      "started_at": "2026-10-14T12:55:25.488496+00:00",
-      "usage": {
-        "completion_tokens": 259,
-        "prompt_tokens": 2076,
-        "total_tokens": 2335,
-        "completion_tokens_details": {
-          "accepted_prediction_tokens": 0,
-          "audio_tokens": 0,
-          "reasoning_tokens": 0,
-          "rejected_prediction_tokens": 0,
-          "text_tokens": null
-        },
-        "prompt_tokens_details": {
-          "audio_tokens": 0,
-          "cache_write_tokens": 0,
-          "cached_tokens": 2073,
-          "image_tokens": null,
-          "text_tokens": null
-        }
-      },
-      "input_tokens": 2076,
-      "output_tokens": 259,
-      "latency": 3.674,
-      "ended_at": "2026-10-14T12:55:29.162602+00:00"
+      "input_tokens": 2236,
+      "output_tokens": 257,
+      "latency": 5.051,
+      "ended_at": "2026-10-15T03:36:33.866898+00:00"
     }
   ]
 }

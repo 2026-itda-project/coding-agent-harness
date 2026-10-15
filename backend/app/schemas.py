@@ -41,6 +41,13 @@ class Gap(BaseModel):
     blocking: bool
 
 
+class GapLink(BaseModel):
+    """Review에서 사용자가 확인한 Gap과 그 Gap을 다루는 Requirement의 연결. Gap 원본을 보존해 출처를 추적한다."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    gap: Gap
+    requirement_id: str
+
+
 class AnalyzeRequest(BaseModel):
     text: str = Field(min_length=1)
 
@@ -100,6 +107,7 @@ class WorkflowState(AnalyzeResponse):
     questions: list[ClarificationQuestion] = Field(default_factory=list)
     history: list[ClarificationRound] = Field(default_factory=list)
     edit_count: int = 0
+    gap_links: list[GapLink] = Field(default_factory=list)
 
 
 class QuestionOutput(BaseModel):
@@ -152,13 +160,27 @@ class ResolveGapAction(BaseModel):
     acceptance_criteria: list[str] = Field(default_factory=list)
 
 
+class LinkGapAction(BaseModel):
+    """추천 연결을 사용자가 확인한다. 대상은 Gap의 관련 Requirement가 하나일 때 그 Requirement로 서버가 정한다."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    type: Literal["link_gap"]
+    gap_ids: list[str]
+
+
+class UnlinkGapAction(BaseModel):
+    """연결을 되돌린다. 연결 기록을 지우고 Gap 원본을 남은 Gap으로 복원한다."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    type: Literal["unlink_gap"]
+    gap_id: str
+
+
 class ApproveAction(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     type: Literal["approve"]
 
 
-ReviewAction = Annotated[AcceptAction | EditAction | AddAction | ResolveGapAction | ApproveAction,
-                         Field(discriminator="type")]
+ReviewAction = Annotated[AcceptAction | EditAction | AddAction | ResolveGapAction | LinkGapAction | UnlinkGapAction
+                         | ApproveAction, Field(discriminator="type")]
 
 
 class ReviewedRequirements(BaseModel):
@@ -168,6 +190,8 @@ class ReviewedRequirements(BaseModel):
     requirements: list[Requirement]
     # 승인 시점에 남은 non-blocking Gap. PRD Open Issues로 전달한다. 기존 인계 JSON 호환을 위해 기본값은 빈 배열.
     open_gaps: list[Gap] = Field(default_factory=list)
+    # Review에서 Requirement와 연결(결정 입력·추천 연결)된 Gap. 기본값은 빈 배열.
+    gap_links: list[GapLink] = Field(default_factory=list)
     metrics: dict
 
 

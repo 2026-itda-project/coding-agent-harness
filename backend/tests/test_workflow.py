@@ -5,11 +5,12 @@ from pathlib import Path
 from pydantic import TypeAdapter, ValidationError
 
 from app.schemas import (
-    AddAction, ClarificationQuestion, ClarificationRound, EditAction, Gap, Requirement, ResolveGapAction,
-    ReviewAction, ReviewedRequirements, UpdatedRequirement, WorkflowState,
+    AddAction, ClarificationQuestion, ClarificationRound, EditAction, Gap, LinkGapAction, Requirement,
+    ResolveGapAction, ReviewAction, ReviewedRequirements, UnlinkGapAction, UpdatedRequirement, WorkflowState,
 )
 from app.workflow import (
-    MAX_ROUNDS, accept, add, apply_update, approve, edit, next_step, require_phase, resolve_gap, to_proposals,
+    MAX_ROUNDS, accept, add, apply_update, approve, edit, link_gap, next_step, require_phase, resolve_gap,
+    to_proposals, unlink_gap, validate_state,
 )
 
 HANDOFF = json.loads(
@@ -172,6 +173,10 @@ class EditAddTest(unittest.TestCase):
         self.assertEqual(action.ids, ["REQ-006"])
         resolve = TypeAdapter(ReviewAction).validate_python({"type": "resolve_gap", "gap_id": "GAP-001", "description": "x"})
         self.assertEqual((resolve.gap_id, resolve.category), ("GAP-001", None))
+        link = TypeAdapter(ReviewAction).validate_python({"type": "link_gap", "gap_ids": ["GAP-001"]})
+        self.assertEqual(link.gap_ids, ["GAP-001"])
+        unlink = TypeAdapter(ReviewAction).validate_python({"type": "unlink_gap", "gap_id": "GAP-001"})
+        self.assertEqual(unlink.gap_id, "GAP-001")
         with self.assertRaises(ValidationError):
             TypeAdapter(ReviewAction).validate_python({"type": "delete", "id": "REQ-001"})
 
@@ -203,51 +208,107 @@ class ApproveTest(unittest.TestCase):
 
 class OpenGapsTest(unittest.TestCase):
     def review_state(self):
-        reqs = [req("REQ-001"), req("REQ-002", status="needs_clarification")]
-        gaps = [gap("GAP-001", ["REQ-001"], blocking=False),   # 전달
-                gap("GAP-002", [], blocking=False),            # 서비스 전반, 전달
-                gap("GAP-003", ["REQ-002"], blocking=False),   # 미결정 Requirement가 Open Issue로 가므로 제외
-                gap("GAP-004", ["REQ-001"])]                   # blocking은 질문·Proposal로 처리됨, 제외
+        reqs = [req("REQ-001"), req("REQ-002", status="needs_clarification"), req("REQ-003")]
+        gaps = [gap("GAP-001", ["REQ-001"], blocking=False),             # 관련 Requirement 하나: 추천 대상
+                gap("GAP-002", [], blocking=False),                      # 서비스 전반
+                gap("GAP-003", ["REQ-002"], blocking=False),             # 미결정 Requirement에 연결
+                gap("GAP-005", ["REQ-002"], blocking=False),             # 같은 Requirement에 연결된 다른 Gap
+                gap("GAP-006", ["REQ-002", "REQ-003"], blocking=False),  # 여러 Requirement에 걸친 Gap
+                gap("GAP-004", ["REQ-001"])]                             # blocking은 질문·Proposal로 처리됨
         return handoff_state(phase="review", requirements=reqs, gaps=gaps)
 
-    def test_approve_hands_off_remaining_nonblocking_gaps(self):
+    def test_linked_requirement_alone_does_not_exclude_gap(self):
         _, reviewed = approve(self.review_state())
-        self.assertEqual([g.id for g in reviewed.open_gaps], ["GAP-001", "GAP-002"])
-        self.assertEqual(reviewed.open_gaps[0].related_requirement_ids, ["REQ-001"])
-        self.assertEqual(len(reviewed.requirements), 2)  # Gap을 Requirement로 바꾸지 않는다
+        self.assertEqual([g.id for g in reviewed.open_gaps], ["GAP-001", "GAP-002", "GAP-003", "GAP-005", "GAP-006"])
+        self.assertEqual(len(reviewed.requirements), 3)  # Gap을 Requirement로 바꾸지 않는다
+        self.assertEqual(reviewed.gap_links, [])
 
-    def test_confirming_unresolved_requirement_resolves_linked_gap(self):
-        state = edit(self.review_state(), EditAction(type="edit", id="REQ-002", confirm=True))
-        self.assertEqual([g.id for g in state.gaps], ["GAP-001", "GAP-002", "GAP-004"])
-        self.assertEqual([g.id for g in approve(state)[1].open_gaps], ["GAP-001", "GAP-002"])
+    def test_confirming_requirement_keeps_linked_gaps(self):
+        state = edit(self.review_state(), EditAction(type="edit", id="REQ-002", description="결정됨", confirm=True))
+        self.assertEqual(state.gaps, self.review_state().gaps)
+        self.assertEqual(len(approve(state)[1].open_gaps), 5)
 
-    def test_confirming_already_confirmed_keeps_gaps(self):
-        state = edit(self.review_state(), EditAction(type="edit", id="REQ-001", description="x", confirm=True))
-        self.assertEqual(len(state.gaps), 4)
-
-    def test_resolve_gap_records_user_decision_and_removes_gap(self):
-        state = resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id="GAP-001",
+    def test_resolve_gap_records_decision_and_link(self):
+        state = resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id="GAP-002",
                                                                   description="중복 신청은 거부한다."))
         new = state.requirements[-1]
         self.assertEqual((new.id, new.category, new.description, new.status, new.source, new.blocking),
-                         ("REQ-003", "business_rule", "중복 신청은 거부한다.", "confirmed", "review_input", False))
+                         ("REQ-004", "business_rule", "중복 신청은 거부한다.", "confirmed", "review_input", False))
         self.assertEqual(state.edit_count, 1)
-        self.assertEqual([g.id for g in approve(state)[1].open_gaps], ["GAP-002"])
+        self.assertEqual([(l.gap.id, l.requirement_id) for l in state.gap_links], [("GAP-002", "REQ-004")])
+        _, reviewed = approve(state)
+        self.assertNotIn("GAP-002", [g.id for g in reviewed.open_gaps])
+        self.assertEqual(reviewed.gap_links, state.gap_links)
 
     def test_resolve_gap_uses_given_category(self):
         state = resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id="GAP-002",
                                                                   description="범위에서 제외한다.", category="scope"))
         self.assertEqual(state.requirements[-1].category, "scope")
 
-    def test_resolve_gap_rejects_non_handoff_gap_or_blank_decision(self):
-        for gap_id, description in (("GAP-003", "x"), ("GAP-004", "x"), ("GAP-999", "x"), ("GAP-001", " ")):
+    def test_resolve_gap_rejects_blocking_unknown_or_blank(self):
+        for gap_id, description in (("GAP-004", "x"), ("GAP-999", "x"), ("GAP-001", " ")):
             with self.subTest(gap_id=gap_id), self.assertRaises(ValueError):
                 resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id=gap_id,
                                                                   description=description))
 
-    def test_handoff_without_open_gaps_field_is_valid(self):
+    def test_link_gap_links_only_confirmed_suggestions(self):
+        state = link_gap(self.review_state(), LinkGapAction(type="link_gap", gap_ids=["GAP-003", "GAP-001"]))
+        self.assertEqual(sorted((l.gap.id, l.requirement_id) for l in state.gap_links),
+                         [("GAP-001", "REQ-001"), ("GAP-003", "REQ-002")])
+        self.assertEqual([g.id for g in approve(state)[1].open_gaps], ["GAP-002", "GAP-005", "GAP-006"])
+        self.assertEqual(state.edit_count, 0)
+        self.assertEqual(state.requirements, self.review_state().requirements)  # 연결은 Requirement를 바꾸지 않는다
+
+    def test_link_gap_rejects_gaps_without_single_suggestion(self):
+        # GAP-002: 관련 없음, GAP-006: 여러 개, GAP-004: blocking, GAP-999: 없음, 빈 목록·중복
+        for ids in (["GAP-002"], ["GAP-006"], ["GAP-004"], ["GAP-999"], [], ["GAP-001", "GAP-001"]):
+            with self.subTest(ids=ids), self.assertRaises(ValueError):
+                link_gap(self.review_state(), LinkGapAction(type="link_gap", gap_ids=ids))
+
+    def test_link_gap_rejects_suggestion_to_unknown_requirement(self):
+        state = self.review_state().model_copy(update={"gaps": [gap("GAP-001", ["REQ-999"], blocking=False)]})
+        with self.assertRaises(ValueError):
+            link_gap(state, LinkGapAction(type="link_gap", gap_ids=["GAP-001"]))
+
+    def test_unlink_gap_restores_gap_and_removes_link(self):
+        start = self.review_state()
+        linked = link_gap(start, LinkGapAction(type="link_gap", gap_ids=["GAP-001", "GAP-003"]))
+        state = unlink_gap(linked, UnlinkGapAction(type="unlink_gap", gap_id="GAP-001"))
+        self.assertEqual([(l.gap.id, l.requirement_id) for l in state.gap_links], [("GAP-003", "REQ-002")])
+        self.assertEqual(sorted(g.id for g in state.gaps), sorted(g.id for g in start.gaps if g.id != "GAP-003"))
+        self.assertEqual(next(g for g in state.gaps if g.id == "GAP-001"), start.gaps[0])  # 원본 그대로 복원
+        validate_state(state)
+        self.assertIn("GAP-001", [g.id for g in approve(state)[1].open_gaps])
+
+    def test_unlink_after_resolve_keeps_user_decision(self):
+        resolved = resolve_gap(self.review_state(), ResolveGapAction(type="resolve_gap", gap_id="GAP-002",
+                                                                     description="범위에서 제외한다."))
+        state = unlink_gap(resolved, UnlinkGapAction(type="unlink_gap", gap_id="GAP-002"))
+        self.assertEqual(state.requirements, resolved.requirements)
+        self.assertEqual((state.gap_links, "GAP-002" in [g.id for g in state.gaps]), ([], True))
+
+    def test_unlink_gap_rejects_unlinked_gap(self):
+        for gap_id in ("GAP-001", "GAP-999"):
+            with self.subTest(gap_id=gap_id), self.assertRaises(ValueError):
+                unlink_gap(self.review_state(), UnlinkGapAction(type="unlink_gap", gap_id=gap_id))
+
+    def test_validate_state_rejects_inconsistent_links(self):
+        linked = link_gap(self.review_state(), LinkGapAction(type="link_gap", gap_ids=["GAP-001"]))
+        link = linked.gap_links[0]
+        cases = {
+            "linked gap still open": linked.model_copy(update={"gaps": self.review_state().gaps}),
+            "duplicate link": linked.model_copy(update={"gap_links": [link, link]}),
+            "unknown requirement": linked.model_copy(update={"gap_links": [link.model_copy(update={"requirement_id": "REQ-999"})]}),
+        }
+        validate_state(linked)
+        for name, state in cases.items():
+            with self.subTest(name), self.assertRaises(ValueError):
+                validate_state(state)
+
+    def test_handoff_without_new_fields_is_valid(self):
         old = {"project_id": PID, "run_id": "run", "requirements": [req("REQ-001").model_dump()], "metrics": {}}
-        self.assertEqual(ReviewedRequirements.model_validate(old).open_gaps, [])
+        reviewed = ReviewedRequirements.model_validate(old)
+        self.assertEqual((reviewed.open_gaps, reviewed.gap_links), ([], []))
 
 
 class PhaseGuardTest(unittest.TestCase):
