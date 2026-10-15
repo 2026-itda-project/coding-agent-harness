@@ -15,7 +15,8 @@ from app.schemas import (
     AnalyzeResponse, ClarificationRound, ExtractionOutput, GapOutput, QuestionOutput, RequirementUpdateOutput,
 )
 from app.workflow import (
-    accept, add, apply_update, approve, edit, fill_answers, next_step, require_phase, to_proposals, validate_state,
+    accept, add, apply_update, approve, edit, fill_answers, link_gap, next_step, require_phase, resolve_gap,
+    to_proposals, unlink_gap, validate_state,
 )
 
 logger = logging.getLogger("uvicorn.error")
@@ -171,4 +172,10 @@ def review_step(state, action):
         return edit(state, action), None
     if action.type == "add":
         return add(state, action), None
+    if action.type == "resolve_gap":
+        return resolve_gap(state, action), None
+    if action.type == "link_gap":
+        return link_gap(state, action), None
+    if action.type == "unlink_gap":
+        return unlink_gap(state, action), None
     return approve(state)

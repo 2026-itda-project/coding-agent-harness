@@ -1,7 +1,7 @@
 """Clarification·Review 상태 전이 규칙. LLM을 호출하지 않는 순수 함수만 둔다."""
 from app.schemas import (
     AddAction, Answer, ClarificationQuestion, EditAction, Gap, Requirement, RequirementCategory,
-    ReviewedRequirements, UpdatedRequirement, WorkflowState,
+    GapLink, LinkGapAction, ResolveGapAction, ReviewedRequirements, UnlinkGapAction, UpdatedRequirement, WorkflowState,
 )
 
 MAX_ROUNDS = 3
@@ -94,12 +94,61 @@ def add(state: WorkflowState, action: AddAction) -> WorkflowState:
     return state.model_copy(update={"requirements": [*state.requirements, new], "edit_count": state.edit_count + 1})
 
 
+def open_gaps(state: WorkflowState) -> list[Gap]:
+    """PRD Open Issues로 넘길 Gap. blocking Gap은 질문·Proposal로 처리됐다. 관련 Requirement가 있다는 것만으로는
+    같은 내용이라고 보지 않으므로, 사용자가 연결하지 않은 non-blocking Gap은 모두 넘긴다."""
+    return [g for g in state.gaps if not g.blocking]
+
+
+def suggested_requirement_id(gap: Gap) -> str | None:
+    """추천 연결 대상. 관련 Requirement가 하나뿐일 때만 추천하고, 반영은 사용자가 확인해야 한다."""
+    return gap.related_requirement_ids[0] if len(gap.related_requirement_ids) == 1 else None
+
+
+def attach_gaps(state: WorkflowState, gap_ids: set[str], target: dict[str, str]) -> WorkflowState:
+    links = [GapLink(gap=g, requirement_id=target[g.id]) for g in state.gaps if g.id in gap_ids]
+    return state.model_copy(update={"gaps": [g for g in state.gaps if g.id not in gap_ids],
+                                    "gap_links": [*state.gap_links, *links]})
+
+
+def resolve_gap(state: WorkflowState, action: ResolveGapAction) -> WorkflowState:
+    """사용자가 입력한 결정을 Requirement로 기록하고 Gap을 그 Requirement에 연결한다. 결정 없이 Gap만 지우는 경로는 없다."""
+    gap = next((g for g in open_gaps(state) if g.id == action.gap_id), None)
+    if gap is None:
+        raise ValueError(f"{action.gap_id}는 해결할 수 있는 남은 Gap이 아닙니다.")
+    if not action.description.strip():
+        raise ValueError("결정 내용을 입력해야 합니다.")
+    added = add(state, AddAction(type="add", category=action.category or GAP_TO_REQUIREMENT_CATEGORY[gap.category],
+                                 description=action.description, acceptance_criteria=action.acceptance_criteria))
+    return attach_gaps(added, {gap.id}, {gap.id: added.requirements[-1].id})
+
+
+def link_gap(state: WorkflowState, action: LinkGapAction) -> WorkflowState:
+    """사용자가 확인한 추천 연결만 반영한다. 연결된 Gap은 해당 Requirement의 PRD 항목 출처로 이어진다."""
+    gaps = {g.id: g for g in open_gaps(state)}
+    req_ids = {r.id for r in state.requirements}
+    target = {i: suggested_requirement_id(gaps[i]) for i in action.gap_ids if i in gaps}
+    if (not action.gap_ids or len(set(action.gap_ids)) != len(action.gap_ids) or len(target) != len(action.gap_ids)
+            or any(t not in req_ids for t in target.values())):
+        raise ValueError("추천 연결 대상이 있는 남은 Gap이 아닙니다.")
+    return attach_gaps(state, set(action.gap_ids), target)
+
+
+def unlink_gap(state: WorkflowState, action: UnlinkGapAction) -> WorkflowState:
+    """잘못 연결한 Gap을 되돌린다. 결정 입력으로 만든 Requirement는 사용자 입력이므로 그대로 둔다."""
+    found = next((l for l in state.gap_links if l.gap.id == action.gap_id), None)
+    if found is None:
+        raise ValueError(f"{action.gap_id}는 연결된 Gap이 아닙니다.")
+    return state.model_copy(update={"gaps": [*state.gaps, found.gap],
+                                    "gap_links": [l for l in state.gap_links if l is not found]})
+
+
 def approve(state: WorkflowState) -> tuple[WorkflowState, ReviewedRequirements]:
     if any(r.blocking and r.status == "needs_clarification" for r in state.requirements):
         raise ValueError("해소되지 않은 Blocking Requirement가 있습니다.")
     reviewed = ReviewedRequirements(
         project_id=state.project_id, run_id=state.run_id, requirements=state.requirements,
-        metrics={
+        open_gaps=open_gaps(state), gap_links=state.gap_links, metrics={
             "question_count": sum(len(r.questions) for r in state.history),
             "turn_count": len(state.history),
             "edit_count": state.edit_count,
@@ -115,6 +164,10 @@ def validate_state(state: WorkflowState) -> None:
         raise ValueError("Requirement의 id가 중복되거나 project_id가 일치하지 않습니다.")
     if not {q.gap_id for q in state.questions} <= {g.id for g in state.gaps}:
         raise ValueError("질문이 현재 Gap 목록에 없는 Gap을 가리킵니다.")
+    linked = [l.gap.id for l in state.gap_links]
+    if (len(linked) != len(set(linked)) or set(linked) & {g.id for g in state.gaps}
+            or any(l.requirement_id not in ids for l in state.gap_links)):
+        raise ValueError("Gap 연결 기록이 현재 Gap·Requirement와 맞지 않습니다.")
 
 
 def fill_answers(questions: list[ClarificationQuestion], answers: list[Answer] | None) -> list[Answer]:
