@@ -1,0 +1,419 @@
+{
+  "errors": [
+    "Field required at title"
+  ],
+  "data": {
+    "overview": {
+      "summary": "직원이 휴가를 온라인으로 신청하고 관리자가 대기 중인 신청을 승인하거나 반려하는 사내 휴가관리 웹 데모입니다. 직원은 내 신청 상태와 남은 연차를 한곳에서 확인할 수 있습니다.",
+      "problem": "현재 메신저와 엑셀로 휴가를 관리하고 있어 누가 언제 쉬는지, 남은 연차가 얼마인지 확인하기 어렵습니다.",
+      "goals": [
+        "직원이 휴가 신청부터 승인 결과 확인까지 막힘 없이 진행할 수 있는지 검증한다",
+        "직원이 내 신청 상태와 남은 연차를 쉽게 확인할 수 있게 한다",
+        "관리자가 대기 중인 신청을 한 화면에서 보고 승인 또는 반려할 수 있게 한다"
+      ]
+    },
+    "in_scope": [
+      {
+        "id": "SCOPE-001",
+        "description": "직원의 휴가 온라인 신청",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "SCOPE-002",
+        "description": "직원의 내 신청 상태 확인(대기, 승인, 반려)",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "SCOPE-003",
+        "description": "직원의 남은 연차 확인",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "SCOPE-004",
+        "description": "관리자의 대기 중 신청 목록 조회 및 승인/반려 처리",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "SCOPE-005",
+        "description": "직원과 관리자 역할을 화면에서 전환하는 기능(실제 로그인 없음)",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "SCOPE-006",
+        "description": "SQLite에 데이터를 저장하며 최초 실행 시 샘플 데이터(직원, 연차, 신청 내역)를 제공",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "SCOPE-007",
+        "description": "휴가 종류 선택(연차, 반차, 병가 등 소수의 기본 유형)",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "SCOPE-008",
+        "description": "관리자가 승인된 휴가를 날짜별로 확인하는 팀 휴가 현황 보기(누가 언제 쉬는지)",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "SCOPE-009",
+        "description": "반려 시 사유 입력 및 직원의 사유 확인",
+        "status": "proposed",
+        "source": "ai_proposal"
+      }
+    ],
+    "out_of_scope": [
+      {
+        "id": "OUT-001",
+        "description": "실제 로그인, 회원가입, 계정 관리",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "OUT-002",
+        "description": "외부 공유 링크 및 내보내기(엑셀 등) 기능",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "OUT-003",
+        "description": "메신저, 이메일 등 실제 알림 연동(필요 시 모의 표시만)",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "OUT-004",
+        "description": "연차 발생 규칙 자동 계산, 급여 및 근태 시스템 연동, 공휴일 캘린더 연동",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "OUT-005",
+        "description": "다단계 결재선, 대리 승인, 신청 후 수정 및 취소",
+        "status": "proposed",
+        "source": "ai_proposal"
+      }
+    ],
+    "roles": [
+      {
+        "id": "ROLE-001",
+        "description": "직원: 휴가를 신청하고 내 신청 상태와 남은 연차를 확인한다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "ROLE-002",
+        "description": "관리자: 대기 중인 신청을 확인하고 승인하거나 반려한다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "ROLE-003",
+        "description": "화면 상단의 역할 전환으로 직원/관리자를 선택하며 API 호출 시 X-Role 헤더로 역할을 전달한다",
+        "status": "confirmed",
+        "source": "harness_policy"
+      }
+    ],
+    "user_flows": [
+      {
+        "id": "US-001",
+        "description": "직원이 휴가 신청 폼에서 종류와 시작일/종료일, 사유를 입력해 신청하면 '대기' 상태로 내 신청 목록에 나타난다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "US-002",
+        "description": "직원이 내 신청 목록에서 신청별 상태(대기/승인/반려)와 남은 연차를 확인한다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "US-003",
+        "description": "관리자로 전환해 대기 중 신청 목록을 보고 신청을 승인하거나 반려한다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "US-004",
+        "description": "직원으로 다시 전환해 승인 또는 반려 결과와 차감된 남은 연차를 확인한다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "US-005",
+        "description": "관리자가 팀 휴가 현황에서 승인된 휴가를 날짜별로 확인한다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      }
+    ],
+    "functional_requirements": [
+      {
+        "id": "FR-001",
+        "description": "직원은 휴가 종류, 시작일, 종료일, 사유를 입력해 휴가를 신청할 수 있다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "FR-002",
+        "description": "직원은 자신의 신청 목록과 각 신청의 상태(대기/승인/반려)를 볼 수 있다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "FR-003",
+        "description": "직원은 총 연차, 사용 연차, 남은 연차를 볼 수 있다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "FR-004",
+        "description": "관리자는 대기 중인 신청 목록(신청자, 종류, 기간, 사유)을 볼 수 있다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "FR-005",
+        "description": "관리자는 대기 중인 신청을 승인하거나 반려할 수 있다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "FR-006",
+        "description": "관리자가 반려할 때 반려 사유를 입력할 수 있고, 직원은 신청 목록에서 이를 확인할 수 있다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "FR-007",
+        "description": "관리자는 승인된 휴가를 날짜 기준으로 모아 누가 언제 쉬는지 볼 수 있다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "FR-008",
+        "description": "화면에서 직원 샘플 사용자와 관리자 역할을 전환할 수 있다",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "FR-009",
+        "description": "신청 입력값이 잘못되면(필수값 누락, 종료일이 시작일보다 이름, 남은 연차 초과) 한국어 오류 메시지를 보여주고 신청을 막는다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      }
+    ],
+    "business_rules": [
+      {
+        "id": "RULE-001",
+        "description": "새 휴가 신청의 초기 상태는 '대기'이다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "RULE-002",
+        "description": "승인과 반려는 관리자만 할 수 있으며 직원은 처리 기능에 접근할 수 없다",
+        "status": "confirmed",
+        "source": "initial_input"
+      },
+      {
+        "id": "RULE-003",
+        "description": "'대기' 상태의 신청만 승인 또는 반려할 수 있고, 처리된 신청은 상태를 다시 바꿀 수 없다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "RULE-004",
+        "description": "승인되면 신청 일수만큼 남은 연차가 차감되고, 반려되거나 대기 중인 신청은 차감하지 않는다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "RULE-005",
+        "description": "신청 일수는 시작일과 종료일을 포함한 일수로 계산하며(주말 포함 여부는 데모에서 단순화해 주말 제외 평일만 계산), 반차는 0.5일로 계산한다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "RULE-006",
+        "description": "직원은 자신의 신청만 볼 수 있다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      },
+      {
+        "id": "RULE-007",
+        "description": "남은 연차보다 많은 일수는 신청할 수 없다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      }
+    ],
+    "nfrs": [
+      {
+        "id": "NFR-001",
+        "description": "모든 UI 문구는 한국어이다",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "NFR-002",
+        "description": "데이터는 SQLite(data/app.db)에 저장되어 재시작과 새로고침 후에도 유지되며, 테이블이 비어 있을 때만 샘플 데이터를 넣는다",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "NFR-003",
+        "description": "실제 인증 없이 단일 사용자 또는 화면 역할 전환으로 동작하며, 외부 연동은 모의로 처리하고 모의임을 UI에 표시한다",
+        "status": "confirmed",
+        "source": "harness_policy"
+      },
+      {
+        "id": "NFR-004",
+        "description": "직원이 신청부터 결과 확인까지 별도 안내 없이 최소 화면 이동으로 완료할 수 있는 단순한 사용성을 갖는다",
+        "status": "proposed",
+        "source": "ai_proposal"
+      }
+    ],
+    "acceptance_criteria": [
+      {
+        "id": "AC-001",
+        "description": "직원이 필수 항목을 입력해 신청하면 내 신청 목록에 '대기' 상태로 즉시 표시된다",
+        "target_ids": [
+          "FR-001",
+          "US-001",
+          "RULE-001"
+        ]
+      },
+      {
+        "id": "AC-002",
+        "description": "직원 화면에서 신청 목록의 각 항목에 상태가 표시되고 승인/반려 후 새로고침해도 유지된다",
+        "target_ids": [
+          "FR-002",
+          "US-002",
+          "NFR-002"
+        ]
+      },
+      {
+        "id": "AC-003",
+        "description": "직원 화면에 총 연차, 사용 연차, 남은 연차가 표시된다",
+        "target_ids": [
+          "FR-003"
+        ]
+      },
+      {
+        "id": "AC-004",
+        "description": "관리자 화면에 대기 중인 신청만 신청자, 종류, 기간, 사유와 함께 목록으로 표시된다",
+        "target_ids": [
+          "FR-004",
+          "US-003"
+        ]
+      },
+      {
+        "id": "AC-005",
+        "description": "관리자가 승인 또는 반려를 누르면 해당 신청의 상태가 변경되고 대기 목록에서 사라진다",
+        "target_ids": [
+          "FR-005",
+          "US-003",
+          "RULE-003"
+        ]
+      },
+      {
+        "id": "AC-006",
+        "description": "신청이 승인되면 직원 화면의 남은 연차가 신청 일수만큼 줄어들고, 반려 시에는 변하지 않는다",
+        "target_ids": [
+          "RULE-004",
+          "US-004"
+        ]
+      },
+      {
+        "id": "AC-007",
+        "description": "직원 역할에서는 승인/반려 버튼이 보이지 않고, 직원 역할로 처리 API를 호출하면 거부된다",
+        "target_ids": [
+          "RULE-002"
+        ]
+      },
+      {
+        "id": "AC-008",
+        "description": "관리자가 반려 사유를 입력해 반려하면 직원의 신청 목록에서 해당 사유가 보인다",
+        "target_ids": [
+          "FR-006"
+        ]
+      },
+      {
+        "id": "AC-009",
+        "description": "관리자 화면에서 승인된 휴가가 날짜 기준으로 누가 언제 쉬는지 표시된다",
+        "target_ids": [
+          "FR-007",
+          "US-005"
+        ]
+      },
+      {
+        "id": "AC-010",
+        "description": "화면 상단에서 직원과 관리자를 전환하면 해당 역할의 화면이 표시된다",
+        "target_ids": [
+          "FR-008",
+          "ROLE-003"
+        ]
+      },
+      {
+        "id": "AC-011",
+        "description": "필수값 누락, 종료일이 시작일보다 앞선 경우, 남은 연차 초과 신청 시 한국어 오류 메시지가 표시되고 신청이 생성되지 않는다",
+        "target_ids": [
+          "FR-009",
+          "RULE-007"
+        ]
+      },
+      {
+        "id": "AC-012",
+        "description": "직원은 자신의 신청만 목록에서 볼 수 있다",
+        "target_ids": [
+          "RULE-006",
+          "FR-002"
+        ]
+      },
+      {
+        "id": "AC-013",
+        "description": "반차는 0.5일, 그 외 종류는 평일 기준 시작일~종료일 포함 일수로 계산되어 승인 시 차감된다",
+        "target_ids": [
+          "RULE-005"
+        ]
+      }
+    ],
+    "open_issues": [
+      {
+        "id": "ISSUE-001",
+        "description": "휴가 일수 계산 시 주말과 공휴일 처리 방식(데모에서는 주말만 제외, 공휴일은 미반영으로 기본 적용)을 실제 운영 정책에 맞게 확정해야 한다",
+        "status": "needs_clarification",
+        "source": "ai_proposal"
+      }
+    ]
+  },
+  "calls": [
+    {
+      "model": "claude-sonnet-5-5",
+      "usage": {
+        "input_tokens": 3856,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 4539,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "service_tier": "standard",
+        "inference_geo": "global"
+      },
+      "stop_reason": "end_turn",
+      "latency_s": 30.63,
+      "cost_usd": 0.053102,
+      "stage": "prd"
+    }
+  ]
+}

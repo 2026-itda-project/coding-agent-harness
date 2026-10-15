@@ -1,0 +1,36 @@
+{
+  "kind": "model_generated_fixture",
+  "note": "Sonnet이 예시 입력 하나로 생성한 고정 PRD. 요구사항 루프(질문, Review 승인)를 거치지 않았다.",
+  "generated_at": "2026-10-14T15:16:29.013115+00:00",
+  "input_file": "input.md",
+  "input_sha256": "4ce45c24d1357c9166cbbe4c452c6fb74a9c3abbe2a04ea78c7a5fd8b792c285",
+  "prompt_sha256": "056e11044ed87db504d968720fa48de7b30618e6d5e80f9207c0d1197d3fc59f",
+  "prd_sha256": "ea6b7c4d2805d6d6bb39edc0cb1dfcf4f8fac23eedbae42b6124ad60abc3aac4",
+  "calls": [
+    {
+      "model": "claude-sonnet-5-5",
+      "usage": {
+        "input_tokens": 3873,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 4890,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "service_tier": "standard",
+        "inference_geo": "global"
+      },
+      "stop_reason": "end_turn",
+      "latency_s": 31.08,
+      "cost_usd": 0.056646,
+      "stage": "prd"
+    }
+  ],
+  "contract_check": {
+    "errors": []
+  }
+}
