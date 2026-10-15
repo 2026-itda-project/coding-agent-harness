@@ -74,10 +74,13 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 
 - 자동: Spec `checks`의 `http_steps`(상태 코드, 응답 포함 문자열). 재시작 후 `rerun_after_restart` 점검을 다시 실행해 데이터 유지를 확인한다.
 - 수동: 각 점검의 `manual_steps`를 브라우저에서 확인한다(`--keep-running`으로 미리보기 유지).
-- 자동 판정 통과 조건: 최초 실행과 재시작 후 모두 `GET /`가 200이고, 계획된 점검(최초 전체 + 재시작 후 지속성 점검)이 모두 실행되어 통과. 실행되지 않은 점검은 실패로 `failures`에 기록한다.
+- 자동 판정 통과 조건: 최초 실행과 재시작 후 모두 `GET /`가 200이고, HTTP 단계가 있는 점검(최초 + 재시작 후 지속성 점검)이 모두 실행되어 통과. 실행되지 않은 자동 점검은 실패로 `failures`에 기록한다.
+- 수동 전용 점검은 자동 점검 수에서 제외한다. 혼합 점검을 포함한 모든 수동 단계는 `manual_checks`에 `pending`으로 남긴다. 자동 판정은 `automatic_status`(passed/failed/not_applicable)로 구분하고, 실패 없이 수동 확인이 남으면 전체 `status`는 `manual_pending`이다. 수동 전용인 경우 자동 결과는 `not_applicable`이며 통과로 집계하지 않는다. 수동 판정 입력 기능은 후속 범위다.
 - 완료 판정은 빌드 성공이 아니라 자동 점검 전부 통과와 수동 점검 기록이다. 시나리오별 체크리스트는 픽스처 폴더에 둔다.
 
 ## 7. 실행
+
+실제 실행을 확인한 환경은 WSL2(Ubuntu) + Docker Desktop입니다. Windows에서는 WSL 터미널에서 실행합니다. 현재 실행기는 Bash와 POSIX API를 사용하므로 Windows 네이티브 실행은 지원하지 않습니다. macOS 및 별도 Linux 환경에서는 아직 실제 E2E를 검증하지 않았습니다.
 
 ```bash
 cd backend

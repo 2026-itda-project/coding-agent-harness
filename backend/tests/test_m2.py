@@ -307,6 +307,58 @@ class ResumeAttemptsTest(unittest.TestCase):
             state = run.load(run_dir / "run.json")
             self.assertEqual([a["attempt"] for a in state["attempts"]], [1, 2])
             self.assertEqual(state["cost_usd"]["agent"], 0.8)
+            self.assertEqual(state.get("previous_errors", []), [])
             for n in (1, 2):
                 self.assertTrue((art / f"agent/TASK-001-attempt-{n}.json").exists())
                 self.assertTrue((art / f"diffs/TASK-001-attempt-{n}.diff").exists())
+
+
+class ReviewFixesTest(unittest.TestCase):
+    def test_manual_only_and_mixed_checks_remain_pending(self):
+        for mixed in (False, True):
+            with self.subTest(mixed=mixed):
+                data = spec_data()
+                data["checks"][0]["manual_steps"] = ["화면을 확인한다"]
+                if not mixed:
+                    data["checks"][0]["http_steps"] = []
+                spec = Spec.model_validate(data)
+                self.assertEqual(check_spec(spec, PRD.model_validate(prd_data())), [])
+                with patch.object(verify, "run_step", return_value={"passed": True}) as step:
+                    first = verify.run_checks("unused", spec.checks)
+                    after = verify.run_checks("unused", spec.checks)
+                self.assertEqual(step.call_count, 2 if mixed else 0)
+                result = verify.judge({"root_status": 200, "root_status_after_restart": 200,
+                                       "checks": first, "checks_after_restart": after}, spec)
+                self.assertEqual(result["status"], "manual_pending")
+                self.assertEqual(result["automatic_status"], "passed" if mixed else "not_applicable")
+                self.assertEqual(result["total"], 2 if mixed else 0)
+                self.assertEqual(result["failures"], [])
+                self.assertEqual(result["manual_checks"][0]["status"], "pending")
+                self.assertEqual(result["manual_checks"][0]["steps"], data["checks"][0]["manual_steps"])
+                result["root_status_after_restart"] = None
+                self.assertEqual(verify.judge(result, spec)["status"], "checks_failed")
+
+    def test_http_path_must_start_with_slash(self):
+        for path in ("api/items", "", "https://example.com"):
+            data = spec_data()
+            data["checks"][0]["http_steps"][0]["path"] = path
+            self.assertIn("CHK-001 HTTP step path must start with /",
+                          check_spec(Spec.model_validate(data), PRD.model_validate(prd_data())))
+
+    def test_cost_failure_preserves_usage_and_blocks_next_call(self):
+        import io
+        from unittest.mock import MagicMock
+        usage = {"input_tokens": 10, "output_tokens": 5, "cache_read_input_tokens": 1}
+        raw = {"model": "claude-sonnet-5-5", "usage": usage, "stop_reason": "end_turn"}
+        opener = MagicMock()
+        opener.open.return_value.__enter__.return_value = io.StringIO(json.dumps(raw))
+        log = []
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "fake-not-sent"}), \
+                patch.object(claude, "build_opener", return_value=opener):
+            with self.assertRaises(AnalysisError):
+                claude.complete("claude-sonnet-5-5", "test", {}, {}, log)
+        self.assertEqual(len(log), 1)
+        self.assertEqual(log[0]["usage"], usage)
+        self.assertIsNone(log[0]["cost_usd"])
+        with self.assertRaises(SystemExit):
+            run.Budget(100, lambda: [r["cost_usd"] for r in log]).check(1, "next")

@@ -87,8 +87,8 @@ def complete(model, system, payload, schema, log, max_tokens=32000, effort=None,
         raise AnalysisError("gateway_error", "Claude API에 연결하지 못했습니다.") from None
     usage = raw.get("usage") or {}
     record = {"model": raw.get("model"), "usage": usage, "stop_reason": raw.get("stop_reason"),
-              "latency_s": round(time.perf_counter() - started, 2)}
+              "latency_s": round(time.perf_counter() - started, 2), "cost_usd": None}
+    log.append(record)
     if isinstance(usage.get("input_tokens"), int) and isinstance(usage.get("output_tokens"), int):
         record["cost_usd"] = cost(model, usage)
-    log.append(record)
     return parse(raw, model)

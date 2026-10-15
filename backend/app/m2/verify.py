@@ -33,6 +33,8 @@ def run_step(base, step):
 def run_checks(base, checks):
     results = []
     for check in checks:
+        if not check.http_steps:
+            continue
         steps = [run_step(base, s) for s in check.http_steps]
         results.append({"id": check.id, "ac_ids": check.ac_ids, "steps": steps,
                         "passed": bool(steps) and all(s["passed"] for s in steps),
@@ -91,7 +93,11 @@ def verify(app_dir, spec, name, keep_running=False):
 def judge(record, spec):
     """Pass only if both starts answered and every planned check ran and passed; a check that
     never ran is a failure, not a missing number."""
-    planned = len(spec.checks) + sum(c.rerun_after_restart for c in spec.checks)
+    automatic = [c for c in spec.checks if c.http_steps]
+    planned = len(automatic) + sum(c.rerun_after_restart for c in automatic)
+    manual = [{"id": c.id, "ac_ids": c.ac_ids, "steps": c.manual_steps,
+               "rerun_after_restart": c.rerun_after_restart, "status": "pending"}
+              for c in spec.checks if c.manual_steps]
     ran = record["checks"] + record["checks_after_restart"]
     failures = []
     if record["root_status"] != 200:
@@ -101,6 +107,9 @@ def judge(record, spec):
     if len(ran) < planned:
         failures.append(f"{planned - len(ran)} planned checks did not run")
     failures += [f"{c['id']} failed" for c in ran if not c["passed"]]
+    automatic_status = "failed" if failures else "passed" if planned else "not_applicable"
     record.update(passed=sum(c["passed"] for c in ran), total=planned, failures=failures,
-                  status="passed" if planned and not failures else "checks_failed")
+                  automatic_status=automatic_status, manual_checks=manual,
+                  status="checks_failed" if failures or not (planned or manual)
+                  else "manual_pending" if manual else "passed")
     return record

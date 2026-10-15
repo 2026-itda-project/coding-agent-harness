@@ -218,6 +218,9 @@ def check_spec(spec, prd):
         unknown = [a for a in check.ac_ids if a not in ac_ids]
         if not check.ac_ids or unknown:
             errors.append(f"{check.id} ac_ids invalid {unknown or 'empty'}")
+        for step in check.http_steps:
+            if not step.path.startswith("/"):
+                errors.append(f"{check.id} HTTP step path must start with /")
         if not check.http_steps and not check.manual_steps:
             errors.append(f"{check.id} has no steps")
     covered = {a for c in spec.checks for a in c.ac_ids}

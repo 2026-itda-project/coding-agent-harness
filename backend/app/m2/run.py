@@ -89,7 +89,9 @@ def cmd_run(args):
     if args.resume:
         run_dir = Path(args.resume)
         state = load(run_dir / "run.json")
-        state.setdefault("previous_errors", []).append(state["stages"].pop("error", None))
+        previous_error = state["stages"].pop("error", None)
+        if previous_error is not None:
+            state.setdefault("previous_errors", []).append(previous_error)
     else:
         run_id = args.run_id or datetime.now().strftime("run-%Y%m%d-%H%M%S")
         run_dir = WORKSPACE_ROOT / run_id
