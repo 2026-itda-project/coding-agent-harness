@@ -226,6 +226,12 @@ class ReviewedPRDTest(unittest.TestCase):
                      "GAP-002 is linked to REQ-006 in Review"):
             self.assertIn(part, errors)
 
+    def test_gap_linked_to_undecided_requirement_stays_open_with_it(self):
+        state = approved_state()
+        state.gap_links.append(GapLink(gap=gap("GAP-003", ["REQ-007"], "반복 주기"), requirement_id="REQ-007"))
+        data = prd_output(open_issues=[item("ISSUE-001", ["REQ-007"], status="needs_clarification", gaps=["GAP-003"])])
+        self.assertEqual(check_reviewed_prd(ReviewedPRD.model_validate(data), web.approve(state)[1]), [])
+
     def test_rejects_unknown_ids_and_missing_open_gap(self):
         data = prd_output()
         data["functional_requirements"][5] = item("FR-006", ["REQ-404"], status="proposed", source="ai_proposal",
@@ -325,6 +331,19 @@ class WebFlowTest(unittest.TestCase):
         provenance = run.load(web.prd_dir(first["prd_id"]) / "provenance.json")
         self.assertEqual((provenance["analysis_run_id"], provenance["calls"][0]["cost_usd"]), ("analysis-1", 0.02))
 
+    def test_unknown_cost_of_an_earlier_prd_attempt_blocks_the_next_call(self):
+        def cut(model, system, payload, schema, log, **kw):
+            self.calls += 1
+            log.append({"model": model, "usage": {}, "cost_usd": None, "error": "interrupted: TimeoutError"})
+            raise AnalysisError("gateway_error", "끊김")
+
+        with patch.object(claude, "complete", cut):
+            body = {"state": approved_state().model_dump()}
+            self.assertEqual(self.client.post("/api/m2/prd", json=body).status_code, 502)
+            second = self.client.post("/api/m2/prd", json=body)
+        self.assertEqual((second.status_code, self.calls), (409, 1))
+        self.assertIn("unknown cost", second.json()["message"])
+
     def test_unapproved_state_and_rejected_prd_cannot_run(self):
         state = approved_state().model_copy(update={"phase": "review"})
         self.assertEqual(self.client.post("/api/m2/prd", json={"state": state.model_dump()}).status_code, 422)
@@ -348,7 +367,7 @@ class WebFlowTest(unittest.TestCase):
             seen.append(argv)
             run_id = argv[argv.index("--run-id") + 1]
             art = Path(self.tmp.name) / run_id / "artifacts"
-            run.dump(art / "verify.json", {"status": "manual_pending", "passed": 3, "total": 3, "failures": [],
+            run.dump(art / "verify.json", {"status": "manual_pending", "automatic_status": "passed", "passed": 3, "total": 3, "failures": [],
                                            "preview_url": "http://127.0.0.1:5555"})
             run.dump(art.parent / "run.json", {"stages": {"spec": "done", "plan": "done", "code": "done",
                                                           "verify": "manual_pending"}, "tasks": {}})
@@ -416,6 +435,18 @@ class WebFlowTest(unittest.TestCase):
         run.dump(web_json, {**run.load(web_json), "status": "running"})  # as if the server died mid-run
         web._threads.pop(f"web-{prd_id}")
         self.assertEqual(self.client.get(f"/api/m2/runs/web-{prd_id}").json()["outcome"], "interrupted")
+
+    def test_manual_only_checks_are_not_reported_as_automatic_pass(self):
+        def manual_only(argv):
+            run_id = argv[argv.index("--run-id") + 1]
+            run.dump(Path(self.tmp.name) / run_id / "artifacts/verify.json",
+                     {"status": "manual_pending", "automatic_status": "not_applicable", "passed": 0, "total": 0,
+                      "failures": []})
+
+        prd_id, _ = self.start(manual_only)
+        with patch.object(web, "preview_running", lambda run_id: False):
+            status = self.client.get(f"/api/m2/runs/web-{prd_id}").json()
+        self.assertEqual((status["outcome"], status["manual_review"]), ("manual_check_only", "pending"))
 
     def test_one_active_run_and_ids_are_validated(self):
         release = threading.Event()

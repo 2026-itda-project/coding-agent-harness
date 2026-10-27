@@ -35,12 +35,12 @@ type PrdResult = {
 
 type RunStatus = {
   run_id: string
-  outcome: 'running' | 'failed' | 'interrupted' | 'verification_failed' | 'auto_checks_passed'
+  outcome: 'running' | 'failed' | 'interrupted' | 'verification_failed' | 'auto_checks_passed' | 'manual_check_only'
   error: string | null
   current_stage: string | null
   tasks: { id: string; title: string; status: string; attempt: number }[]
   task_order: string[]
-  verify: { status: string; passed: number; total: number; failures: string[] } | null
+  verify: { status: string; automatic_status: string | null; passed: number; total: number; failures: string[] } | null
   manual_review: 'pending' | 'done'
   preview_url: string | null
   cost_usd: { messages_api: number; agent: number; unknown_cost_records: number } | null
@@ -63,6 +63,7 @@ const OUTCOME_LABELS: Record<RunStatus['outcome'], string> = {
   interrupted: '중단됨 (서버 재시작)',
   verification_failed: '자동 점검 실패',
   auto_checks_passed: '자동 점검 통과 · 사람 확인 대기',
+  manual_check_only: '자동 점검 없음, 사람 확인 대기',
 }
 
 export default function M2Panel({ state }: { state: WorkflowState }) {
@@ -199,14 +200,14 @@ export default function M2Panel({ state }: { state: WorkflowState }) {
           {status.tasks.length > 0 && (
             <ul>{status.tasks.map(task => <li key={task.id}>{task.id} {task.title} — {task.status === 'done' ? '완료' : '실패'} (시도 {task.attempt})</li>)}</ul>
           )}
-          {status.verify && (
-            <p className={status.verify.status === 'passed' ? 'notice' : 'error'}>
+          {status.verify && (status.verify.automatic_status === 'not_applicable' ? <p>실행한 자동 점검이 없습니다.</p> : (
+            <p className={status.verify.failures?.length ? 'error' : 'notice'}>
               자동 점검 {status.verify.passed}/{status.verify.total} 통과
               {status.verify.failures?.length > 0 && ` — ${status.verify.failures.join(', ')}`}
             </p>
-          )}
-          {status.outcome === 'auto_checks_passed' && status.manual_review === 'pending' && (
-            <p>자동 점검만 통과한 상태입니다. 미리보기에서 주요 흐름을 직접 확인해야 완료로 볼 수 있습니다.</p>
+          ))}
+          {(status.outcome === 'auto_checks_passed' || status.outcome === 'manual_check_only') && status.manual_review === 'pending' && (
+            <p>사람 확인이 남아 있습니다. 미리보기에서 주요 흐름을 직접 확인해야 완료로 볼 수 있습니다.</p>
           )}
           {(status.outcome === 'failed' || status.outcome === 'interrupted') && (
             <>

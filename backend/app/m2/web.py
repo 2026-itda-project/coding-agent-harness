@@ -62,14 +62,17 @@ def generate_prd(state):
             raise Conflict("같은 Review 결과로 PRD를 생성하고 있습니다.")
         _prd_jobs.add(prd_id)
     try:
-        attempt = len(list(out.glob("prd.rejected-*.json")) + list(out.glob("prd.failed-*.json"))) + 1
+        previous = list(out.glob("prd.rejected-*.json")) + list(out.glob("prd.failed-*.json"))
+        attempt = len(previous) + 1
+        # earlier billed attempts count too, so an unknown-cost failure blocks the next paid call
+        earlier = [c.get("cost_usd") for path in previous for c in run.load(path).get("calls", [])]
         run.dump(out / "reviewed.json", reviewed.model_dump())
         log = []
         source = {"analysis_project_id": state.project_id, "analysis_run_id": state.run_id,
                   "analysis_mode": state.analysis_mode, "requirement_loop_usage": state.usage,
                   "input_text_sha256": run.sha(state.text)}
         try:
-            run.Budget(PRD_BUDGET_USD, lambda: [r.get("cost_usd") for r in log]).reserve("sonnet", max_input=20000)
+            run.Budget(PRD_BUDGET_USD, lambda: earlier + [r.get("cost_usd") for r in log]).reserve("sonnet", max_input=20000)
         except SystemExit as exc:  # the shared budget check stops the CLI; here it is a refused request
             raise Conflict(str(exc.code)) from None
         try:
@@ -181,7 +184,8 @@ def run_status(run_id):
     elif web["status"] in ("failed", "interrupted"):
         outcome = web["status"]
     elif verify and verify.get("status") in ("passed", "manual_pending"):
-        outcome = "auto_checks_passed"  # automatic checks only; a human review is still pending
+        # automatic checks only; a human review is still pending. No automatic check is its own outcome.
+        outcome = "manual_check_only" if verify.get("automatic_status") == "not_applicable" else "auto_checks_passed"
     else:
         outcome = "verification_failed"
     preview = verify.get("preview_url") if verify else None
@@ -189,7 +193,7 @@ def run_status(run_id):
         "run_id": run_id, "prd_id": web["prd_id"], "outcome": outcome, "error": web.get("error"),
         "current_stage": current if outcome == "running" else None, "stages": stages_done,
         "tasks": tasks, "task_order": state.get("task_order", []),
-        "verify": {k: verify.get(k) for k in ("status", "passed", "total", "failures")} if verify else None,
+        "verify": {k: verify.get(k) for k in ("status", "automatic_status", "passed", "total", "failures")} if verify else None,
         "manual_review": "done" if (art / "manual-review.json").exists() else "pending",
         "preview_url": preview if preview and preview_running(run_id) else None,
         "cost_usd": costs(state), "started_at": web["started_at"], "ended_at": web.get("ended_at"),

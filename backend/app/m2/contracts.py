@@ -161,7 +161,9 @@ def check_reviewed_prd(prd, reviewed):
         if not gap_items.get(gid):
             errors.append(f"{gid} (linked to {req_id} in Review) is missing in the PRD")
         for section, item in gap_items.get(gid, []):
-            if section == "open_issues" or req_id not in item.requirement_ids:
+            # a gap linked to an undecided requirement stays open together with it
+            reopened = section == "open_issues" and (req_id not in reqs or reqs[req_id].status != "needs_clarification")
+            if reopened or req_id not in item.requirement_ids:
                 errors.append(f"{gid} is linked to {req_id} in Review; {item.id} must not reopen or relink it")
     return errors
 
