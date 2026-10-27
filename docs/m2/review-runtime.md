@@ -7,13 +7,22 @@
 ```text
 변경 전  입력 → (Mock/SnowChat) 요구사항·질문 → Review 승인 → 규칙 기반 PRD 미리보기 (끝)
          M2 실행은 사람이 고정 PRD 파일을 준비해 터미널에서 실행
-변경 후  입력 → (LLM_PROVIDER=claude) Sonnet 요구사항·질문 → Review 승인
-         → Sonnet M2 PRD (Review 결과 기준, 계약 검증) → 사용자 확인 → MVP 생성 요청
-         → 기존 실행기 백그라운드 실행 (Opus Spec·Plan → Claude Code 코딩 → Docker 점검)
-         → 화면에서 진행 상태, 실패 사유, 자동 점검 결과, 미리보기
+변경 후  입력 → (LLM_PROVIDER=claude) Sonnet 요구사항, 질문 → 검토
+         → '생성' 버튼 한 번 (POST /api/m2/generate)
+         → 백그라운드: Review 승인 → Sonnet M2 PRD(계약 검증) → 기존 실행기
+           (Opus Spec, Plan → Claude Code 코딩 → Docker 빌드와 점검)
+         → 화면에서 진행 단계, 실패 사유와 다음 행동, 완료 시 생성 앱 미리보기
 ```
 
-기존 `/api/prd`(규칙 기반 M1 미리보기)와 Mock/SnowChat 경로는 그대로 둔다.
+기존 `/api/prd`(규칙 기반 M1 미리보기), `/api/m2/prd`(PRD만 생성)와 Mock/SnowChat 경로는 API로 남아 있지만 사용자 화면은 쓰지 않는다.
+
+### 사용자 화면
+
+입력 → 질문 → 검토 → 생성 → 완료의 단계형 화면이다. 사용자에게는 개발 산출물을 보여 주지 않는다.
+
+- 검토 화면: 질문 답변과 Review에서 정한 내용, AI가 정한 내용(개별 또는 일괄 수락, 문장 수정), 아직 정하지 않은 내용(필수 항목은 정해야 생성 가능)만 보인다. 사용자가 처음 입력한 내용을 항목별로 다시 확인받지 않는다.
+- 보이지 않는 것: 확정 요구사항 전체 목록, 남은 Gap과 연결 UI, AC 입력과 편집, 인계 JSON, PRD 원문과 내부 ID, Task 상세, 토큰과 비용. 내부 기록(AC, `proposed`와 `ai_proposal` 출처, 비용과 비용 미확인 기록)은 그대로 저장한다. 사용자가 보지 않았다는 이유로 `confirmed`로 바꾸지 않는다.
+- 검토 화면에서 AI 제안의 문장을 고치면 기존 `edit`(확정 포함)으로 저장되어 `confirmed` + `ai_proposal`이 된다(기존 Review 수정과 같은 규칙).
 
 ## 2. 요구사항 루프의 Claude 경로 (#7)
 
@@ -55,28 +64,32 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 
 | API | 동작 |
 | --- | --- |
+| `POST /api/m2/generate` `{state}` | 화면의 '생성' 버튼. `review` 또는 `approved` 상태를 받아 서버가 승인하고, 백그라운드 스레드에서 PRD 생성과 검증 후 실행기를 시작한다. `run_id`를 바로 반환한다. 같은 상태의 재요청은 같은 Run을 돌려준다 |
 | `POST /api/m2/runs` `{prd_id, confirm_open_issues, retry}` | 서버에 저장된 그 PRD로 기존 실행기(`run.main`)를 백그라운드 스레드에서 시작하고 `run_id`를 바로 반환. `retry=true`는 실패·중단된 같은 Run을 실행기의 `--resume`으로 이어서 실행(사용자 요청 시에만) |
-| `GET /api/m2/runs/{run_id}` | 단계, Task, 실패 사유, 자동 점검, 수동 확인 대기, 미리보기 주소, 비용 |
+| `GET /api/m2/runs/{run_id}` | 현재 단계, Task, 실패 사유, 자동 점검, 수동 확인 대기, 미리보기 주소, 비용, 확인이 필요한 미결정 사항 |
 | `POST /api/m2/runs/{run_id}/preview/stop` | 그 Run의 미리보기 컨테이너만 종료 |
 
 - 클라이언트는 `prd_id`만 보낸다. 파일 경로, PRD 내용, 명령, URL은 받지 않는다. id는 형식을 검사한 뒤에만 경로와 컨테이너 이름에 쓴다.
 - `run_id = web-<prd_id>`라 같은 PRD의 중복 요청은 기존 Run을 돌려준다. 서버당 동시에 하나의 Run만 허용한다(다른 Run 실행 중이면 409). 실패 후 `retry` 없이 다시 요청해도 새로 실행하지 않는다. 다시 시도는 완료된 단계를 건너뛰고, 이전 시도의 오류(`web.json.previous_errors`)와 비용(`run.json`)을 그대로 남긴다. 자동 재시도는 없다.
 - Opus Spec·Plan 호출의 출력 상한은 64,000토큰이다(`stages.OPUS_MAX_TOKENS`). 첫 실제 실행에서 항목이 많은 PRD의 Spec이 effort high의 생각 토큰(26K/32K)으로 32,000에서 잘렸다. 예산 예약도 같은 값으로 한다.
-- Open Issue가 있으면 `confirm_open_issues=true`가 있어야 시작한다(2026-10-27 사용자 결정, 화면에서 체크).
+- Open Issue가 있으면 `confirm_open_issues=true`가 있어야 시작한다(2026-10-27 사용자 결정). 생성 버튼 흐름에서는 PRD를 만든 뒤 `awaiting_confirmation`으로 멈추고, 화면이 미결정 사항을 보여 준 뒤 "이대로 계속 생성"으로 같은 Run을 이어 간다. 이 단계는 질문 정책 변경 작업에서 없앨 예정이다.
+- 실패한 단계가 PRD 생성이면 `retry`는 PRD 단계부터 다시 하고, 실행기에서 멈췄으면 `--resume`으로 이어 간다. 빌드나 점검 실패(`verification_failed`)도 `retry`로 같은 코드를 다시 빌드하고 점검한다(모델 호출 없음). 코드를 고치거나 다시 계획하지 않으므로 코드 문제라면 같은 이유로 다시 실패할 수 있다.
 - 예산: `M2_RUN_BUDGET_USD`(기본 8), `M2_TASK_BUDGET_USD`(기본 1.5), PRD 생성은 `M2_PRD_BUDGET_USD`(기본 0.5). 실행기의 기존 예산 검사와 비용 미확인 차단을 그대로 쓴다.
 - 결과 표시(`outcome`):
 
   | outcome | 조건 |
   | --- | --- |
   | `running` | 실행 중 |
+  | `awaiting_confirmation` | PRD에 미결정 사항이 있어 사용자 확인을 기다림 |
   | `failed` | 실행기가 멈춤(예산, 계약 거부, Task 실패 등). 사유 포함 |
   | `interrupted` | 실행 중에 서버가 재시작됨 |
   | `verification_failed` | 빌드 또는 자동 점검 실패 |
   | `auto_checks_passed` | 자동 점검(`automatic_status: passed`) 전부 통과. 실행기 `status`는 `passed` 또는 `manual_pending` |
   | `manual_check_only` | 자동 점검이 없고(`automatic_status: not_applicable`) 수동 확인만 남음. 자동 통과로 표시하지 않음 |
 
-  마지막 두 경우도 완료가 아니다. `manual_review: pending`이면 화면에 "사람 확인 대기"로 표시한다. 미리보기 가능 여부와 검증 완료는 따로 표시한다.
-- 추적: `web-<prd_id>/web.json`(PRD id, 시작·종료, 확인 여부, 예산) → `prds/<prd_id>/provenance.json`(분석 ID, 앞 단계 호출) → 기존 `run.json`·`artifacts/`.
+  사용자 화면은 `auto_checks_passed`에만 "생성이 완료되었습니다!"를 쓴다. `manual_check_only`는 "생성이 끝났습니다"와 직접 확인 안내를 쓴다. 내부의 `manual_pending`과 `manual_review: pending`은 그대로 남기며 화면 문구 때문에 완료로 바꾸지 않는다. 실패, 중단, 점검 실패는 간단한 사유와 다음 행동(이어서 다시 시도, 홈으로)을 보여 준다.
+- 진행 단계(`current_stage`)는 실행 기록에서만 계산한다: `prd`(요구사항 정리) → `spec`(개발 명세) → `plan`(작업 계획) → `code`(기능 구현, 완료 Task 수 / 전체) → `build`(빌드) → `check`(최종 점검). 실행기는 시작할 때, Spec과 Plan을 마칠 때, Task 순서를 정할 때, Task마다, 빌드와 점검을 시작할 때(`verify_phase`) `run.json`을 저장한다. 화면은 10초마다 조회하고 예상 시간이나 가짜 진행률은 보여 주지 않는다.
+- 서비스별 저장(대시보드는 아직 없음): `web-<prd_id>/web.json`(단계, 시작과 종료, 확인 여부, 예산, 이전 오류) → `prds/<prd_id>/state.json`(최초 입력, 질문과 답변, 검토 결과) → `reviewed.json`, `prd.json`, `provenance.json`(분석 ID, 앞 단계 호출과 비용) → 기존 `run.json`, `artifacts/`(Spec, Plan, Task 기록, 점검 결과)와 `app/`(생성 코드와 로컬 Git). 화면에서 홈으로 가도 이 파일들은 지우지 않는다.
 
 ## 5. 실행 방법
 
@@ -93,14 +106,14 @@ cd ../frontend && npm run dev                                              # htt
 
 - 생성 앱은 Docker 컨테이너에서 `127.0.0.1:<임의 포트>`로 열리고, Harness 화면(5173)과 다른 origin에서 iframe과 새 창 링크로 보인다. 생성물은 기존 외부 작업 폴더와 로컬 Git(원격 없음) 구조 그대로다.
 - **지원 환경: 브라우저와 실행기가 같은 컴퓨터**(WSL2의 경우 Windows 브라우저가 WSL의 127.0.0.1에 접근하는 기본 포워딩). 다른 컴퓨터의 브라우저에서는 미리보기 주소가 그 컴퓨터 자신을 가리키므로 동작하지 않는다.
-- 미리보기는 서버를 꺼도 남는다. 화면의 "미리보기 종료" 또는 `docker rm -f harness-web-<prd_id>`로 끈다.
+- 미리보기는 서버를 꺼도 남는다. `POST /api/m2/runs/{run_id}/preview/stop` 또는 `docker rm -f harness-web-<prd_id>`로 끈다(사용자 화면에는 종료 버튼이 없다). 꺼진 미리보기를 화면에서 다시 켜는 기능은 없다.
 
 ## 7. 한계 (임시 동작 포함)
 
 - 실행 관리는 서버 프로세스 하나의 스레드다. `--reload`나 다중 worker에서는 쓰지 않는다. 서버가 재시작되면 진행 중이던 Run은 `interrupted`가 된다. 자동으로 다시 시작하지 않으며, 사용자가 "이어서 다시 시도"(`retry=true`)를 누르면 완료된 단계를 건너뛰고 이어서 실행한다. 재시작 중 이미 시작된 Claude Code 프로세스가 남을 수 있다.
 - 자동 재시도·재계획(#11), Opus 최종 검증(#10), 비용·지표 체계(#12), 정식 Sandbox(#9)는 포함하지 않는다.
 - 수동 확인 결과를 화면에서 기록하는 기능은 없다(`artifacts/manual-review.json`이 있으면 `done`).
-- 화면 상태는 브라우저 메모리에만 있어 새로고침하면 진행 중인 PRD·Run을 다시 불러오지 못한다. 서버의 Run은 계속 진행되며 `GET /api/m2/runs/{run_id}`로 조회할 수 있다.
+- 새로고침: 생성을 시작하면 브라우저 `localStorage`에 `run_id`만 기억하고, 다시 열면 서버의 상태를 불러와 진행이나 결과 화면을 보여 준다. 진행 상태와 산출물은 서버 파일에 있으므로 브라우저 저장이 지워져도 생성 결과는 남는다(그 경우 화면에서 다시 찾아가는 목록은 아직 없다). 생성 전 단계(질문, 검토)의 화면 상태는 브라우저 메모리에만 있어 새로고침하면 처음부터 다시 해야 한다.
 - Review 이후 PRD 프롬프트는 Structured Output 문법 한도 때문에 Spec과 같이 스키마를 프롬프트로 전달하고 같은 계약으로 검증한다.
 
 ## 8. 실제 실행 기록

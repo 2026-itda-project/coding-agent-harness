@@ -59,14 +59,16 @@ def free_port():
         return s.getsockname()[1]
 
 
-def verify(app_dir, spec, name, keep_running=False):
+def verify(app_dir, spec, name, keep_running=False, progress=lambda phase: None):
     record = {"image": IMAGE}
+    progress("build")
     build = subprocess.run([SANDBOX, BUILD], cwd=app_dir, capture_output=True, text=True, timeout=1800,
                            env={**os.environ, "SANDBOX_IMAGE": IMAGE})
     record["build"] = {"exit_code": build.returncode, "log_tail": (build.stdout + build.stderr)[-4000:]}
     if build.returncode != 0:
         record["status"] = "build_failed"
         return record
+    progress("check")
     port = free_port()
     base = f"http://127.0.0.1:{port}"
     uid = f"{os.getuid()}:{os.getgid()}"

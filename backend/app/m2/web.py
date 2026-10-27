@@ -1,7 +1,8 @@
-"""Web entry points for M2: approved Review -> Sonnet PRD -> background M2 run (existing `run.cmd_run`).
+"""Web entry points for M2: Review state -> one "generate" request -> Sonnet PRD -> M2 run (existing
+`run.cmd_run`), all in one background thread.
 
 Local demo scope: runs are threads of this one server process; state lives in files under the
-workspace root. A server restart turns an unfinished run into `interrupted` (no resume from the web)."""
+workspace root. A server restart turns an unfinished run into `interrupted`; the user can resume it."""
 
 import hashlib
 import json
@@ -13,6 +14,7 @@ import threading
 from app.llm.errors import AnalysisError
 from app.m2 import run, stages
 from app.m2.contracts import ReviewedPRD
+from app.schemas import WorkflowState
 from app.workflow import approve, require_phase, validate_state
 
 PRD_BUDGET_USD = float(os.getenv("M2_PRD_BUDGET_USD") or 0.5)
@@ -53,7 +55,7 @@ def generate_prd(state):
     require_phase(state, "approved")
     validate_state(state)
     _, reviewed = approve(state)
-    prd_id = hashlib.sha256(state.model_dump_json().encode()).hexdigest()[:16]
+    prd_id = prd_id_of(state)
     out = prd_dir(prd_id)
     with _lock:
         if (out / "prd.json").exists():
@@ -95,6 +97,10 @@ def generate_prd(state):
             _prd_jobs.discard(prd_id)
 
 
+def prd_id_of(state):
+    return hashlib.sha256(state.model_dump_json().encode()).hexdigest()[:16]
+
+
 def prd_view(prd_id):
     out = prd_dir(prd_id)
     prd = ReviewedPRD.model_validate(run.load(out / "prd.json"))
@@ -104,18 +110,67 @@ def prd_view(prd_id):
             "run_id": f"web-{prd_id}" if run_dir(f"web-{prd_id}").exists() else None}
 
 
+# ---------- one "generate" request: Review state -> PRD -> M2 run ----------
+
+def start_generation(state):
+    """The single generate button. Approves the Review state, then a background thread makes the PRD
+    and starts the runner. The run id comes from the approved state, so a repeated click or resent
+    request returns the same run instead of starting a second paid one."""
+    if state.phase == "review":
+        state, _ = approve(state)
+    require_phase(state, "approved")
+    validate_state(state)
+    prd_id = prd_id_of(state)
+    run_id = f"web-{prd_id}"
+    target = run_dir(run_id)
+    with _lock:
+        if target.exists():
+            return {"run_id": run_id, "created": False}
+        if any(t.is_alive() for t in _threads.values()):
+            raise Conflict("다른 MVP 생성이 진행 중입니다.")
+        # the inputs of this service (original text, answers, reviewed requirements) stay with its PRD
+        run.dump(prd_dir(prd_id) / "state.json", state.model_dump())
+        run.dump(target / "web.json", {
+            "status": "running", "stage": "prd", "prd_id": prd_id, "started_at": run.now(),
+            "state": f"prds/{prd_id}/state.json", "prd_provenance": f"prds/{prd_id}/provenance.json",
+            "budget_usd": RUN_BUDGET_USD, "task_budget_usd": TASK_BUDGET_USD})
+        return _spawn(run_id, _generate, created=True)
+
+
+def _generate(run_id):
+    web = run_dir(run_id) / "web.json"
+    prd_id = run_id[4:]
+    out = prd_dir(prd_id)
+    try:
+        if not (out / "prd.json").exists():
+            result = generate_prd(WorkflowState.model_validate(run.load(out / "state.json")))
+            if result["status"] != "passed":
+                return _finish(web, "failed", "요구사항 정리 결과가 검증을 통과하지 못했습니다. "
+                                              f"({len(result['errors'])}건, prds/{prd_id}/prd.rejected-*.json)")
+        prd = ReviewedPRD.model_validate(run.load(out / "prd.json"))
+        if prd.open_issues and not run.load(web).get("open_issues_confirmed"):
+            return _finish(web, "awaiting_confirmation", None)
+    except (AnalysisError, Conflict) as exc:
+        return _finish(web, "failed", str(exc))
+    except Exception as exc:  # never leave a dead run looking like it is still running
+        return _finish(web, "failed", f"{type(exc).__name__}: {exc}")
+    run.dump(web, {**run.load(web), "stage": "run"})
+    _run(run_id, ["--prd", str(out / "prd.json"), "--run-id", run_id])
+
+
+def _finish(web, status, error):
+    run.dump(web, {**run.load(web), "status": status, "error": error, "ended_at": run.now()})
+
+
 # ---------- PRD -> M2 run ----------
 
 def start_run(prd_id, confirm_open_issues, retry=False):
-    """Start the existing M2 runner on the stored PRD. One run per PRD (repeat requests return it)
-    and one active run per server, so a double click never starts a second paid run. `retry` resumes a
-    failed or interrupted run with the runner's --resume, keeping its earlier attempts and costs."""
+    """Continue or start the M2 runner for a stored PRD. One run per PRD (repeat requests return it)
+    and one active run per server, so a double click never starts a second paid run.
+    - a run waiting on open issues continues once the user confirms them
+    - `retry` resumes a failed or interrupted run (PRD step again if it stopped there, else the
+      runner's --resume), keeping its earlier attempts and costs."""
     out = prd_dir(prd_id)
-    if not (out / "prd.json").exists():
-        raise ValueError("검증을 통과한 PRD가 없어 실행할 수 없습니다.")
-    prd = ReviewedPRD.model_validate(run.load(out / "prd.json"))
-    if prd.open_issues and not confirm_open_issues:
-        raise Conflict(f"미결정 사항 {len(prd.open_issues)}건이 있습니다. 확인 후 다시 요청하세요.")
     run_id = f"web-{prd_id}"
     target = run_dir(run_id)
     with _lock:
@@ -125,17 +180,31 @@ def start_run(prd_id, confirm_open_issues, retry=False):
             raise Conflict("다른 MVP 생성이 진행 중입니다.")
         if target.exists():
             web = run.load(target / "web.json")
-            if not retry or web["status"] not in ("failed", "interrupted"):
+            if web["status"] == "awaiting_confirmation":
+                if not confirm_open_issues:
+                    raise Conflict("미결정 사항을 확인한 뒤 다시 요청하세요.")
+                run.dump(target / "web.json", {**web, "status": "running", "stage": "run", "error": None,
+                                               "ended_at": None, "open_issues_confirmed": True})
+                return _start(run_id, ["--prd", str(out / "prd.json"), "--run-id", run_id], created=False)
+            if not retry or not (web["status"] in ("failed", "interrupted") or verification_failed(target, web)):
                 return {"run_id": run_id, "created": False}
+            resumed = {**web, "status": "running", "error": None, "ended_at": None, "resumed_at": run.now(),
+                       "budget_usd": RUN_BUDGET_USD, "task_budget_usd": TASK_BUDGET_USD,
+                       "previous_errors": [*web.get("previous_errors", []), web.get("error")]}
             if not (target / "run.json").exists():
-                raise Conflict("이어서 실행할 기록이 없어 다시 시도할 수 없습니다.")
-            run.dump(target / "web.json", {
-                **web, "status": "running", "error": None, "ended_at": None, "resumed_at": run.now(),
-                "budget_usd": RUN_BUDGET_USD, "task_budget_usd": TASK_BUDGET_USD,
-                "previous_errors": [*web.get("previous_errors", []), web.get("error")]})
+                if web.get("stage") != "prd":
+                    raise Conflict("이어서 실행할 기록이 없어 다시 시도할 수 없습니다.")
+                run.dump(target / "web.json", resumed)  # stopped before the runner started: redo that step
+                return _spawn(run_id, _generate, created=False)
+            run.dump(target / "web.json", resumed)
             return _start(run_id, ["--resume", str(target)], created=False)
+        if not (out / "prd.json").exists():
+            raise ValueError("검증을 통과한 PRD가 없어 실행할 수 없습니다.")
+        prd = ReviewedPRD.model_validate(run.load(out / "prd.json"))
+        if prd.open_issues and not confirm_open_issues:
+            raise Conflict(f"미결정 사항 {len(prd.open_issues)}건이 있습니다. 확인 후 다시 요청하세요.")
         run.dump(target / "web.json", {
-            "status": "running", "prd_id": prd_id, "started_at": run.now(),
+            "status": "running", "stage": "run", "prd_id": prd_id, "started_at": run.now(),
             "open_issues_confirmed": bool(prd.open_issues), "prd_provenance": f"prds/{prd_id}/provenance.json",
             "budget_usd": RUN_BUDGET_USD, "task_budget_usd": TASK_BUDGET_USD})
         return _start(run_id, ["--prd", str(out / "prd.json"), "--run-id", run_id], created=True)
@@ -143,7 +212,12 @@ def start_run(prd_id, confirm_open_issues, retry=False):
 
 def _start(run_id, source_args, created):
     """Caller holds _lock."""
-    thread = threading.Thread(target=_run, args=(run_id, source_args), daemon=True)
+    return _spawn(run_id, lambda rid: _run(rid, source_args), created)
+
+
+def _spawn(run_id, target, created):
+    """Caller holds _lock."""
+    thread = threading.Thread(target=target, args=(run_id,), daemon=True)
     _threads[run_id] = thread
     thread.start()
     return {"run_id": run_id, "created": created}
@@ -163,6 +237,13 @@ def _run(run_id, source_args):
     run.dump(web, {**run.load(web), **result, "ended_at": run.now()})
 
 
+def verification_failed(target, web):
+    """A finished run whose build or checks failed. Retrying it runs the same code through build and
+    checks again (the runner skips finished stages); nothing is regenerated or repaired."""
+    verify = read(target / "artifacts/verify.json")
+    return web["status"] == "finished" and not (verify and verify.get("status") in ("passed", "manual_pending"))
+
+
 def run_status(run_id):
     target = run_dir(run_id)
     web = read(target / "web.json")
@@ -176,11 +257,13 @@ def run_status(run_id):
     art = target / "artifacts"
     verify = read(art / "verify.json")
     stages_done = state.get("stages", {})
-    current = next((s for s in run.STAGES if s not in stages_done), None)
+    current = "prd" if web.get("stage") == "prd" else next((s for s in run.STAGES if s not in stages_done), None)
+    if current == "verify":
+        current = state.get("verify_phase", "build")  # build, then check (recorded by the runner)
     tasks = [{"id": tid, "title": t["title"], "status": t["status"], "attempt": t.get("attempt", 1),
               "cost_usd": t["agent"].get("total_cost_usd")} for tid, t in state.get("tasks", {}).items()]
-    if web["status"] == "running":
-        outcome = "running"
+    if web["status"] in ("running", "awaiting_confirmation"):
+        outcome = web["status"]
     elif web["status"] in ("failed", "interrupted"):
         outcome = web["status"]
     elif verify and verify.get("status") in ("passed", "manual_pending"):
@@ -198,6 +281,8 @@ def run_status(run_id):
         "preview_url": preview if preview and preview_running(run_id) else None,
         "cost_usd": costs(state), "started_at": web["started_at"], "ended_at": web.get("ended_at"),
         "models": state.get("models"),
+        "open_issues": [i["description"] for i in read(prd_dir(web["prd_id"]) / "prd.json", {}).get("open_issues", [])]
+        if outcome == "awaiting_confirmation" else [],
     }
 
 

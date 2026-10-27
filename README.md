@@ -33,9 +33,9 @@
 | 영역 | 현재 코드 | M2에서 바뀔 점 |
 | --- | --- | --- |
 | 입력 | `AnalyzeRequest.text` 단일 문자열 | 목업 생성 중심 입력 항목(제안, 팀 컨펌 대기 — `docs/decisions/m2-development-direction.md` 3절). 필드 계약은 컨펌 후 #7·#8에서 구체화 |
-| 요구사항 루프 | Mock / SnowChat, Gap 분석, 최대 3라운드 Clarification, Review·승인 | Claude Sonnet, AI 기본값 우선·핵심 질문 최소화 |
-| PRD | M1 `/api/prd` 규칙 기반 미리보기 + M2 `/api/m2/prd` Review 결과 기반 Sonnet PRD와 상태·출처 검증 | 입력 양식 개편 |
-| M2 실행 | 웹에서 MVP 생성 요청 → 기존 실행기(Spec·Task·Context·Claude Code·Docker 점검) 백그라운드 실행, 상태·미리보기 ([review-runtime.md](docs/m2/review-runtime.md)) | Opus 검증, 재계획·재시도, 정식 Sandbox, 지표 |
+| 요구사항 루프 | Mock / SnowChat / Claude Sonnet, Gap 분석, 최대 3라운드 Clarification, 단순화한 검토 화면 | AI 기본값 우선, 핵심 질문 1라운드 |
+| PRD | 생성 버튼 뒤 내부에서 Review 결과 기반 Sonnet PRD 생성과 상태, 출처 검증(사용자에게 보이지 않음). M1 `/api/prd`는 API로만 남음 | 입력 양식 개편 |
+| M2 실행 | 검토 화면의 '생성' 버튼 하나로 PRD부터 Docker 점검까지 백그라운드 실행, 단계별 진행 표시, 완료 화면 미리보기, 새로고침 뒤 복구 ([review-runtime.md](docs/m2/review-runtime.md)) | Opus 검증, 재계획과 재시도, 정식 Sandbox, 지표 |
 
 `backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계([NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17))는 `ReviewedRequirements.open_gaps`로 PRD Open Issues까지 전달하도록 보완했습니다.
 
@@ -175,7 +175,7 @@ Gap은 `AGENTS.md`의 8개 우선 확인 영역인 `user_role`, `core_flow`, `pe
 
 구분되는 오류 코드는 `missing_api_key`, `authentication_failed`, `model_unavailable`, `rate_limit`, `gateway_error`, `timeout`, `request_rejected`, `structured_output_invalid`, `empty_response`, `incomplete_response`, `provider_refusal`, `invalid_config`입니다. 실패 시 전체 분석 결과를 성공으로 반환하지 않습니다.
 
-분석 결과는 아래 Clarification·Review 단계가 이어받습니다. PRD 생성·검증 API와 UI는 존재하며 규칙 기반으로 동작합니다. 영속 저장은 구현하지 않았습니다.
+분석 결과는 아래 Clarification·Review 단계가 이어받습니다. PRD 생성·검증 API는 존재하며 규칙 기반으로 동작합니다. 화면은 M2 단계형 화면으로 바뀌어 M1 PRD 결과를 보여 주지 않습니다. 영속 저장은 구현하지 않았습니다.
 
 실제 연결 및 브라우저 검증 결과는 [검증 기록](docs/snowchat-verification.md), 분석 단계의 실제 응답 전체는 [실제 Handoff JSON](docs/examples/snowchat-handoff.json)을 참고하세요.
 
@@ -268,7 +268,7 @@ PRD 단계에서 참고할 점:
 - `blocking=true`인 `needs_clarification`은 승인 조건상 인계물에 없습니다. `blocking=false`인 `needs_clarification`은 **Open Issues** 후보입니다.
 - `open_gaps`는 승인 시점에 남은 non-blocking Gap입니다. Requirement로 변환하지 않고 Gap 원본(ID·관련 Requirement ID)을 그대로 전달합니다. blocking Gap은 질문·Proposal로 처리됐으므로 제외합니다. `related_requirement_ids`는 관련성일 뿐 같은 내용이라는 근거가 아니므로, 사용자가 연결하지 않은 non-blocking Gap은 모두 전달합니다. 그래서 같은 내용의 `needs_clarification` Requirement와 Gap이 Open Issues에 함께 나올 수 있습니다.
 - `gap_links`는 Review에서 Requirement와 연결된 Gap입니다(`resolve_gap`·`link_gap`). Gap 원본을 보존하므로 `gaps`에서 빠져도 출처를 추적할 수 있습니다. Gap ID는 마지막 Gap 분석 기준이며 이전 라운드의 같은 ID와 다를 수 있습니다. 필드가 없는 기존 인계 JSON은 `open_gaps=[]`, `gap_links=[]`로 처리합니다.
-- Review 화면은 승인 전에 `open_gaps`로 넘어갈 Gap을 "남은 확인 사항"으로 보여줍니다. 사용자는 결정을 입력하거나(`resolve_gap`), 관련 Requirement가 하나인 Gap에 표시되는 추천을 확인해 연결합니다(`link_gap`, 일괄 가능). 코드는 추천만 하고 자동 연결하지 않으며, 잘못 연결했으면 `unlink_gap`으로 되돌립니다. Requirement를 `edit`로 확정해도 Gap은 자동으로 해소되지 않습니다. 결정 없이 Gap만 지우는 작업은 없으며, 미결정 사항은 Open Issue 또는 연결된 Requirement의 PRD 항목 출처로 반드시 남습니다.
+- M1 Review 화면은 승인 전에 `open_gaps`로 넘어갈 Gap을 "남은 확인 사항"으로 보여줬습니다(M2 화면에서는 보이지 않으며 아래 API는 그대로입니다). 사용자는 결정을 입력하거나(`resolve_gap`), 관련 Requirement가 하나인 Gap에 표시되는 추천을 확인해 연결합니다(`link_gap`, 일괄 가능). 코드는 추천만 하고 자동 연결하지 않으며, 잘못 연결했으면 `unlink_gap`으로 되돌립니다. Requirement를 `edit`로 확정해도 Gap은 자동으로 해소되지 않습니다. 결정 없이 Gap만 지우는 작업은 없으며, 미결정 사항은 Open Issue 또는 연결된 Requirement의 PRD 항목 출처로 반드시 남습니다.
 - `confirmed` + `ai_proposal`은 사용자가 승인한 AI 제안입니다. 그대로 수락했는지 수정 후 확정했는지는 항목 단위로 구분되지 않습니다.
 - Acceptance Criteria는 최초 입력에 명시된 것과 사용자가 Review에서 입력한 것만 있습니다. Clarification과 AI Proposal은 AC를 만들지 않으므로 대부분 비어 있습니다.
 
@@ -278,6 +278,6 @@ PRD 단계에서 참고할 점:
 
 ## 현재 PRD API
 
-`POST /api/prd`는 `{text, reviewed}`를 받아 `{prd, validation}`을 반환합니다. `reviewed`는 위 `ReviewedRequirements`입니다. `backend/app/prd.py`는 Requirement를 Section별로 분류하고 ID·Acceptance 참조를 조립하며 LLM을 호출하지 않습니다. `open_gaps`는 Open Issues 항목(`ISSUE-`)이 되며 `source_gap_ids`에 Gap ID, `source_requirement_ids`에 관련 Requirement ID를 기록합니다. `gap_links`의 Gap ID는 연결된 Requirement의 PRD 항목 `source_gap_ids`에 기록됩니다. 미결정 Requirement에 연결하면 그 Open Issue 하나로 합쳐지고, 아직 미결정이므로 Gap 설명도 문구에 함께 남깁니다. 검증은 Open Issue 출처 Requirement의 존재, 모든 `open_gaps`·`gap_links`가 올바른 PRD 항목 출처에 들어갔는지, 같은 Gap이 양쪽에 함께 있지 않은지를 확인합니다. `validation`에는 `passed`, `errors`, `warnings`가 있습니다. UI는 검증 결과와 PRD를 표시하고 통과 시 JSON을 제공합니다.
+`POST /api/prd`는 `{text, reviewed}`를 받아 `{prd, validation}`을 반환합니다. `reviewed`는 위 `ReviewedRequirements`입니다. `backend/app/prd.py`는 Requirement를 Section별로 분류하고 ID·Acceptance 참조를 조립하며 LLM을 호출하지 않습니다. `open_gaps`는 Open Issues 항목(`ISSUE-`)이 되며 `source_gap_ids`에 Gap ID, `source_requirement_ids`에 관련 Requirement ID를 기록합니다. `gap_links`의 Gap ID는 연결된 Requirement의 PRD 항목 `source_gap_ids`에 기록됩니다. 미결정 Requirement에 연결하면 그 Open Issue 하나로 합쳐지고, 아직 미결정이므로 Gap 설명도 문구에 함께 남깁니다. 검증은 Open Issue 출처 Requirement의 존재, 모든 `open_gaps`·`gap_links`가 올바른 PRD 항목 출처에 들어갔는지, 같은 Gap이 양쪽에 함께 있지 않은지를 확인합니다. `validation`에는 `passed`, `errors`, `warnings`가 있습니다. M2 화면은 이 API를 쓰지 않습니다.
 
 이 경로와 기존 계약은 M1 현황입니다. M2에서는 Sonnet이 PRD를 생성하고 AI 기본값·출처 및 최소 검증 정책에 맞는 계약을 정의합니다. 기존 `PRD` 스키마에는 항목별 `status`·`source`가 없으므로 이를 이미 보존하는 계약이라고 가정하지 않습니다.

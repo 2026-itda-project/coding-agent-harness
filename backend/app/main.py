@@ -80,6 +80,11 @@ def m2_call(fn, *args):
         raise http_error(exc) from None
 
 
+@app.post("/api/m2/generate")
+def m2_generate(request: M2PRDRequest) -> dict:
+    return m2_call(web.start_generation, request.state)
+
+
 @app.post("/api/m2/prd")
 def m2_prd(request: M2PRDRequest) -> dict:
     return m2_call(web.generate_prd, request.state)
