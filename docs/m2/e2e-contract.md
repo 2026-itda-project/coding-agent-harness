@@ -4,6 +4,8 @@
 
 ## 1. 흐름과 모델
 
+웹 화면에서 Review 결과로 PRD를 만들고 이 실행기를 시작하는 연결은 [review-runtime.md](review-runtime.md)에 있다. 아래 고정 PRD CLI 경로도 그대로 동작한다.
+
 ```text
 예시 입력 --(Sonnet)--> 고정 PRD [E1]
 고정 PRD --(Opus)--> Spec [E2] --(Opus)--> Feature·Task·Coding Plan [E3]

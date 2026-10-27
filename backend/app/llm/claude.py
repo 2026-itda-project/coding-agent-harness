@@ -46,6 +46,8 @@ def parse(raw, model):
     if len(texts) != 1:
         raise AnalysisError("structured_output_invalid", "텍스트 블록이 하나가 아닙니다.")
     text = texts[0].strip()
+    if not text:
+        raise AnalysisError("empty_response", "모델의 응답이 비어 있습니다.")
     if text.startswith("```"):  # unconstrained replies may wrap the JSON in a code fence
         text = text[3:].removeprefix("json").removesuffix("```").strip()
     try:
@@ -54,7 +56,39 @@ def parse(raw, model):
         raise AnalysisError("structured_output_invalid", "응답이 JSON이 아닙니다.") from None
 
 
-def complete(model, system, payload, schema, log, max_tokens=32000, effort=None, timeout=900, constrained=True):
+def read_stream(response):
+    """Rebuild a Messages API response from its server-sent events (stream=true)."""
+    raw = {"content": [], "usage": {}}
+    event = None
+    for line in response:
+        line = line.decode().strip()
+        if line.startswith("event:"):
+            event = line[6:].strip()
+            continue
+        if not line.startswith("data:"):
+            continue
+        data = json.loads(line[5:])
+        if event == "message_start":
+            message = data["message"]
+            raw.update(model=message.get("model"), usage=dict(message.get("usage") or {}))
+        elif event == "content_block_start":
+            raw["content"].append(dict(data["content_block"]))
+        elif event == "content_block_delta" and data["delta"].get("type") == "text_delta":
+            block = raw["content"][data["index"]]
+            block["text"] = block.get("text", "") + data["delta"]["text"]
+        elif event == "message_delta":
+            raw["stop_reason"] = data["delta"].get("stop_reason")
+            raw["usage"].update(data.get("usage") or {})
+        elif event == "error":
+            raise StreamError(data.get("error", {}).get("message", "")[:500])
+    return raw
+
+
+class StreamError(Exception):
+    """The server reported an error after the response had started."""
+
+
+def complete(model, system, payload, schema, log, max_tokens=32000, effort=None, timeout=300, constrained=True):
     """One structured call. Appends a usage/cost record to `log` before parsing, so failed
     outputs are still billed in the run record."""
     key = os.getenv("ANTHROPIC_API_KEY", "").strip()
@@ -67,23 +101,34 @@ def complete(model, system, payload, schema, log, max_tokens=32000, effort=None,
         system += "\n\nReply with one JSON object only, matching this JSON schema exactly:\n" + json.dumps(schema)
     if effort:
         output_config["effort"] = effort
-    body = {"model": model, "max_tokens": max_tokens, "system": system,
+    # Streamed so long Opus replies never wait on one idle socket; `timeout` bounds the gap between events.
+    body = {"model": model, "max_tokens": max_tokens, "system": system, "stream": True,
             "messages": [{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
             **({"output_config": output_config} if output_config else {})}
     request = Request(ENDPOINT, data=json.dumps(body, ensure_ascii=False).encode(),
                       headers={"x-api-key": key, "anthropic-version": "2023-06-01",
                                "Content-Type": "application/json"})
     started = time.perf_counter()
+    opened = False
     try:
         with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
-            raw = json.load(response)
+            opened = True
+            raw = read_stream(response)
     except HTTPError as exc:
         try:
             detail = json.load(exc).get("error", {}).get("message", "")[:500]
         except ValueError:
             detail = ""
-        raise AnalysisError("gateway_error", f"Claude API 오류 HTTP {exc.code}: {detail}") from None
-    except (URLError, TimeoutError, OSError, ValueError):
+        code, status = {401: ("authentication_failed", 502), 403: ("model_unavailable", 502),
+                        404: ("model_unavailable", 502), 429: ("rate_limit", 429)}.get(exc.code, ("gateway_error", 502))
+        raise AnalysisError(code, f"Claude API 오류 HTTP {exc.code}: {detail}", status) from None
+    except (URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, StreamError) as exc:
+        if opened or isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError):
+            # The request reached the API and may be billed; an unknown cost must stop later paid calls.
+            log.append({"model": model, "usage": {}, "stop_reason": None, "cost_usd": None,
+                        "error": f"interrupted: {type(exc).__name__}",
+                        "latency_s": round(time.perf_counter() - started, 2)})
+            raise AnalysisError("gateway_error", "Claude API 응답이 중간에 끊겼습니다. 비용 미확인으로 기록했습니다.") from None
         raise AnalysisError("gateway_error", "Claude API에 연결하지 못했습니다.") from None
     usage = raw.get("usage") or {}
     record = {"model": raw.get("model"), "usage": usage, "stop_reason": raw.get("stop_reason"),
@@ -92,3 +137,34 @@ def complete(model, system, payload, schema, log, max_tokens=32000, effort=None,
     if isinstance(usage.get("input_tokens"), int) and isinstance(usage.get("output_tokens"), int):
         record["cost_usd"] = cost(model, usage)
     return parse(raw, model)
+
+
+class ClaudeProvider:
+    """M1 requirement-loop Provider interface (model_for, complete) on the Claude transport.
+    Every stage uses the Sonnet model from SONNET_MODEL; failures raise and never fall back to Mock/SnowChat."""
+    mode = "claude"
+
+    def __init__(self):
+        if not os.getenv("ANTHROPIC_API_KEY", "").strip():
+            raise AnalysisError("missing_api_key", "ANTHROPIC_API_KEY가 설정되지 않았습니다.", 503)
+        self.model = model_for("sonnet")
+
+    def model_for(self, stage):
+        return self.model
+
+    def complete(self, stage, prompt, payload, output_type, model):
+        from app.m2.contracts import output_schema  # schema with inlined $refs, shared with M2 stages
+        log = []
+        try:
+            data = complete(model, prompt, payload, output_schema(output_type), log)
+        except AnalysisError as exc:
+            exc.usage = usage_of(log)  # a billed call that failed validation still reports its cost
+            raise
+        return json.dumps(data, ensure_ascii=False), usage_of(log)
+
+
+def usage_of(log):
+    if not log:
+        return None
+    record = log[-1]
+    return {**record["usage"], "cost_usd": record.get("cost_usd"), "model": record.get("model")}

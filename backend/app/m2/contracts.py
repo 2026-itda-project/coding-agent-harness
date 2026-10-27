@@ -12,11 +12,24 @@ class Strict(BaseModel):
 
 # ---------- PRD (E1) ----------
 
+REVIEW_SOURCES = ("clarification_answer", "review_input")
+
+
 class PRDItem(Strict):
     id: str
     description: str
     status: Literal["confirmed", "proposed", "needs_clarification"]
-    source: Literal["initial_input", "ai_proposal", "harness_policy"]
+    source: Literal["initial_input", "ai_proposal", "harness_policy", "clarification_answer", "review_input"]
+    # Review handoff links (Requirement / Gap ids). Empty for a PRD generated straight from input,
+    # so fixed PRD fixtures without these fields stay valid.
+    requirement_ids: list[str] = []
+    gap_ids: list[str] = []
+
+
+class ReviewedPRDItem(PRDItem):
+    """PRD item generated from a Review handoff: the links are required in the model output."""
+    requirement_ids: list[str]
+    gap_ids: list[str]
 
 
 class AcceptanceCriterion(Strict):
@@ -43,6 +56,17 @@ class PRD(Strict):
     nfrs: list[PRDItem]
     acceptance_criteria: list[AcceptanceCriterion]
     open_issues: list[PRDItem]
+
+
+class ReviewedPRD(PRD):
+    in_scope: list[ReviewedPRDItem]
+    out_of_scope: list[ReviewedPRDItem]
+    roles: list[ReviewedPRDItem]
+    user_flows: list[ReviewedPRDItem]
+    functional_requirements: list[ReviewedPRDItem]
+    business_rules: list[ReviewedPRDItem]
+    nfrs: list[ReviewedPRDItem]
+    open_issues: list[ReviewedPRDItem]
 
 
 PRD_PREFIX = {"in_scope": "SCOPE-", "out_of_scope": "OUT-", "roles": "ROLE-", "user_flows": "US-",
@@ -92,9 +116,54 @@ def check_prd(prd):
 
 def check_generated_prd(prd):
     """A PRD generated straight from user input had no Review, so no AI proposal can be accepted yet."""
-    return check_prd(prd) + [f"{i.id}: confirmed ai_proposal without user acceptance"
-                             for i in prd_items(prd).values()
-                             if i.status == "confirmed" and i.source == "ai_proposal"]
+    items = prd_items(prd).values()
+    return (check_prd(prd)
+            + [f"{i.id}: confirmed ai_proposal without user acceptance"
+               for i in items if i.status == "confirmed" and i.source == "ai_proposal"]
+            + [f"{i.id}: {i.source} needs a Review handoff" for i in items if i.source in REVIEW_SOURCES]
+            + [f"{i.id}: Review links without a Review handoff" for i in items if i.requirement_ids or i.gap_ids])
+
+
+def check_reviewed_prd(prd, reviewed):
+    """A PRD generated from an approved Review handoff (`schemas.ReviewedRequirements`). Statuses and
+    sources must be backed by the handoff: the code checks the links, never rewrites content."""
+    errors = check_prd(prd)
+    reqs = {r.id: r for r in reviewed.requirements}
+    open_gap_ids = {g.id for g in reviewed.open_gaps}
+    linked = {l.gap.id: l.requirement_id for l in reviewed.gap_links}
+    covered_reqs, gap_items = set(), {}
+    for section in PRD_PREFIX:
+        for item in getattr(prd, section):
+            refs = [reqs.get(r) for r in item.requirement_ids]
+            if None in refs:
+                errors.append(f"{item.id} references unknown requirement ids")
+                continue
+            covered_reqs.update(item.requirement_ids)
+            for gid in item.gap_ids:
+                if gid not in open_gap_ids and gid not in linked:
+                    errors.append(f"{item.id} references unknown gap {gid}")
+                gap_items.setdefault(gid, []).append((section, item))
+            if item.source in ("initial_input", *REVIEW_SOURCES) or (
+                    item.source == "ai_proposal" and item.status == "confirmed"):
+                # user content and accepted proposals must come from handoff requirements of the same kind
+                if not refs or any(r.source != item.source or r.status != item.status for r in refs):
+                    errors.append(f"{item.id}: {item.status} {item.source} is not backed by a handoff "
+                                  "requirement with the same status and source")
+            elif item.status == "proposed" and any(r.status == "confirmed" and r.source == "ai_proposal"
+                                                   for r in refs):
+                errors.append(f"{item.id}: an accepted proposal must stay confirmed")
+    errors += [f"{rid} from the Review handoff is missing in the PRD" for rid in sorted(set(reqs) - covered_reqs)]
+    open_issue_reqs = {r for i in prd.open_issues for r in i.requirement_ids}
+    errors += [f"{r.id} is undecided but not in open_issues" for r in reviewed.requirements
+               if r.status == "needs_clarification" and r.id not in open_issue_reqs]
+    errors += [f"{gid} (open gap) is missing in the PRD" for gid in sorted(open_gap_ids - set(gap_items))]
+    for gid, req_id in linked.items():
+        if not gap_items.get(gid):
+            errors.append(f"{gid} (linked to {req_id} in Review) is missing in the PRD")
+        for section, item in gap_items.get(gid, []):
+            if section == "open_issues" or req_id not in item.requirement_ids:
+                errors.append(f"{gid} is linked to {req_id} in Review; {item.id} must not reopen or relink it")
+    return errors
 
 
 # ---------- Spec (E2) ----------

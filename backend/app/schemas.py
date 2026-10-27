@@ -59,7 +59,7 @@ class AnalyzeResponse(BaseModel):
     requirements: list[Requirement]
     gaps: list[Gap]
     clarification_needed: bool
-    analysis_mode: Literal["mock", "snowchat"] = "mock"
+    analysis_mode: Literal["mock", "snowchat", "claude"] = "mock"
     usage: list[dict] = Field(default_factory=list)
 
 

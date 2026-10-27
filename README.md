@@ -34,14 +34,14 @@
 | --- | --- | --- |
 | 입력 | `AnalyzeRequest.text` 단일 문자열 | 목업 생성 중심 입력 항목(제안, 팀 컨펌 대기 — `docs/decisions/m2-development-direction.md` 3절). 필드 계약은 컨펌 후 #7·#8에서 구체화 |
 | 요구사항 루프 | Mock / SnowChat, Gap 분석, 최대 3라운드 Clarification, Review·승인 | Claude Sonnet, AI 기본값 우선·핵심 질문 최소화 |
-| PRD | `/api/prd`, 규칙 기반 `build_prd`·`validate_prd`, PRD UI | Sonnet 생성과 M2 상태·출처 계약 검증 |
-| M2 실행 | Spec / Task / Context / Agent / Sandbox / Retry 미구현 | PRD 이후 실행·자동화·검증 연결 |
+| PRD | M1 `/api/prd` 규칙 기반 미리보기 + M2 `/api/m2/prd` Review 결과 기반 Sonnet PRD와 상태·출처 검증 | 입력 양식 개편 |
+| M2 실행 | 웹에서 MVP 생성 요청 → 기존 실행기(Spec·Task·Context·Claude Code·Docker 점검) 백그라운드 실행, 상태·미리보기 ([review-runtime.md](docs/m2/review-runtime.md)) | Opus 검증, 재계획·재시도, 정식 Sandbox, 지표 |
 
 `backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계([NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17))는 `ReviewedRequirements.open_gaps`로 PRD Open Issues까지 전달하도록 보완했습니다.
 
 ## 기존 M1 실행과 계약
 
-아래는 현재 코드의 실행 방법과 M1 계약입니다. Claude Provider·환경변수·실행 명령은 아직 구현되지 않았으므로 아래 SnowChat 설정을 M2 설정으로 해석하지 않습니다.
+아래는 M1 경로의 실행 방법과 계약입니다. M2 Claude 경로(`LLM_PROVIDER=claude`)와 웹 MVP 실행은 [docs/m2/review-runtime.md](docs/m2/review-runtime.md)를 따릅니다. 아래 SnowChat 설정을 M2 설정으로 해석하지 않습니다.
 
 ## 로컬 실행
 

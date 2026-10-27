@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react'
+import { post } from './api'
+import M2Panel from './M2Panel'
 
 const MAX_ROUNDS = 3
 
@@ -31,7 +33,7 @@ type Analysis = {
   requirements: Requirement[]
   gaps: Gap[]
   clarification_needed: boolean
-  analysis_mode: 'mock' | 'snowchat'
+  analysis_mode: 'mock' | 'snowchat' | 'claude'
   usage: Record<string, unknown>[]
 }
 
@@ -50,7 +52,7 @@ type ClarificationRound = {
   answers: Answer[]
 }
 
-type WorkflowState = Analysis & {
+export type WorkflowState = Analysis & {
   text: string
   phase: 'clarifying' | 'review' | 'approved'
   questions: ClarificationQuestion[]
@@ -65,6 +67,9 @@ const CATEGORIES = ['role', 'functional', 'flow', 'permission', 'state', 'busine
 const SOURCE_LABELS: Record<string, string> = {
   initial_input: '최초 입력', clarification_answer: '질문 답변', ai_proposal: 'AI 제안', review_input: 'Review 추가',
 }
+const MODE_LABELS = {
+  mock: 'Mock 분석 결과 · 규칙 기반 시연', snowchat: 'SnowChat LLM 분석 결과', claude: 'Claude Sonnet 분석 결과',
+} as const
 const GROUPS = [
   ['Confirmed Requirements', 'confirmed'],
   ['Needs Clarification', 'needs_clarification'],
@@ -119,21 +124,6 @@ const PRD_SECTIONS = [
 // 수정·추가 폼 하나만 연다. id가 ''이면 새 Requirement 추가, gapId가 있으면 남은 Gap의 결정 입력
 // (category ''는 서버가 Gap 분류에서 정한다)
 type Draft = { id: string; category: string; description: string; ac: string; confirm: boolean; gapId?: string }
-
-// detail 형식: {code, message} | 문자열(빈 입력) | 배열(FastAPI 요청 스키마 422)
-async function post<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) {
-    const detail = (await response.json().catch(() => null))?.detail
-    const message = typeof detail?.message === 'string' ? detail.message : typeof detail === 'string' ? detail : null
-    throw new Error(message ?? `요청 실패 (${response.status})`)
-  }
-  return await response.json() as T
-}
 
 export default function App() {
   const [text, setText] = useState('')
@@ -336,7 +326,7 @@ export default function App() {
       {error && <p role="alert" className="error">{error}</p>}
       {state && (
         <section aria-live="polite">
-          <p className="notice">{state.analysis_mode === 'snowchat' ? 'SnowChat LLM 분석 결과' : 'Mock 분석 결과 · 규칙 기반 시연'}</p>
+          <p className="notice">{MODE_LABELS[state.analysis_mode]}</p>
 
           {state.phase === 'clarifying' && state.questions.length > 0 && (
             <form onSubmit={event => { event.preventDefault(); step(state) }}>
@@ -417,7 +407,7 @@ export default function App() {
                   )}
                   {draft && <p className="error">편집 중인 항목을 저장하거나 취소해야 승인할 수 있습니다.</p>}
                   {proposals.length > 0 && (
-                    <p>수락하지 않은 AI 제안 {proposals.length}개는 proposed 상태로 인계되어 PRD의 Assumptions 후보가 됩니다.</p>
+                    <p>수락하지 않은 AI 제안 {proposals.length}개는 proposed 상태로 인계됩니다. M1 PRD에서는 Assumptions 후보, M2 PRD에서는 AI 기본값으로 구현 범위에 포함됩니다.</p>
                   )}
                   <button key="approve" type="button" disabled={!editable || pending.length > 0 || !!draft}
                     onClick={() => review({ type: 'approve' })}>요구사항 승인</button>
@@ -427,7 +417,8 @@ export default function App() {
                 <>
                   <h3>인계 JSON (ReviewedRequirements)</h3>
                   <pre>{JSON.stringify(reviewed, null, 2)}</pre>
-                  <button key="prd" type="button" onClick={generatePrd} disabled={!!loading}>PRD 생성</button>
+                  <button key="prd" type="button" onClick={generatePrd} disabled={!!loading}>M1 PRD 생성 (규칙 기반 미리보기)</button>
+                  <M2Panel key={state.run_id + reviewed.requirements.length} state={state} />
                 </>
               )}
               {prdResult && (

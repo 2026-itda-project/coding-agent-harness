@@ -349,9 +349,13 @@ class ReviewFixesTest(unittest.TestCase):
         import io
         from unittest.mock import MagicMock
         usage = {"input_tokens": 10, "output_tokens": 5, "cache_read_input_tokens": 1}
-        raw = {"model": "claude-sonnet-5-5", "usage": usage, "stop_reason": "end_turn"}
+        # The transport streams (server-sent events); usage arrives in message_start and message_delta.
+        events = [("message_start", {"message": {"model": "claude-sonnet-5-5",
+                                                 "usage": {"input_tokens": 10, "cache_read_input_tokens": 1}}}),
+                  ("message_delta", {"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 5}})]
+        stream = "".join(f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events)
         opener = MagicMock()
-        opener.open.return_value.__enter__.return_value = io.StringIO(json.dumps(raw))
+        opener.open.return_value.__enter__.return_value = io.BytesIO(stream.encode())
         log = []
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "fake-not-sent"}), \
                 patch.object(claude, "build_opener", return_value=opener):
