@@ -42,10 +42,12 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 | 미결정 (`needs_clarification`) | 인계물의 미결정 Requirement는 모두 `open_issues`에 있어야 한다 |
 | 누락 | 인계물의 모든 Requirement id가 어떤 항목에든 있어야 한다 |
 | `open_gaps` | 모두 어떤 항목의 `gap_ids`에 있어야 한다. 관례 기본값이면 `proposed` + `ai_proposal` 항목, 서비스 성격이 달라지면 Open Issue (2026-10-27 사용자 결정) |
-| `gap_links` | 연결된 Requirement를 담은 항목의 `gap_ids`에만 둔다. Open Issue로 다시 열면 거부 |
+| `gap_links` | 연결된 Requirement를 담은 항목의 `gap_ids`에만 둔다. Open Issue로 다시 열면 거부한다. 단, 연결 대상이 미결정 Requirement면 그 Open Issue에 함께 남는다(M1 `build_prd`와 같은 규칙) |
 | 참조 | 없는 Requirement·Gap id는 거부 |
 
-검증에 실패하면 `prd.rejected-N.json`에 오류와 출력, 호출 기록을 남기고 실행할 수 없다. 규칙 기반 `build_prd`로 대체하지 않는다.
+검증에 실패하면 `prd.rejected-N.json`에 오류와 출력, 호출 기록을 남기고 실행할 수 없다. 호출이 실패하면 `prd.failed-N.json`에 남긴다. 규칙 기반 `build_prd`로 대체하지 않는다.
+
+다시 생성할 때 예산 검사는 같은 `prd_id`의 이전 시도 기록까지 합산한다. 이전 시도에 비용 미확인 호출이 있으면 새 호출을 시작하지 않는다(409).
 
 저장 위치: `HARNESS_WORKSPACE_ROOT/prds/<prd_id>/` — `prd.json`, `provenance.json`(분석 ID, 분석 모드, 요구사항 루프 usage, PRD 호출 기록과 비용, 프롬프트·PRD 해시), `reviewed.json`.
 
@@ -62,7 +64,18 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 - Opus Spec·Plan 호출의 출력 상한은 64,000토큰이다(`stages.OPUS_MAX_TOKENS`). 첫 실제 실행에서 항목이 많은 PRD의 Spec이 effort high의 생각 토큰(26K/32K)으로 32,000에서 잘렸다. 예산 예약도 같은 값으로 한다.
 - Open Issue가 있으면 `confirm_open_issues=true`가 있어야 시작한다(2026-10-27 사용자 결정, 화면에서 체크).
 - 예산: `M2_RUN_BUDGET_USD`(기본 8), `M2_TASK_BUDGET_USD`(기본 1.5), PRD 생성은 `M2_PRD_BUDGET_USD`(기본 0.5). 실행기의 기존 예산 검사와 비용 미확인 차단을 그대로 쓴다.
-- 결과 표시(`outcome`): `running`, `failed`(실행기 중단 사유 포함), `interrupted`(서버 재시작), `verification_failed`(빌드·점검 실패), `auto_checks_passed`. 마지막도 **자동 점검만 통과**한 상태이며 `manual_review: pending`이면 화면에 "사람 확인 대기"로 표시한다. 미리보기 가능 여부와 검증 완료는 따로 표시한다.
+- 결과 표시(`outcome`):
+
+  | outcome | 조건 |
+  | --- | --- |
+  | `running` | 실행 중 |
+  | `failed` | 실행기가 멈춤(예산, 계약 거부, Task 실패 등). 사유 포함 |
+  | `interrupted` | 실행 중에 서버가 재시작됨 |
+  | `verification_failed` | 빌드 또는 자동 점검 실패 |
+  | `auto_checks_passed` | 자동 점검(`automatic_status: passed`) 전부 통과. 실행기 `status`는 `passed` 또는 `manual_pending` |
+  | `manual_check_only` | 자동 점검이 없고(`automatic_status: not_applicable`) 수동 확인만 남음. 자동 통과로 표시하지 않음 |
+
+  마지막 두 경우도 완료가 아니다. `manual_review: pending`이면 화면에 "사람 확인 대기"로 표시한다. 미리보기 가능 여부와 검증 완료는 따로 표시한다.
 - 추적: `web-<prd_id>/web.json`(PRD id, 시작·종료, 확인 여부, 예산) → `prds/<prd_id>/provenance.json`(분석 ID, 앞 단계 호출) → 기존 `run.json`·`artifacts/`.
 
 ## 5. 실행 방법
@@ -84,8 +97,12 @@ cd ../frontend && npm run dev                                              # htt
 
 ## 7. 한계 (임시 동작 포함)
 
-- 실행 관리는 서버 프로세스 하나의 스레드다. `--reload`나 다중 worker에서는 쓰지 않는다. 서버가 재시작되면 진행 중이던 Run은 `interrupted`가 되고 웹에서 이어 실행하지 않는다(CLI `--resume`은 가능). 재시작 중 이미 시작된 Claude Code 프로세스가 남을 수 있다.
+- 실행 관리는 서버 프로세스 하나의 스레드다. `--reload`나 다중 worker에서는 쓰지 않는다. 서버가 재시작되면 진행 중이던 Run은 `interrupted`가 된다. 자동으로 다시 시작하지 않으며, 사용자가 "이어서 다시 시도"(`retry=true`)를 누르면 완료된 단계를 건너뛰고 이어서 실행한다. 재시작 중 이미 시작된 Claude Code 프로세스가 남을 수 있다.
 - 자동 재시도·재계획(#11), Opus 최종 검증(#10), 비용·지표 체계(#12), 정식 Sandbox(#9)는 포함하지 않는다.
 - 수동 확인 결과를 화면에서 기록하는 기능은 없다(`artifacts/manual-review.json`이 있으면 `done`).
 - 화면 상태는 브라우저 메모리에만 있어 새로고침하면 진행 중인 PRD·Run을 다시 불러오지 못한다. 서버의 Run은 계속 진행되며 `GET /api/m2/runs/{run_id}`로 조회할 수 있다.
 - Review 이후 PRD 프롬프트는 Structured Output 문법 한도 때문에 Spec과 같이 스키마를 프롬프트로 전달하고 같은 계약으로 검증한다.
+
+## 8. 실제 실행 기록
+
+- [run-20261027-web-01](runs/run-20261027-web-01.md): 웹 화면에서 입력부터 미리보기와 사람 확인까지 처음으로 끝까지 실행한 기록.

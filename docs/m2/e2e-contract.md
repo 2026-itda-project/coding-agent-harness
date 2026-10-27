@@ -15,7 +15,7 @@ Docker 샌드박스에서 빌드·실행 -> Spec의 HTTP 점검 -> 재시작 후
 
 - 모델 ID는 환경 변수 `SONNET_MODEL`, `OPUS_MODEL`에서만 읽는다. 다른 모델로 자동 대체하지 않는다.
 - "Opus가 조종하는 Sonnet"은 Opus가 쓴 Task별 `instructions`를 Sonnet Agent가 실행하는 구조다.
-- 자동 재시도, Opus 검증·재계획(#10·#11), UI 연결(#13), 요구사항 루프 연결(#7·#8)은 포함하지 않는다.
+- 자동 재시도와 Opus 검증, 재계획(#10, #11)은 포함하지 않는다. 요구사항 루프와 UI 연결(#7, #8, #13 일부)은 이 문서가 아니라 [review-runtime.md](review-runtime.md)에서 다룬다.
 
 ## 2. PRD 입력 계약 (E1)
 
@@ -50,6 +50,8 @@ Docker 샌드박스에서 빌드·실행 -> Spec의 HTTP 점검 -> 재시작 후
 - roles, user_flows, functional_requirements가 비어 있지 않다.
 
 Assumptions는 별도 목록이 아니라 `status=proposed` 항목 전체로 계산한다.
+
+Review 결과에서 만든 PRD(`ReviewedPRD`)는 같은 계약에 `requirement_ids`, `gap_ids`(필수)와 출처 `clarification_answer`, `review_input`을 더하고 `check_reviewed_prd`로 추가 검증한다. 규칙은 [review-runtime.md 3절](review-runtime.md#3-review-결과--m2-prd-8)에 있다.
 
 ## 3. 추적
 
