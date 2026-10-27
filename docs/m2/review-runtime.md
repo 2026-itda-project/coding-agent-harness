@@ -21,15 +21,15 @@
 입력 → 질문 → 검토 → 생성 → 완료의 단계형 화면이다. 사용자에게는 개발 산출물을 보여 주지 않는다.
 
 - 검토 화면: 질문 답변과 Review에서 정한 내용, AI가 정한 내용(개별 또는 일괄 수락, 문장 수정), 아직 정하지 않은 내용(필수 항목은 정해야 생성 가능)만 보인다. 사용자가 처음 입력한 내용을 항목별로 다시 확인받지 않는다.
-- 보이지 않는 것: 확정 요구사항 전체 목록, 남은 Gap과 연결 UI, AC 입력과 편집, 인계 JSON, PRD 원문과 내부 ID, Task 상세, 토큰과 비용. 내부 기록(AC, `proposed`와 `ai_proposal` 출처, 비용과 비용 미확인 기록)은 그대로 저장한다. 사용자가 보지 않았다는 이유로 `confirmed`로 바꾸지 않는다.
+- 보이지 않는 것: 확정 요구사항 전체 목록, 남은 Gap과 연결 UI, AC 입력과 편집, 인계 JSON, PRD 원문과 내부 ID, Task 상세, 토큰과 비용. 내부 기록(`proposed`와 `ai_proposal` 출처, 비용과 비용 미확인 기록)은 그대로 저장한다. 내부 AC는 M2 PRD 생성 단계에서 LLM이 만들고 Spec 점검과 검증에 쓴다. 사용자가 보지 않았다는 이유로 `confirmed`로 바꾸지 않는다.
 - 검토 화면에서 AI 제안의 문장을 고치면 기존 `edit`(확정 포함)으로 저장되어 `confirmed` + `ai_proposal`이 된다(기존 Review 수정과 같은 규칙).
 
 ## 2. 요구사항 루프의 Claude 경로 (#7)
 
 - `LLM_PROVIDER=claude`이면 `app/llm/claude.py`의 `ClaudeProvider`를 쓴다. 기존 Provider 인터페이스(`model_for`, `complete`)와 `pipeline.run_stage`의 출력 검증을 그대로 쓰고, 추출·Gap 분석·질문 생성·답변 반영 4단계 모두 `SONNET_MODEL`을 쓴다. 프롬프트는 기존 단계별 프롬프트를 공유한다.
-- 응답 `analysis_mode`는 `claude`이며 화면에 "Claude Sonnet 분석 결과"로 표시한다. 단계 기록(`usage`)에 모델, 입력·출력 토큰, 계산 비용(`cost`)이 남는다.
+- 응답 `analysis_mode`는 `claude`다. 화면은 Claude가 아닌 분석(Mock, SnowChat)일 때만 검토 화면에 개발용 표시를 한다. 단계 기록(`usage`)에 모델, 입력·출력 토큰, 계산 비용(`cost`)이 남는다.
 - 오류는 명시적으로 실패한다: `missing_api_key`, `invalid_config`(모델 미설정), `authentication_failed`(401), `model_unavailable`(403·404·응답 모델 불일치), `rate_limit`, `empty_response`, `incomplete_response`, `structured_output_invalid`, `gateway_error`. Mock/SnowChat으로 대체하지 않는다. 검증에 실패한 유료 응답도 비용을 기록한다.
-- 질문 라운드 정책은 기존과 같다(최대 3라운드, 이후 남은 Blocking은 AI Proposal로 전환). 2026-10-27 사용자 결정으로 Claude 경로도 M1 규칙을 유지한다. Review의 수정·개별/일괄 수락·Gap 정리·승인은 그대로이며 LLM을 호출하지 않는다. 입력은 기존 `text` 하나다(입력 양식 개편은 미정).
+- 질문 라운드 정책은 기존과 같다(최대 3라운드, 이후 남은 Blocking은 AI Proposal로 전환). 2026-10-27 사용자 결정으로 Claude 경로도 M1 규칙을 유지한다. Review의 수정, 개별과 일괄 수락, 승인은 그대로이며 LLM을 호출하지 않는다. Gap 정리(`resolve_gap`, `link_gap`) API는 남아 있지만 M2 화면에서는 쓰지 않는다. 입력은 기존 `text` 하나다(입력 양식 개편은 미정).
 
 ## 3. Review 결과 → M2 PRD (#8)
 

@@ -204,7 +204,7 @@ Gap은 `AGENTS.md`의 8개 우선 확인 영역인 `user_role`, `core_flow`, `pe
 - Blocking Gap이 있으면 Gap마다 질문 1개를 만듭니다. Non-blocking Gap만 남으면 질문하지 않고 Review로 넘어갑니다.
 - 라운드는 최대 3회입니다. 빈 답변은 건너뜀이며 해당 Blocking이 남아 다음 라운드에 다시 질문합니다. 건너뛴 라운드도 1회로 셉니다. 빠진 답변은 빈 답변으로 채우며, `answers: []`는 전부 건너뜀입니다.
 - 모든 답변이 빈 라운드는 답변 반영과 Gap 재분석을 생략하고 기존 Gap으로 질문만 다시 만듭니다.
-- 답변은 새 `confirmed` Requirement(`source=clarification_answer`)로 추가하거나, 연결된 `needs_clarification` 또는 이전 답변 항목을 교체합니다. `initial_input`·`review_input`·`proposed` 항목은 답변 반영으로 바뀌지 않습니다. 답변이 명시하지 않은 내용은 만들지 않습니다. Acceptance Criteria는 항상 비워 두며, 출력에 AC가 있으면 `structured_output_invalid`로 거부합니다. AC는 사용자가 Review에서 입력합니다.
+- 답변은 새 `confirmed` Requirement(`source=clarification_answer`)로 추가하거나, 연결된 `needs_clarification` 또는 이전 답변 항목을 교체합니다. `initial_input`·`review_input`·`proposed` 항목은 답변 반영으로 바뀌지 않습니다. 답변이 명시하지 않은 내용은 만들지 않습니다. Acceptance Criteria는 항상 비워 두며, 출력에 AC가 있으면 `structured_output_invalid`로 거부합니다. M2 화면에는 AC 입력이 없으며, 내부 AC는 M2 PRD 생성 단계에서 LLM이 만들고 Spec 점검과 검증에 씁니다.
 - Gap은 라운드마다 다시 분석하므로 Gap ID가 바뀔 수 있습니다. 과거 질문·답변은 `history`의 Gap과 함께 봅니다.
 - 3라운드 뒤에도 남은 Blocking Gap은 `status=proposed`, `source=ai_proposal`, `blocking=false` Requirement로 전환합니다. AI Proposal이 `confirmed`로 바로 들어가는 경로는 없습니다.
 - `phase`가 `review` 이후이면 `clarification_needed=false`입니다. 이때 `gaps`는 마지막 분석 결과 그대로라 `blocking=true`가 남아 있을 수 있습니다. **Review 이후에는 `gaps`가 아니라 `requirements`의 `status`·`blocking`을 기준으로 판단합니다.**
