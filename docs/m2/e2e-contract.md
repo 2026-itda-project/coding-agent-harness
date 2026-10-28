@@ -101,6 +101,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 | `status` | `environment_error`, `build_failed`, `start_failed`, `checks_failed`, `manual_pending`, `passed` |
 | `failure_stage` | 실패한 단계: `preflight`(Docker·이미지), `build`, `start`(컨테이너 실행), `serve`(앱이 200으로 응답하지 않음), `restart`(재시작 실패 또는 재시작 후 응답 없음), `checks`(점검 실패). 성공이면 null |
 | `failures[]` | 사람이 읽는 실패 사유 |
+| `passed`, `total`, `automatic_status`, `manual_checks` | 통과한 자동 점검 수, 계획된 자동 점검 수, 자동 판정, 수동 확인 대기 목록. 점검 전에 멈춘 검증(`environment_error`·`build_failed`·`start_failed`)도 실행되지 않은 점검을 실패로 세어 `0/total`, `failed`로 남기고 `failures`에 "N planned checks did not run"을 더한다 |
 | `server_log_tail` | 앱 서버 로그 마지막 80줄. stdout(접근 로그)과 stderr(기동 오류, Traceback)를 함께 남긴다 |
 | `leftover_containers` | E6 앞뒤로 정리한 이 실행의 `sandbox.sh` 컨테이너 ID |
 | `data_kept` | 검증 전에 작업 폴더의 `data/`(런타임 DB)를 옮겨 둔 위치(`<run_id>/data-before-verify/`, 마지막 1개만 보관). 없었으면 null. Agent가 코딩 중 직접 보낸 요청이나 이전 검증의 점검 데이터가 남아 결과를 바꾸지 않도록, 검증은 항상 생성 코드가 만드는 시드 데이터에서 시작한다. 옮긴 데이터는 샌드박스에 마운트되지 않고 Git에도 들어가지 않는다 |

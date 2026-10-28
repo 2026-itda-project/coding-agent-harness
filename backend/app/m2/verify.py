@@ -121,7 +121,7 @@ def verify(app_dir, spec, name, keep_running=False):
     record = {"steps": [], "checks": [], "checks_after_restart": [],
               "root_status": None, "root_status_after_restart": None, "environment": environment()}
     if "error" in record["environment"]:
-        return stopped(record, "environment_error", "preflight", record["environment"]["error"])
+        return stopped(record, spec, "environment_error", "preflight", record["environment"]["error"])
     env = {**os.environ, **sandbox_env(app_dir)}
     run_id = run_id_of(app_dir)
     record["leftover_containers"] = cleanup(run_id)  # from an earlier, interrupted attempt
@@ -139,7 +139,7 @@ def verify(app_dir, spec, name, keep_running=False):
         # The host timeout only backs up the container's own `timeout`, so it is a bit longer.
         if step(record, "build", [SANDBOX, BUILD], record["environment"]["sandbox_timeout_s"] + 60,
                 cwd=app_dir, env=env) != "ok":
-            return stopped(record, "build_failed", "build")
+            return stopped(record, spec, "build_failed", "build")
         port = free_port()
         base = f"http://127.0.0.1:{port}"
         uid = f"{os.getuid()}:{os.getgid()}"
@@ -147,7 +147,7 @@ def verify(app_dir, spec, name, keep_running=False):
                                   *LIMITS, "-v", f"{app_dir}:/work", "-w", "/work",
                                   "-p", f"127.0.0.1:{port}:8000", IMAGE, "bash", "-c", SERVE],
                 DOCKER_TIMEOUT_S) != "ok":
-            return stopped(record, "start_failed", "start")
+            return stopped(record, spec, "start_failed", "start")
         host = docker_json("inspect", "-f", "{{json .HostConfig}}", name) or {}
         record["server_limits"] = {k: host.get(k) for k in ("Memory", "NanoCpus", "PidsLimit", "CapDrop", "SecurityOpt")}
         up = wait_up(base, name)
@@ -169,12 +169,26 @@ def verify(app_dir, spec, name, keep_running=False):
     return judge(record, spec)
 
 
-def stopped(record, status, stage, reason=None):
-    """A verification that ended before the HTTP checks; the reason is the last step's outcome."""
+def stopped(record, spec, status, stage, reason=None):
+    """A verification that ended before the HTTP checks; the reason is the last step's outcome.
+    As in judge(), the planned checks count as not run (0 of N), not as missing numbers."""
     last = record["steps"][-1] if record["steps"] else {}
     reason = reason or f"{stage}: {last.get('outcome')} (exit {last.get('exit_code')})"
-    record.update(status=status, failure_stage=stage, failures=[reason])
+    planned, manual = planned_checks(spec)
+    failures = [reason] + ([f"{planned} planned checks did not run"] if planned else [])
+    record.update(status=status, failure_stage=stage, failures=failures, passed=0, total=planned,
+                  automatic_status="failed", manual_checks=manual)
     return record
+
+
+def planned_checks(spec):
+    """Automatic check runs planned (first start plus reruns after the restart) and the manual
+    checks, which stay pending."""
+    automatic = [c for c in spec.checks if c.http_steps]
+    manual = [{"id": c.id, "ac_ids": c.ac_ids, "steps": c.manual_steps,
+               "rerun_after_restart": c.rerun_after_restart, "status": "pending"}
+              for c in spec.checks if c.manual_steps]
+    return len(automatic) + sum(c.rerun_after_restart for c in automatic), manual
 
 
 def describe(wait, status):
@@ -189,11 +203,7 @@ def describe(wait, status):
 def judge(record, spec):
     """Pass only if both starts answered and every planned check ran and passed; a check that
     never ran is a failure, not a missing number."""
-    automatic = [c for c in spec.checks if c.http_steps]
-    planned = len(automatic) + sum(c.rerun_after_restart for c in automatic)
-    manual = [{"id": c.id, "ac_ids": c.ac_ids, "steps": c.manual_steps,
-               "rerun_after_restart": c.rerun_after_restart, "status": "pending"}
-              for c in spec.checks if c.manual_steps]
+    planned, manual = planned_checks(spec)
     ran = record["checks"] + record["checks_after_restart"]
     restart = next((s for s in record.get("steps", []) if s["phase"] == "restart"), None)
     failures = []

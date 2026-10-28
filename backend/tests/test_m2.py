@@ -565,6 +565,8 @@ class SandboxTest(unittest.TestCase):
                 self.assertEqual(result["steps"][-1]["phase"], stage)
                 self.assertEqual(result["steps"][-1]["outcome"], outcome)
                 self.assertTrue(result["failures"])
+                if status != "checks_failed":  # stopped before the checks: counted as not run, not left blank
+                    self.assert_not_run(result)
 
     def test_verify_stops_before_building_without_docker_or_image(self):
         for docker in ({"docker": 1}, {"image": 1}):
@@ -572,3 +574,10 @@ class SandboxTest(unittest.TestCase):
                 result, calls = self.verify_with(**docker)
                 self.assertEqual((result["status"], result["failure_stage"]), ("environment_error", "preflight"))
                 self.assertFalse(any(c[0] == agent.SANDBOX for c in calls))
+                self.assert_not_run(result)
+
+    def assert_not_run(self, result):
+        planned, _ = verify.planned_checks(Spec.model_validate(spec_data()))
+        self.assertGreater(planned, 0)
+        self.assertEqual((result["passed"], result["total"], result["automatic_status"]), (0, planned, "failed"))
+        self.assertIn(f"{planned} planned checks did not run", result["failures"])
