@@ -67,6 +67,16 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 - Agent: `claude --bare -p`, `--permission-mode dontAsk`, 허용 도구는 작업 폴더 안으로 제한한 Read, Edit, Write(`./**`)와 샌드박스 스크립트 실행뿐이다. 폴더 밖 읽기는 거부됨을 확인했다(2026-10-15). Glob, Grep은 폴더 밖을 검색할 수 있어 허용하지 않으며, 검색은 샌드박스 안에서 한다. 생성물 Git에는 `app.git/info/exclude`로 `.git`, `node_modules/`, `data/`, `.venv/` 등을 항상 제외한다. `--bare`라서 인증은 `ANTHROPIC_API_KEY`만 사용한다(API 과금). Task별 `--max-budget-usd`.
 - Agent는 호스트의 작업 폴더만 수정한다. 명령은 `backend/app/m2/sandbox/sandbox.sh`로만 실행하며, 작업 폴더만 마운트한 Docker 컨테이너(`harness-sandbox:m2-1`)에서 돈다. 패키지 설치를 위해 네트워크는 열려 있다.
 - E6 빌드·실행도 같은 이미지에서 한다. 포트는 `127.0.0.1`에만 연다.
+
+### 샌드박스 실행 제한과 정리 (#9)
+
+실행 환경은 로컬 Docker다(결정문 5절). 확인한 환경은 로컬 WSL2(Ubuntu) + Docker Desktop이다. 검증 기록은 고정 점검용 앱으로 실패 경로를 확인한 [run-20261028-sandbox-01](runs/run-20261028-sandbox-01.md)과 실제 모델·생성 앱으로 확인한 [run-20261028-leave-01](runs/run-20261028-leave-01.md)이다.
+
+- 제한(`agent.LIMITS`): 모든 샌드박스 컨테이너(`sandbox.sh`의 일회용 컨테이너와 E6 앱 서버)에 `--memory 3g --cpus 2 --pids-limit 512 --cap-drop ALL --security-opt no-new-privileges`를 건다. 컨테이너는 호출한 사용자의 UID로 돈다. `sandbox.sh`는 제한을 문자 그대로 적어 Agent가 환경변수로 풀 수 없게 했고, 테스트로 두 곳이 같은지 확인한다.
+- 비밀정보: 컨테이너에 넘기는 환경변수는 `HOME`, `npm_config_cache`뿐이다. `ANTHROPIC_API_KEY` 등 호스트 환경변수는 넘기지 않는다.
+- Timeout: `sandbox.sh` 명령마다 컨테이너 안에서 `timeout -k 10 ${SANDBOX_TIMEOUT:-900}`초(종료 코드 124). 호스트는 그보다 60초 길게 기다리고, 넘기면 프로세스 그룹을 종료한다. Agent는 `AGENT_TIMEOUT_S`(1800초).
+- 프로세스 정리: Agent(`claude`)와 샌드박스 명령은 별도 프로세스 그룹으로 실행한다(`agent.run_group`). Timeout이나 Ctrl+C 때 그룹 전체를 종료한다. 웹 서버처럼 실행기를 스레드에서 돌려 Ctrl+C가 메인 스레드에만 전달되는 경우에도, Python이 종료될 때 남은 그룹을 종료하고 그 실행의 샌드박스 컨테이너를 지운다(`agent.stop_running`). 강제 종료(SIGKILL, 전원 차단)에는 적용되지 않는다.
+- 컨테이너 정리: `sandbox.sh` 컨테이너에는 `harness.run=<run_id>` 라벨이 붙는다. docker CLI를 종료해도 컨테이너는 멈추지 않으므로, Task가 끝날 때마다(성공·실패·Timeout·중단 모두) 그리고 E6 앞뒤로 이 라벨의 컨테이너를 강제 삭제한다. 삭제한 ID는 `agent/TASK-xxx-attempt-N.json`과 `verify.json`의 `leftover_containers`에 남긴다. 앱 서버(`harness-<run_id>`)에는 이 라벨이 없어 미리보기가 정리 대상이 되지 않는다.
 - Context에는 작업 폴더 안의 실제 파일만 넣는다. 심볼릭 링크나 폴더 밖으로 이어지는 경로는 읽지 않고 `repository.skipped`에 이유를 남긴다.
 - Task의 모든 시도를 `agent/TASK-xxx-attempt-N.json`, `diffs/TASK-xxx-attempt-N.diff`로 남기고, 예산은 모든 시도의 비용을 합산한다. 비용을 알 수 없는 기록이 있으면 다음 유료 호출을 시작하지 않는다.
 
@@ -77,6 +87,25 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 - 자동 판정 통과 조건: 최초 실행과 재시작 후 모두 `GET /`가 200이고, HTTP 단계가 있는 점검(최초 + 재시작 후 지속성 점검)이 모두 실행되어 통과. 실행되지 않은 자동 점검은 실패로 `failures`에 기록한다.
 - 수동 전용 점검은 자동 점검 수에서 제외한다. 혼합 점검을 포함한 모든 수동 단계는 `manual_checks`에 `pending`으로 남긴다. 자동 판정은 `automatic_status`(passed/failed/not_applicable)로 구분하고, 실패 없이 수동 확인이 남으면 전체 `status`는 `manual_pending`이다. 수동 전용인 경우 자동 결과는 `not_applicable`이며 통과로 집계하지 않는다. 수동 판정 입력 기능은 후속 범위다.
 - 완료 판정은 빌드 성공이 아니라 자동 점검 전부 통과와 수동 점검 기록이다. 시나리오별 체크리스트는 픽스처 폴더에 둔다.
+- Test 단계: 스택 계약이 생성 앱에 테스트를 요구하지 않으므로 지금은 실행하지 않는다. 테스트 요구가 정해지면 스택 계약과 E6 단계에 추가한다.
+
+### `verify.json` 기록 (#9)
+
+| 필드 | 내용 |
+| --- | --- |
+| `environment` | Docker 서버 버전, 이미지 ID, 제한, `sandbox_timeout_s`. Docker나 이미지를 쓸 수 없으면 `error` |
+| `steps[]` | `limits`, `build`, `start`, `restart` 순서의 실행 기록. 단계마다 `outcome`(`ok`/`failed`/`timeout`/`docker_error`), `exit_code`(Timeout이면 124 또는 null), `duration_s`, `output_tail` |
+| `server_limits` | 앱 서버 컨테이너의 `docker inspect` 값(Memory, NanoCpus, PidsLimit, CapDrop, SecurityOpt). 빌드 컨테이너의 제한은 `limits` 단계 출력(cgroup의 memory.max, cpu.max, pids.max) |
+| `root_status`, `root_wait` | 마지막 `GET /` 응답. HTTP 오류면 상태 코드(예: 500), 연결이 안 되면 `null`과 `error`(연결 오류 문구). 컨테이너가 멈췄으면 `container`(Running, ExitCode, OOMKilled, Error) |
+| `root_status_after_restart`, `root_wait_after_restart` | 재시작 후 같은 기록 |
+| `status` | `environment_error`, `build_failed`, `start_failed`, `checks_failed`, `manual_pending`, `passed` |
+| `failure_stage` | 실패한 단계: `preflight`(Docker·이미지), `build`, `start`(컨테이너 실행), `serve`(앱이 200으로 응답하지 않음), `restart`(재시작 실패 또는 재시작 후 응답 없음), `checks`(점검 실패). 성공이면 null |
+| `failures[]` | 사람이 읽는 실패 사유 |
+| `server_log_tail` | 앱 서버 로그 마지막 80줄. stdout(접근 로그)과 stderr(기동 오류, Traceback)를 함께 남긴다 |
+| `leftover_containers` | E6 앞뒤로 정리한 이 실행의 `sandbox.sh` 컨테이너 ID |
+| `data_kept` | 검증 전에 작업 폴더의 `data/`(런타임 DB)를 옮겨 둔 위치(`<run_id>/data-before-verify/`, 마지막 1개만 보관). 없었으면 null. Agent가 코딩 중 직접 보낸 요청이나 이전 검증의 점검 데이터가 남아 결과를 바꾸지 않도록, 검증은 항상 생성 코드가 만드는 시드 데이터에서 시작한다. 옮긴 데이터는 샌드박스에 마운트되지 않고 Git에도 들어가지 않는다 |
+
+이 기록은 실패를 구분할 원자료다. 어떤 실패를 자동 수정·재시도할지는 #11에서 정한다.
 
 ## 7. 실행
 

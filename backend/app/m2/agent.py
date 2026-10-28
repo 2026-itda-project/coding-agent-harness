@@ -1,8 +1,10 @@
 """E5: Claude Code (headless, Sonnet) implements one task in the app workspace; the harness
 commits the result. The workspace is a local Git repo outside the harness repo with no remote."""
 
+import atexit
 import json
 import os
+import signal
 import subprocess
 from pathlib import Path
 
@@ -12,9 +14,74 @@ from app.m2.stages import prompt
 HARNESS_REPO = Path(__file__).resolve().parents[3]
 SANDBOX = str(Path(__file__).resolve().parent / "sandbox" / "sandbox.sh")
 SANDBOX_IMAGE = "harness-sandbox:m2-1"
+# Resource and privilege limits of every sandbox container. sandbox.sh repeats them literally so
+# the agent cannot loosen them through the environment; a test keeps the two in sync.
+LIMITS = ("--memory", "3g", "--cpus", "2", "--pids-limit", "512",
+          "--cap-drop", "ALL", "--security-opt", "no-new-privileges")
 # Same exclusions as the stack contract's .gitignore, enforced even if the agent forgets it.
 GIT_EXCLUDE = ".git\nnode_modules/\nfrontend/dist/\ndata/\n.venv/\n__pycache__/\n.env\n"
 AGENT_TIMEOUT_S = 1800
+_running = {}  # process group id -> run id of its sandbox containers, while run_group waits for it
+
+
+def run_group(command, timeout, **kwargs):
+    """subprocess.run for commands that start children (Claude Code, sandbox.sh -> docker CLI):
+    the command gets its own process group, and the whole group is killed on timeout or
+    interrupt so no child outlives the call. Returns (exit code, stdout, stderr); the exit code
+    is None on timeout."""
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            start_new_session=True, **kwargs)
+    _running[proc.pid] = (kwargs.get("env") or {}).get("HARNESS_RUN_ID")
+    try:
+        out, err = proc.communicate(timeout=timeout)
+        return proc.returncode, out, err
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        try:
+            out, err = proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:  # a child that left the group still holds the pipes
+            out, err = "", ""
+        return None, out, err
+    except BaseException:  # Ctrl+C: the new session no longer receives the terminal's SIGINT
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
+        raise
+    finally:
+        _running.pop(proc.pid, None)
+
+
+def run_id_of(app_dir):
+    return Path(app_dir).parent.name  # workspace layout: <HARNESS_WORKSPACE_ROOT>/<run_id>/app
+
+
+def sandbox_env(app_dir):
+    """Variables sandbox.sh needs; they stay on the host and are not passed into the container."""
+    return {"SANDBOX_IMAGE": SANDBOX_IMAGE, "HARNESS_RUN_ID": run_id_of(app_dir)}
+
+
+def cleanup(run_id):
+    """Force-remove the sandbox.sh containers of a run (found by their label) and return their
+    ids, so the record shows what a finished, timed-out or interrupted caller left behind."""
+    ids = subprocess.run(["docker", "ps", "-aq", "--filter", f"label=harness.run={run_id}"],
+                         capture_output=True, text=True).stdout.split()
+    if ids:
+        subprocess.run(["docker", "rm", "-f", *ids], capture_output=True)
+    return ids
+
+
+@atexit.register
+def stop_running():
+    """A caller that runs the agent in a thread (the web server) stops only its main thread on
+    Ctrl+C, and the agent's own session never gets the terminal's SIGINT. When Python exits, end
+    the groups still running and remove their runs' sandbox containers."""
+    running = dict(_running)
+    for pgid in running:
+        try:
+            os.killpg(pgid, signal.SIGKILL)
+        except OSError:  # the group already ended
+            pass
+    for run_id in set(filter(None, running.values())):
+        cleanup(run_id)
 
 
 def git_dir(app_dir):
@@ -59,14 +126,14 @@ def agent_command(task_prompt, budget_usd):
             "--no-session-persistence"]
 
 
-def agent_env():
+def agent_env(app_dir):
     # Drop variables of any Claude Code session that launched the harness; --bare then
     # authenticates strictly with ANTHROPIC_API_KEY (API billing, not a subscription login).
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE" and not k.startswith("CLAUDE_CODE_")}
-    return {**env, "DISABLE_AUTOUPDATER": "1", "SANDBOX_IMAGE": SANDBOX_IMAGE}
+    return {**env, "DISABLE_AUTOUPDATER": "1", **sandbox_env(app_dir)}
 
 
-def run_task(task, context, app_dir, budget_usd, runner=subprocess.run):
+def run_task(task, context, app_dir, budget_usd, runner=run_group):
     """Run the agent, then commit whatever it changed. Returns a record; never raises on agent
     failure so the caller can log it and stop."""
     assert_no_remote(app_dir)
@@ -75,16 +142,18 @@ def run_task(task, context, app_dir, budget_usd, runner=subprocess.run):
     record = {"task_id": task.id, "title": task.title, "base_commit": before,
               "command": command[:3] + ["<context json>"] + command[4:]}
     try:
-        proc = runner(command, cwd=app_dir, capture_output=True, text=True, timeout=AGENT_TIMEOUT_S,
-                      env=agent_env())
-        record["exit_code"] = proc.returncode
+        code, out, err = runner(command, AGENT_TIMEOUT_S, cwd=app_dir, env=agent_env(app_dir))
+    finally:
+        # Sandbox containers the agent started, background ones included, end with its task.
+        record["leftover_containers"] = cleanup(run_id_of(app_dir))
+    record["exit_code"], record["stderr_tail"] = code, err[-2000:]
+    if code is None:
+        result = {"is_error": True, "result": "agent timeout"}
+    else:
         try:
-            result = json.loads(proc.stdout)
+            result = json.loads(out)
         except ValueError:
-            result = {"is_error": True, "result": proc.stdout[-2000:]}
-        record["stderr_tail"] = proc.stderr[-2000:]
-    except subprocess.TimeoutExpired:
-        record["exit_code"], result = None, {"is_error": True, "result": "agent timeout"}
+            result = {"is_error": True, "result": out[-2000:]}
     record["agent"] = {k: result.get(k) for k in
                        ("is_error", "subtype", "result", "num_turns", "total_cost_usd", "usage", "modelUsage")}
     git(app_dir, "add", "-A")
