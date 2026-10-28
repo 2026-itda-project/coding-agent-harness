@@ -11,14 +11,16 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from app.m2.agent import LIMITS, SANDBOX, SANDBOX_IMAGE as IMAGE, cleanup, run_group, run_id_of, sandbox_env
+from app.m2.agent import (DOCKER_TIMEOUT_S, LIMITS, SANDBOX, SANDBOX_IMAGE as IMAGE, cleanup, run_group,
+                          run_id_of, sandbox_env)
 BUILD = ("cd frontend && npm install && npm run build && cd .. && python3 -m venv .venv"
          " && .venv/bin/pip install -q -r backend/requirements.txt")
 SERVE = ".venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000"
 # Limits as the container sees them (cgroup v2), so the record shows they were applied.
 LIMITS_PROBE = "cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/cpu.max /sys/fs/cgroup/pids.max"
-DOCKER_TIMEOUT_S = 120
-TIMED_OUT, DOCKER_ERROR = 124, 125  # exit codes of `timeout` in sandbox.sh and of `docker run`
+# Exit codes: `timeout` in sandbox.sh, `docker run`, and SIGKILL (a command that ignored TERM and was
+# killed by `timeout -k`, or the out-of-memory killer; the two give the same code).
+TIMED_OUT, DOCKER_ERROR, KILLED = 124, 125, 137
 
 
 def step(record, phase, command, timeout, **kwargs):
@@ -26,7 +28,7 @@ def step(record, phase, command, timeout, **kwargs):
     started = time.monotonic()
     code, out, err = run_group(command, timeout, **kwargs)
     outcome = ("ok" if code == 0 else "timeout" if code in (None, TIMED_OUT)
-               else "docker_error" if code == DOCKER_ERROR else "failed")
+               else "docker_error" if code == DOCKER_ERROR else "killed" if code == KILLED else "failed")
     record["steps"].append({"phase": phase, "outcome": outcome, "exit_code": code,
                             "duration_s": round(time.monotonic() - started, 1),
                             "output_tail": (out + err)[-4000:]})
@@ -102,7 +104,7 @@ def wait_up(base, name, seconds=90):
         except (URLError, OSError) as exc:
             last = {"status": None, "error": str(getattr(exc, "reason", exc))}
         state = container_state(name)
-        if not state["Running"]:
+        if state["Running"] is False:  # None: docker inspect failed, so keep waiting
             return {**last, "container": state}
         if time.time() >= deadline:
             return last

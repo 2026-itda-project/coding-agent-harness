@@ -385,8 +385,8 @@ def alive(pid):
         return False
     try:  # a zombie is dead, only not reaped yet
         return Path(f"/proc/{pid}/stat").read_text().split()[2] != "Z"
-    except FileNotFoundError:
-        return False
+    except FileNotFoundError:  # reaped meanwhile; without /proc (macOS) trust os.kill
+        return not Path("/proc").is_dir()
 
 
 class SandboxTest(unittest.TestCase):
@@ -404,6 +404,28 @@ class SandboxTest(unittest.TestCase):
                     break
                 time.sleep(0.1)
             self.assertFalse(alive(pid), "a child of the timed-out command survived")
+
+    def test_run_id_of_a_relative_app_dir(self):
+        self.assertEqual(agent.run_id_of(Path("app")), Path.cwd().name)  # `--resume .` inside the run folder
+
+    def test_cleanup_gives_up_when_docker_hangs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            docker = Path(tmp) / "docker"
+            docker.write_text("#!/bin/sh\nsleep 60\n")
+            docker.chmod(0o755)
+            with patch.dict(os.environ, {"PATH": f"{tmp}:{os.environ['PATH']}"}), \
+                    patch.object(agent, "DOCKER_TIMEOUT_S", 1):
+                started = time.monotonic()
+                self.assertEqual(agent.cleanup("run-x"), [])
+            self.assertLess(time.monotonic() - started, 10)
+
+    def test_dump_replaces_the_file_whole(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run" / "run.json"
+            run.dump(path, {"stage": "spec"})
+            run.dump(path, {"stage": "계획"})
+            self.assertEqual(run.load(path), {"stage": "계획"})
+            self.assertEqual([p.name for p in path.parent.iterdir()], ["run.json"])  # no temporary file left
 
     def test_python_exit_stops_groups_left_running_in_threads(self):
         # The web server runs the agent in a daemon thread: Ctrl+C ends only the main thread.
@@ -467,6 +489,9 @@ class SandboxTest(unittest.TestCase):
             closed = verify.wait_up(f"http://127.0.0.1:{verify.free_port()}", "c", seconds=0)
         self.assertIsNone(closed["status"])
         self.assertIn("refused", closed["error"].lower())
+        unknown = dict.fromkeys(running)  # docker inspect failed: not known to be stopped, keep waiting
+        with patch.object(verify, "container_state", return_value=unknown):
+            self.assertNotIn("container", verify.wait_up(f"http://127.0.0.1:{verify.free_port()}", "c", seconds=0))
         crashed = {**running, "Running": False, "ExitCode": 1}
         with patch.object(verify, "container_state", return_value=crashed):
             up = verify.wait_up(f"http://127.0.0.1:{verify.free_port()}", "c", seconds=60)  # no 60 s wait
@@ -530,6 +555,7 @@ class SandboxTest(unittest.TestCase):
         cases = {"build timeout": ({"build": 124}, "build_failed", "build", "timeout"),
                  "host timeout": ({"build": None}, "build_failed", "build", "timeout"),
                  "build error": ({"build": 1}, "build_failed", "build", "failed"),
+                 "build killed": ({"build": 137}, "build_failed", "build", "killed"),
                  "start failure": ({"start": 125}, "start_failed", "start", "docker_error"),
                  "restart failure": ({"restart": 1}, "checks_failed", "restart", "failed")}
         for name, (docker, status, stage, outcome) in cases.items():

@@ -21,6 +21,7 @@ LIMITS = ("--memory", "3g", "--cpus", "2", "--pids-limit", "512",
 # Same exclusions as the stack contract's .gitignore, enforced even if the agent forgets it.
 GIT_EXCLUDE = ".git\nnode_modules/\nfrontend/dist/\ndata/\n.venv/\n__pycache__/\n.env\n"
 AGENT_TIMEOUT_S = 1800
+DOCKER_TIMEOUT_S = 120  # one docker CLI call (ps, rm, inspect, run -d ...)
 _running = {}  # process group id -> run id of its sandbox containers, while run_group waits for it
 
 
@@ -51,7 +52,8 @@ def run_group(command, timeout, **kwargs):
 
 
 def run_id_of(app_dir):
-    return Path(app_dir).parent.name  # workspace layout: <HARNESS_WORKSPACE_ROOT>/<run_id>/app
+    # Workspace layout: <HARNESS_WORKSPACE_ROOT>/<run_id>/app. Resolved so `--resume .` still has a name.
+    return Path(app_dir).resolve().parent.name
 
 
 def sandbox_env(app_dir):
@@ -62,10 +64,11 @@ def sandbox_env(app_dir):
 def cleanup(run_id):
     """Force-remove the sandbox.sh containers of a run (found by their label) and return their
     ids, so the record shows what a finished, timed-out or interrupted caller left behind."""
-    ids = subprocess.run(["docker", "ps", "-aq", "--filter", f"label=harness.run={run_id}"],
-                         capture_output=True, text=True).stdout.split()
+    # Bounded like every docker call: a hung Docker must not hang a task's end or Python's exit.
+    code, out, _ = run_group(["docker", "ps", "-aq", "--filter", f"label=harness.run={run_id}"], DOCKER_TIMEOUT_S)
+    ids = out.split() if code == 0 else []
     if ids:
-        subprocess.run(["docker", "rm", "-f", *ids], capture_output=True)
+        run_group(["docker", "rm", "-f", *ids], DOCKER_TIMEOUT_S)
     return ids
 
 

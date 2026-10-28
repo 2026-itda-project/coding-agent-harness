@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,8 +34,12 @@ def sha(text):
 
 
 def dump(path, data):
+    # Write a temporary file, then rename it over the old one: a process that ends mid-write never
+    # leaves a half-written run.json. The name is per thread, as the web server writes from several.
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    os.replace(tmp, path)
 
 
 def load(path):

@@ -64,7 +64,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 ## 5. 작업 폴더와 실행 경계 (E5·E6)
 
 - 위치: `HARNESS_WORKSPACE_ROOT`(기본 `~/dev/2026-itda-project/harness-workspaces`)`/<run_id>/`. `app/`이 생성 코드, `app.git/`이 그 로컬 Git 저장소(원격 없음), `artifacts/`가 실행 기록이다. Git 저장소를 작업 폴더 밖에 두므로 샌드박스와 Agent는 hook이나 Git 설정을 건드릴 수 없고, Harness가 호스트에서 실행하는 Git 명령이 생성 코드에 의해 조작되지 않는다. Harness 저장소 안 경로는 거부한다.
-- Agent: `claude --bare -p`, `--permission-mode dontAsk`, 허용 도구는 작업 폴더 안으로 제한한 Read, Edit, Write(`./**`)와 샌드박스 스크립트 실행뿐이다. 폴더 밖 읽기는 거부됨을 확인했다(2026-10-15). Glob, Grep은 폴더 밖을 검색할 수 있어 허용하지 않으며, 검색은 샌드박스 안에서 한다. 생성물 Git에는 `app.git/info/exclude`로 `.git`, `node_modules/`, `data/`, `.venv/` 등을 항상 제외한다. `--bare`라서 인증은 `ANTHROPIC_API_KEY`만 사용한다(API 과금). Task별 `--max-budget-usd`.
+- Agent: `claude --bare -p`, `--permission-mode dontAsk`, 허용 도구는 작업 폴더 안으로 제한한 Read, Edit, Write(`./**`)와 샌드박스 스크립트 실행뿐이다. Claude Code 2.1.312의 `--bare`에는 Write 도구가 없어(제공 도구: Bash, Edit, Read) 새 파일도 Edit로 만든다(2026-10-28 확인). 폴더 밖 읽기는 거부됨을 확인했다(2026-10-15). Glob, Grep은 폴더 밖을 검색할 수 있어 허용하지 않으며, 검색은 샌드박스 안에서 한다. 생성물 Git에는 `app.git/info/exclude`로 `.git`, `node_modules/`, `data/`, `.venv/` 등을 항상 제외한다. `--bare`라서 인증은 `ANTHROPIC_API_KEY`만 사용한다(API 과금). Task별 `--max-budget-usd`.
 - Agent는 호스트의 작업 폴더만 수정한다. 명령은 `backend/app/m2/sandbox/sandbox.sh`로만 실행하며, 작업 폴더만 마운트한 Docker 컨테이너(`harness-sandbox:m2-1`)에서 돈다. 패키지 설치를 위해 네트워크는 열려 있다.
 - E6 빌드·실행도 같은 이미지에서 한다. 포트는 `127.0.0.1`에만 연다.
 
@@ -74,7 +74,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 
 - 제한(`agent.LIMITS`): 모든 샌드박스 컨테이너(`sandbox.sh`의 일회용 컨테이너와 E6 앱 서버)에 `--memory 3g --cpus 2 --pids-limit 512 --cap-drop ALL --security-opt no-new-privileges`를 건다. 컨테이너는 호출한 사용자의 UID로 돈다. `sandbox.sh`는 제한을 문자 그대로 적어 Agent가 환경변수로 풀 수 없게 했고, 테스트로 두 곳이 같은지 확인한다.
 - 비밀정보: 컨테이너에 넘기는 환경변수는 `HOME`, `npm_config_cache`뿐이다. `ANTHROPIC_API_KEY` 등 호스트 환경변수는 넘기지 않는다.
-- Timeout: `sandbox.sh` 명령마다 컨테이너 안에서 `timeout -k 10 ${SANDBOX_TIMEOUT:-900}`초(종료 코드 124). 호스트는 그보다 60초 길게 기다리고, 넘기면 프로세스 그룹을 종료한다. Agent는 `AGENT_TIMEOUT_S`(1800초).
+- Timeout: `sandbox.sh` 명령마다 컨테이너 안에서 `timeout -k 10 ${SANDBOX_TIMEOUT:-900}`초(종료 코드 124, 종료 신호를 무시하면 10초 뒤 강제 종료되어 137). 호스트는 그보다 60초 길게 기다리고, 넘기면 프로세스 그룹을 종료한다. Agent는 `AGENT_TIMEOUT_S`(1800초).
 - 프로세스 정리: Agent(`claude`)와 샌드박스 명령은 별도 프로세스 그룹으로 실행한다(`agent.run_group`). Timeout이나 Ctrl+C 때 그룹 전체를 종료한다. 웹 서버처럼 실행기를 스레드에서 돌려 Ctrl+C가 메인 스레드에만 전달되는 경우에도, Python이 종료될 때 남은 그룹을 종료하고 그 실행의 샌드박스 컨테이너를 지운다(`agent.stop_running`). 강제 종료(SIGKILL, 전원 차단)에는 적용되지 않는다.
 - 컨테이너 정리: `sandbox.sh` 컨테이너에는 `harness.run=<run_id>` 라벨이 붙는다. docker CLI를 종료해도 컨테이너는 멈추지 않으므로, Task가 끝날 때마다(성공·실패·Timeout·중단 모두) 그리고 E6 앞뒤로 이 라벨의 컨테이너를 강제 삭제한다. 삭제한 ID는 `agent/TASK-xxx-attempt-N.json`과 `verify.json`의 `leftover_containers`에 남긴다. 앱 서버(`harness-<run_id>`)에는 이 라벨이 없어 미리보기가 정리 대상이 되지 않는다.
 - Context에는 작업 폴더 안의 실제 파일만 넣는다. 심볼릭 링크나 폴더 밖으로 이어지는 경로는 읽지 않고 `repository.skipped`에 이유를 남긴다.
@@ -94,7 +94,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 | 필드 | 내용 |
 | --- | --- |
 | `environment` | Docker 서버 버전, 이미지 ID, 제한, `sandbox_timeout_s`. Docker나 이미지를 쓸 수 없으면 `error` |
-| `steps[]` | `limits`, `build`, `start`, `restart` 순서의 실행 기록. 단계마다 `outcome`(`ok`/`failed`/`timeout`/`docker_error`), `exit_code`(Timeout이면 124 또는 null), `duration_s`, `output_tail` |
+| `steps[]` | `limits`, `build`, `start`, `restart` 순서의 실행 기록. 단계마다 `outcome`(`ok`/`failed`/`timeout`/`docker_error`/`killed`), `exit_code`(Timeout이면 124 또는 null. `killed`는 137로, 종료 신호를 무시해 강제 종료됐거나 메모리 초과로 종료된 경우이며 둘은 구분되지 않는다), `duration_s`, `output_tail` |
 | `server_limits` | 앱 서버 컨테이너의 `docker inspect` 값(Memory, NanoCpus, PidsLimit, CapDrop, SecurityOpt). 빌드 컨테이너의 제한은 `limits` 단계 출력(cgroup의 memory.max, cpu.max, pids.max) |
 | `root_status`, `root_wait` | 마지막 `GET /` 응답. HTTP 오류면 상태 코드(예: 500), 연결이 안 되면 `null`과 `error`(연결 오류 문구). 컨테이너가 멈췄으면 `container`(Running, ExitCode, OOMKilled, Error) |
 | `root_status_after_restart`, `root_wait_after_restart` | 재시작 후 같은 기록 |
