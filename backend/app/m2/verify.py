@@ -11,8 +11,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from app.m2.agent import (DOCKER_TIMEOUT_S, LIMITS, SANDBOX, SANDBOX_IMAGE as IMAGE, cleanup, run_group,
-                          run_id_of, sandbox_env)
+from app.m2.agent import (DOCKER_TIMEOUT_S, LIMITS, SANDBOX, SANDBOX_IMAGE as IMAGE, CleanupError, cleanup,
+                          run_group, run_id_of, sandbox_env)
 BUILD = ("cd frontend && npm install && npm run build && cd .. && python3 -m venv .venv"
          " && .venv/bin/pip install -q -r backend/requirements.txt")
 SERVE = ".venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000"
@@ -124,16 +124,15 @@ def verify(app_dir, spec, name, keep_running=False):
         return stopped(record, spec, "environment_error", "preflight", record["environment"]["error"])
     env = {**os.environ, **sandbox_env(app_dir)}
     run_id = run_id_of(app_dir)
-    record["leftover_containers"] = cleanup(run_id)  # from an earlier, interrupted attempt
+    try:
+        record["leftover_containers"] = cleanup(run_id)  # from an earlier, interrupted attempt
+    except CleanupError as exc:
+        return stopped(record, spec, "environment_error", "preflight", str(exc))
     run_group(["docker", "rm", "-f", name], DOCKER_TIMEOUT_S)
-    # Runtime data (data/app.db in the stack contract) left by the agent's own testing or an earlier
-    # verification changes what the checks see, so every verification starts from the seed data.
-    # The data found is kept next to the work tree (not mounted, not in Git); only the latest.
-    data, kept = Path(app_dir) / "data", Path(app_dir).parent / "data-before-verify"
-    record["data_kept"] = str(kept) if data.exists() else None
-    if data.exists():
-        shutil.rmtree(kept, ignore_errors=True)
-        shutil.move(data, kept)
+    try:
+        record["data_kept"] = keep_data(app_dir)
+    except (ValueError, OSError) as exc:
+        return stopped(record, spec, "workspace_error", "data", f"data: {exc}")
     try:
         step(record, "limits", [SANDBOX, LIMITS_PROBE], DOCKER_TIMEOUT_S, cwd=app_dir, env=env)
         # The host timeout only backs up the container's own `timeout`, so it is a bit longer.
@@ -162,11 +161,35 @@ def verify(app_dir, spec, name, keep_running=False):
         _, out, err = run_group(["docker", "logs", "--tail", "80", name], DOCKER_TIMEOUT_S)
         record["server_log_tail"] = (out + err)[-4000:]
     finally:
-        record["leftover_containers"] += cleanup(run_id)
+        try:
+            record["leftover_containers"] += cleanup(run_id)
+        except CleanupError as exc:  # the next task or verification checks again before it starts
+            record["cleanup_error"] = str(exc)
         if not keep_running or record.get("status") == "start_failed":
             run_group(["docker", "rm", "-f", name], DOCKER_TIMEOUT_S)
     record["preview_url"] = base if keep_running else None
     return judge(record, spec)
+
+
+def keep_data(app_dir):
+    """Move the work tree's runtime data (data/app.db in the stack contract) next to it, to
+    <run_id>/data-before-verify (latest only), and return where it went, or None if there was none.
+    Data left by the agent's own testing or an earlier verification changes what the checks see, so
+    every verification starts from the seed data. data/ comes from generated code: a symbolic link
+    in either place is refused, as following it would move or delete files outside the run folder,
+    and a backup that cannot be removed is an error, not something to skip."""
+    data, kept = Path(app_dir) / "data", Path(app_dir).parent / "data-before-verify"
+    for path in (data, kept):
+        if path.is_symlink():
+            raise ValueError(f"{path} is a symbolic link; it is neither moved nor deleted")
+    if not data.exists():
+        return None
+    if kept.is_dir():
+        shutil.rmtree(kept)
+    elif kept.exists():
+        kept.unlink()
+    shutil.move(data, kept)
+    return str(kept)
 
 
 def stopped(record, spec, status, stage, reason=None):

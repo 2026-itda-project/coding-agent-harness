@@ -161,6 +161,9 @@ def cmd_run(args):
                 (art / f"diffs/{name}.diff").parent.mkdir(parents=True, exist_ok=True)
                 (art / f"diffs/{name}.diff").write_text(agent.git(app_dir, "diff", record["base_commit"], record["commit"]))
                 save()
+                if record.get("cleanup_error"):  # the attempt and its cost are saved; nothing more starts
+                    state["stages"]["code"] = f"cleanup failed after {tid}"
+                    raise SystemExit(f"sandbox cleanup failed after {tid}: {record['cleanup_error']}")
                 if record["status"] != "done":
                     state["stages"]["code"] = f"failed at {tid}"
                     raise SystemExit(f"{tid} failed; see {art / f'agent/{name}.json'}")
@@ -171,6 +174,8 @@ def cmd_run(args):
             state["stages"]["verify"] = result["status"]
             print(f"verify: {result['status']} ({result.get('passed')}/{result.get('total')} checks)"
                   + (f", preview {result['preview_url']}" if result.get("preview_url") else ""))
+            if result.get("cleanup_error"):  # the next task or verification checks again before it starts
+                print(f"warning: sandbox cleanup failed after verify: {result['cleanup_error']}")
     except stages.ContractError as exc:
         dump(art / f"{exc.stage}.rejected.json", {"errors": exc.errors, "data": exc.data})
         state["stages"][exc.stage] = "rejected"
@@ -178,6 +183,9 @@ def cmd_run(args):
     except AnalysisError as exc:
         state["stages"]["error"] = f"{exc.code}: {exc.message}"
         raise SystemExit(f"model call failed: {exc.code} {exc.message}")
+    except agent.CleanupError as exc:  # raised before an agent starts, so no paid call is lost
+        state["stages"]["error"] = f"cleanup_failed: {exc}"
+        raise SystemExit(f"sandbox cleanup failed; not starting the next task: {exc}")
     finally:
         state["updated_at"] = now()
         save()

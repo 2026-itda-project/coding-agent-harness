@@ -6,6 +6,7 @@ import json
 import os
 import signal
 import subprocess
+import sys
 from pathlib import Path
 
 from app.llm import claude
@@ -61,14 +62,29 @@ def sandbox_env(app_dir):
     return {"SANDBOX_IMAGE": SANDBOX_IMAGE, "HARNESS_RUN_ID": run_id_of(app_dir)}
 
 
+class CleanupError(RuntimeError):
+    """Docker could not list or remove a run's sandbox containers: whether any are left is unknown."""
+
+
+def docker_call(what, command):
+    """Run one bounded docker call (a hung Docker must not hang a task's end or Python's exit);
+    return its stdout or raise CleanupError naming the call and why it failed."""
+    try:
+        code, out, err = run_group(command, DOCKER_TIMEOUT_S)
+    except OSError as exc:  # no docker CLI
+        raise CleanupError(f"{what} failed: {exc}") from exc
+    if code != 0:
+        raise CleanupError(f"{what} {'timed out' if code is None else f'failed (exit {code})'}: {err.strip()[-300:]}")
+    return out
+
+
 def cleanup(run_id):
     """Force-remove the sandbox.sh containers of a run (found by their label) and return their
-    ids, so the record shows what a finished, timed-out or interrupted caller left behind."""
-    # Bounded like every docker call: a hung Docker must not hang a task's end or Python's exit.
-    code, out, _ = run_group(["docker", "ps", "-aq", "--filter", f"label=harness.run={run_id}"], DOCKER_TIMEOUT_S)
-    ids = out.split() if code == 0 else []
+    ids, so the record shows what a finished, timed-out or interrupted caller left behind. Raises
+    CleanupError when they could not be listed or removed, never reporting "none left" instead."""
+    ids = docker_call("docker ps", ["docker", "ps", "-aq", "--filter", f"label=harness.run={run_id}"]).split()
     if ids:
-        run_group(["docker", "rm", "-f", *ids], DOCKER_TIMEOUT_S)
+        docker_call(f"docker rm {' '.join(ids)}", ["docker", "rm", "-f", *ids])
     return ids
 
 
@@ -84,7 +100,10 @@ def stop_running():
         except OSError:  # the group already ended
             pass
     for run_id in set(filter(None, running.values())):
-        cleanup(run_id)
+        try:
+            cleanup(run_id)
+        except CleanupError as exc:  # nothing more can be done while Python exits
+            print(f"harness: {exc}", file=sys.stderr)
 
 
 def git_dir(app_dir):
@@ -138,17 +157,24 @@ def agent_env(app_dir):
 
 def run_task(task, context, app_dir, budget_usd, runner=run_group):
     """Run the agent, then commit whatever it changed. Returns a record; never raises on agent
-    failure so the caller can log it and stop."""
+    failure so the caller can log it and stop. Containers left by an earlier attempt are removed
+    first, and CleanupError is raised before the agent starts if that fails. A cleanup that fails
+    after the agent ran is kept as `cleanup_error`, next to the agent's result and cost."""
     assert_no_remote(app_dir)
+    run_id = run_id_of(app_dir)
+    leftover = cleanup(run_id)  # an attempt that was killed, or whose own cleanup failed
     before = git(app_dir, "rev-parse", "HEAD").strip()
     command = agent_command(json.dumps(context, ensure_ascii=False), budget_usd)
     record = {"task_id": task.id, "title": task.title, "base_commit": before,
-              "command": command[:3] + ["<context json>"] + command[4:]}
+              "command": command[:3] + ["<context json>"] + command[4:], "leftover_containers": leftover}
     try:
         code, out, err = runner(command, AGENT_TIMEOUT_S, cwd=app_dir, env=agent_env(app_dir))
     finally:
         # Sandbox containers the agent started, background ones included, end with its task.
-        record["leftover_containers"] = cleanup(run_id_of(app_dir))
+        try:
+            record["leftover_containers"] += cleanup(run_id)
+        except CleanupError as exc:
+            record["cleanup_error"] = str(exc)
     record["exit_code"], record["stderr_tail"] = code, err[-2000:]
     if code is None:
         result = {"is_error": True, "result": "agent timeout"}
