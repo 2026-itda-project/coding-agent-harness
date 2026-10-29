@@ -537,6 +537,7 @@ class GenerateFlowTest(WebBase):
         status = self.status(run_id)
         self.assertEqual((status["outcome"], status["current_stage"]), ("failed", None))
         self.assertIn("검증을 통과하지 못했습니다", status["error"])
+        self.assertEqual(status["reason"], "AI가 만든 설계가 검증을 통과하지 못했습니다.")
         with self.fake_complete(prd_output()):
             self.client.post("/api/m2/runs", json={"prd_id": run_id[4:], "retry": True})
             web._threads[run_id].join(5)
@@ -556,6 +557,8 @@ class GenerateFlowTest(WebBase):
         run.dump(target / "run.json", {"stages": {"spec": "done", "plan": "done", "code": "done"},
                                        "verify_phase": "check"})
         self.assertEqual(self.status(run_id)["current_stage"], "check")
+        run.dump(target / "run.json", {"stages": {"spec": "done", "plan": "done", "code": "failed at T1"}})
+        self.assertEqual(self.status(run_id)["current_stage"], "code")  # resumed after a failed task
         web._threads.pop(run_id)
 
     def no_open_issue_case(self):

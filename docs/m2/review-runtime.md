@@ -66,7 +66,7 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 | --- | --- |
 | `POST /api/m2/generate` `{state}` | 화면의 '생성' 버튼. `review` 또는 `approved` 상태를 받아 서버가 승인하고, 백그라운드 스레드에서 PRD 생성과 검증 후 실행기를 시작한다. `run_id`를 바로 반환한다. 같은 상태의 재요청은 같은 Run을 돌려준다 |
 | `POST /api/m2/runs` `{prd_id, confirm_open_issues, retry}` | 서버에 저장된 그 PRD로 기존 실행기(`run.main`)를 백그라운드 스레드에서 시작하고 `run_id`를 바로 반환. `retry=true`는 실패·중단된 같은 Run을 실행기의 `--resume`으로 이어서 실행(사용자 요청 시에만) |
-| `GET /api/m2/runs/{run_id}` | 현재 단계, Task, 실패 사유, 자동 점검, 수동 확인 대기, 미리보기 주소, 비용, 확인이 필요한 미결정 사항 |
+| `GET /api/m2/runs/{run_id}` | 현재 단계, Task, 실패 사유(`error`는 내부 원문, `reason`은 화면용 짧은 문장), 자동 점검, 수동 확인 대기, 미리보기 주소, 비용, 확인이 필요한 미결정 사항 |
 | `POST /api/m2/runs/{run_id}/preview/stop` | 그 Run의 미리보기 컨테이너만 종료 |
 
 - 클라이언트는 `prd_id`만 보낸다. 파일 경로, PRD 내용, 명령, URL은 받지 않는다. id는 형식을 검사한 뒤에만 경로와 컨테이너 이름에 쓴다.
@@ -88,7 +88,7 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
   | `manual_check_only` | 자동 점검이 없고(`automatic_status: not_applicable`) 수동 확인만 남음. 자동 통과로 표시하지 않음 |
 
   사용자 화면은 `auto_checks_passed`에만 "생성이 완료되었습니다!"를 쓴다. `manual_check_only`는 "생성이 끝났습니다"와 직접 확인 안내를 쓴다. 내부의 `manual_pending`과 `manual_review: pending`은 그대로 남기며 화면 문구 때문에 완료로 바꾸지 않는다. 실패, 중단, 점검 실패는 간단한 사유와 다음 행동(이어서 다시 시도, 홈으로)을 보여 준다.
-- 진행 단계(`current_stage`)는 실행 기록에서만 계산한다: `prd`(요구사항 정리) → `spec`(개발 명세) → `plan`(작업 계획) → `code`(기능 구현, 완료 Task 수 / 전체) → `build`(빌드) → `check`(최종 점검). 실행기는 시작할 때, Spec과 Plan을 마칠 때, Task 순서를 정할 때, Task마다, 빌드와 점검을 시작할 때(`verify_phase`) `run.json`을 저장한다. 화면은 10초마다 조회하고 예상 시간이나 가짜 진행률은 보여 주지 않는다.
+- 진행 단계(`current_stage`)는 실행 기록에서만 계산하며, `done`이 아닌 단계(실패, 거부)는 다시 시도할 때 그 단계부터로 본다: `prd`(요구사항 정리) → `spec`(개발 명세) → `plan`(작업 계획) → `code`(기능 구현, 완료 Task 수 / 전체) → `build`(빌드) → `check`(최종 점검). 실행기는 시작할 때, Spec과 Plan을 마칠 때, Task 순서를 정할 때, Task마다, 빌드와 점검을 시작할 때(`verify_phase`) `run.json`을 저장한다. 화면은 10초마다 조회하고 예상 시간이나 가짜 진행률은 보여 주지 않는다.
 - 서비스별 저장(대시보드는 아직 없음): `web-<prd_id>/web.json`(단계, 시작과 종료, 확인 여부, 예산, 이전 오류) → `prds/<prd_id>/state.json`(최초 입력, 질문과 답변, 검토 결과) → `reviewed.json`, `prd.json`, `provenance.json`(분석 ID, 앞 단계 호출과 비용) → 기존 `run.json`, `artifacts/`(Spec, Plan, Task 기록, 점검 결과)와 `app/`(생성 코드와 로컬 Git). 화면에서 홈으로 가도 이 파일들은 지우지 않는다.
 
 ## 5. 실행 방법

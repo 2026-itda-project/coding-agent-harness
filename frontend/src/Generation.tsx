@@ -7,7 +7,7 @@ export type RunStatus = {
   prd_id: string
   outcome: 'running' | 'awaiting_confirmation' | 'failed' | 'interrupted' | 'verification_failed'
     | 'auto_checks_passed' | 'manual_check_only'
-  error: string | null
+  reason: string | null
   current_stage: 'prd' | 'spec' | 'plan' | 'code' | 'build' | 'check' | null
   tasks: { id: string; status: string }[]
   task_order: string[]
@@ -22,10 +22,11 @@ const STEPS = [
 ] as const
 
 // 진행 표시는 서버의 실행 기록(현재 단계, 완료된 Task 수)만 쓴다. 예상 시간이나 가짜 진행률은 만들지 않는다.
-function stepLabel(status: RunStatus, key: string, label: string) {
-  if (key !== 'code' || status.task_order.length === 0) return label
+function stepLabel(status: RunStatus, key: string, label: string, active: boolean) {
+  const text = active ? `${label} 중` : label
+  if (key !== 'code' || status.task_order.length === 0) return text
   const done = status.tasks.filter(t => t.status === 'done').length
-  return `${label} ${done}/${status.task_order.length}개 완료`
+  return `${text} (${done}/${status.task_order.length}개 완료)`
 }
 
 export default function Generation({ runId, onHome }: { runId: string; onHome: () => void }) {
@@ -84,7 +85,7 @@ export default function Generation({ runId, onHome }: { runId: string; onHome: (
           {STEPS.map(([key, label], index) => (
             <li key={key} className={index < current ? 'done' : index === current ? 'active' : ''}>
               {index === current && <span className="spinner" aria-hidden />}
-              {stepLabel(status, key, label)}{index === current && ' 중'}
+              {stepLabel(status, key, label, index === current)}
             </li>
           ))}
         </ol>
@@ -137,12 +138,7 @@ export default function Generation({ runId, onHome }: { runId: string; onHome: (
   return (
     <section className="card">
       <h2>서비스를 만들지 못했습니다</h2>
-      <p>
-        {status.outcome === 'interrupted' && '서버가 다시 시작되어 생성이 멈췄습니다.'}
-        {status.outcome === 'verification_failed' && '만든 앱이 빌드 또는 최종 점검을 통과하지 못했습니다.'}
-        {status.outcome === 'failed' && '생성 중 문제가 생겨 멈췄습니다.'}
-      </p>
-      {status.error && <p className="muted small">사유: {status.error}</p>}
+      <p>{status.reason}</p>
       <p className="muted">
         {checkFailed
           ? '다시 시도하면 만든 코드 그대로 빌드와 점검만 다시 합니다. 패키지 설치 같은 일시적인 문제라면 통과할 수 있지만, 코드 문제라면 같은 이유로 다시 실패할 수 있습니다.'

@@ -68,7 +68,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 ## 5. 작업 폴더와 실행 경계 (E5·E6)
 
 - 위치: `HARNESS_WORKSPACE_ROOT`(기본 `~/dev/2026-itda-project/harness-workspaces`)`/<run_id>/`. `app/`이 생성 코드, `app.git/`이 그 로컬 Git 저장소(원격 없음), `artifacts/`가 실행 기록이다. Git 저장소를 작업 폴더 밖에 두므로 샌드박스와 Agent는 hook이나 Git 설정을 건드릴 수 없고, Harness가 호스트에서 실행하는 Git 명령이 생성 코드에 의해 조작되지 않는다. Harness 저장소 안 경로는 거부한다.
-- Agent: `claude --bare -p`, `--permission-mode dontAsk`, 허용 도구는 작업 폴더 안으로 제한한 Read, Edit, Write(`./**`)와 샌드박스 스크립트 실행뿐이다. 폴더 밖 읽기는 거부됨을 확인했다(2026-10-15). Glob, Grep은 폴더 밖을 검색할 수 있어 허용하지 않으며, 검색은 샌드박스 안에서 한다. 생성물 Git에는 `app.git/info/exclude`로 `.git`, `node_modules/`, `data/`, `.venv/` 등을 항상 제외한다. `--bare`라서 인증은 `ANTHROPIC_API_KEY`만 사용한다(API 과금). Task별 `--max-budget-usd`.
+- Agent: `claude --bare -p`, `--permission-mode dontAsk`, 허용 도구는 작업 폴더 안으로 제한한 Read, Edit, Write(`./**`)와 샌드박스 스크립트 실행뿐이다. 쓸 수 있는 도구 목록은 `--tools Read,Edit,Write,Bash`로 명시한다. Claude Code 2.1.311의 `--bare` 기본 도구에는 Write가 없어, 빈 작업 폴더에서 에이전트가 파일을 만들지 못하고 첫 Task가 실패한 일이 있었다(2026-10-28). 폴더 밖 읽기는 거부됨을 확인했다(2026-10-15). Glob, Grep은 폴더 밖을 검색할 수 있어 허용하지 않으며, 검색은 샌드박스 안에서 한다. 생성물 Git에는 `app.git/info/exclude`로 `.git`, `node_modules/`, `data/`, `.venv/` 등을 항상 제외한다. `--bare`라서 인증은 `ANTHROPIC_API_KEY`만 사용한다(API 과금). Task별 `--max-budget-usd`.
 - Agent는 호스트의 작업 폴더만 수정한다. 명령은 `backend/app/m2/sandbox/sandbox.sh`로만 실행하며, 작업 폴더만 마운트한 Docker 컨테이너(`harness-sandbox:m2-1`)에서 돈다. 패키지 설치를 위해 네트워크는 열려 있다.
 - E6 빌드·실행도 같은 이미지에서 한다. 포트는 `127.0.0.1`에만 연다.
 - Context에는 작업 폴더 안의 실제 파일만 넣는다. 심볼릭 링크나 폴더 밖으로 이어지는 경로는 읽지 않고 `repository.skipped`에 이유를 남긴다.

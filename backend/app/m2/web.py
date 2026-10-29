@@ -237,6 +237,24 @@ def _run(run_id, source_args):
     run.dump(web, {**run.load(web), **result, "ended_at": run.now()})
 
 
+def reason_for(outcome, error):
+    """Short user-facing reason. The raw error (paths, codes) stays in `error` and web.json."""
+    error = error or ""
+    if outcome == "interrupted":
+        return "서버가 다시 시작되어 생성이 멈췄습니다."
+    if outcome == "verification_failed":
+        return "만든 앱이 빌드 또는 최종 점검을 통과하지 못했습니다."
+    if "budget stop" in error or "예산" in error:
+        return "이번 생성에 정한 비용 한도에 닿아 멈췄습니다."
+    if "검증을 통과하지 못했습니다" in error or "rejected" in error:
+        return "AI가 만든 설계가 검증을 통과하지 못했습니다."
+    if error.startswith("TASK-"):
+        return "기능을 구현하는 중 한 작업이 끝나지 못했습니다."
+    if "model call failed" in error or "Claude API" in error:
+        return "AI 응답을 끝까지 받지 못했습니다."
+    return "생성 중 문제가 생겨 멈췄습니다."
+
+
 def verification_failed(target, web):
     """A finished run whose build or checks failed. Retrying it runs the same code through build and
     checks again (the runner skips finished stages); nothing is regenerated or repaired."""
@@ -257,7 +275,8 @@ def run_status(run_id):
     art = target / "artifacts"
     verify = read(art / "verify.json")
     stages_done = state.get("stages", {})
-    current = "prd" if web.get("stage") == "prd" else next((s for s in run.STAGES if s not in stages_done), None)
+    # a stage counts as passed only when it is "done": a failed or rejected one is where a resumed run restarts
+    current = "prd" if web.get("stage") == "prd" else next((s for s in run.STAGES if stages_done.get(s) != "done"), None)
     if current == "verify":
         current = state.get("verify_phase", "build")  # build, then check (recorded by the runner)
     tasks = [{"id": tid, "title": t["title"], "status": t["status"], "attempt": t.get("attempt", 1),
@@ -274,6 +293,7 @@ def run_status(run_id):
     preview = verify.get("preview_url") if verify else None
     return {
         "run_id": run_id, "prd_id": web["prd_id"], "outcome": outcome, "error": web.get("error"),
+        "reason": reason_for(outcome, web.get("error")) if outcome in ("failed", "interrupted", "verification_failed") else None,
         "current_stage": current if outcome == "running" else None, "stages": stages_done,
         "tasks": tasks, "task_order": state.get("task_order", []),
         "verify": {k: verify.get(k) for k in ("status", "automatic_status", "passed", "total", "failures")} if verify else None,

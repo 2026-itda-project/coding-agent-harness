@@ -260,6 +260,17 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class AgentCommandTest(unittest.TestCase):
+    def test_write_tool_exists_and_tools_stay_scoped(self):
+        with patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5"}):
+            command = agent.agent_command("{}", 1.0)
+        tools = command[command.index("--tools") + 1].split(",")
+        self.assertEqual(sorted(tools), ["Bash", "Edit", "Read", "Write"])  # --bare alone has no Write
+        allowed = command[command.index("--allowedTools") + 1:command.index("--output-format")]
+        self.assertIn("Write(./**)", allowed)
+        self.assertTrue(all(a.startswith(("Read(./", "Edit(./", "Write(./", f"Bash({agent.SANDBOX}")) for a in allowed))
+
+
 class VerifyJudgeTest(unittest.TestCase):
     def record(self, after_root=200, persist_passed=True, first_passed=True):
         check = lambda cid, ok: {"id": cid, "passed": ok}
