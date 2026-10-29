@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { post } from './api'
-import Generation from './Generation'
+import Generation, { type RunStatus } from './Generation'
 
 // 생성 중인 Run을 가리키는 브라우저 메모. 실제 진행 상태와 산출물은 서버에 저장되어 있어 새로고침 뒤 여기서 다시 불러온다.
 const RUN_KEY = 'harness.currentRun'
@@ -24,6 +24,10 @@ type Gap = {
   related_requirement_ids: string[]
 }
 
+// Review에서 Requirement와 연결된 Gap (결정 입력·추천 연결)
+type GapLink = { gap: Gap; requirement_id: string }
+type ProposalConversion = GapLink & { reason: 'round_limit'; round: number }
+
 type Analysis = {
   project_id: string
   run_id: string
@@ -45,7 +49,8 @@ export type WorkflowState = Analysis & {
   questions: ClarificationQuestion[]
   history: ClarificationRound[]
   edit_count: number
-  gap_links: { gap: Gap; requirement_id: string }[]
+  gap_links: GapLink[]
+  proposal_conversions?: ProposalConversion[]
 }
 
 type ReviewAction =
@@ -70,6 +75,7 @@ export default function App() {
   const [state, setState] = useState<WorkflowState | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [runId, setRunId] = useState<string | null>(storedRun)
+  const [runOutcome, setRunOutcome] = useState<RunStatus['outcome'] | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState('')
   const [draft, setDraft] = useState<{ id: string; description: string } | null>(null)
@@ -137,6 +143,7 @@ export default function App() {
   function home() {
     rememberRun(null)
     setRunId(null)
+    setRunOutcome(null)
     setState(null)
     setText('')
     setAnswers({})
@@ -145,7 +152,8 @@ export default function App() {
   }
 
   const screen = runId ? 'run' : !state ? 'input' : state.phase === 'clarifying' ? 'questions' : 'review'
-  const stepIndex = { input: 0, questions: 1, review: 2, run: 3 }[screen]
+  const finished = runOutcome === 'auto_checks_passed' || runOutcome === 'manual_check_only'
+  const stepIndex = screen === 'run' && finished ? 4 : { input: 0, questions: 1, review: 2, run: 3 }[screen]
   const editable = !loading && !draft
 
   // 검토 화면에는 사용자가 처음 입력한 내용을 다시 보여 주지 않는다. 질문 답변으로 정한 것, AI가 정한 것, 아직 정하지 않은 것만 보인다.
@@ -190,7 +198,7 @@ export default function App() {
         {loading && <p className="notice" role="status"><span className="spinner" aria-hidden /> {loading}</p>}
         {error && <p role="alert" className="error">{error}</p>}
 
-        {screen === 'run' && runId && <Generation runId={runId} onHome={home} />}
+        {screen === 'run' && runId && <Generation key={runId} runId={runId} onHome={home} onOutcome={setRunOutcome} />}
 
         {screen === 'input' && (
           <section className="card hero">

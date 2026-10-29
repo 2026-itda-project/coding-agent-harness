@@ -52,6 +52,12 @@ class AnalyzeRequest(BaseModel):
     text: str = Field(min_length=1)
 
 
+class ProposalConversion(GapLink):
+    """라운드 제한으로 AI 제안이 된 Gap. 사용자 확인으로 만든 gap_links와 구분한다."""
+    reason: Literal["round_limit"] = "round_limit"
+    round: int = Field(ge=1)
+
+
 class AnalyzeResponse(BaseModel):
     project_id: str
     run_id: str
@@ -108,6 +114,7 @@ class WorkflowState(AnalyzeResponse):
     history: list[ClarificationRound] = Field(default_factory=list)
     edit_count: int = 0
     gap_links: list[GapLink] = Field(default_factory=list)
+    proposal_conversions: list[ProposalConversion] = Field(default_factory=list)
 
 
 class QuestionOutput(BaseModel):
@@ -192,6 +199,7 @@ class ReviewedRequirements(BaseModel):
     open_gaps: list[Gap] = Field(default_factory=list)
     # Review에서 Requirement와 연결(결정 입력·추천 연결)된 Gap. 기본값은 빈 배열.
     gap_links: list[GapLink] = Field(default_factory=list)
+    proposal_conversions: list[ProposalConversion] = Field(default_factory=list)
     metrics: dict
 
 

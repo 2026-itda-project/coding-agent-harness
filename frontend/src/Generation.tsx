@@ -8,6 +8,7 @@ export type RunStatus = {
   outcome: 'running' | 'awaiting_confirmation' | 'failed' | 'interrupted' | 'verification_failed'
     | 'auto_checks_passed' | 'manual_check_only'
   reason: string | null
+  requires_cost_review: boolean
   current_stage: 'prd' | 'spec' | 'plan' | 'code' | 'build' | 'check' | null
   tasks: { id: string; status: string }[]
   task_order: string[]
@@ -29,7 +30,9 @@ function stepLabel(status: RunStatus, key: string, label: string, active: boolea
   return `${text} (${done}/${status.task_order.length}개 완료)`
 }
 
-export default function Generation({ runId, onHome }: { runId: string; onHome: () => void }) {
+export default function Generation({ runId, onHome, onOutcome }: {
+  runId: string; onHome: () => void; onOutcome: (outcome: RunStatus['outcome']) => void
+}) {
   const [status, setStatus] = useState<RunStatus | null>(null)
   const [pollKey, setPollKey] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -43,6 +46,7 @@ export default function Generation({ runId, onHome }: { runId: string; onHome: (
         const next = await get<RunStatus>(`/api/m2/runs/${runId}`)
         if (stopped) return
         setStatus(next)
+        onOutcome(next.outcome)
         setError('')
         if (next.outcome === 'running') timer = setTimeout(poll, POLL_MS)
       } catch (cause) {
@@ -53,7 +57,7 @@ export default function Generation({ runId, onHome }: { runId: string; onHome: (
     }
     poll()
     return () => { stopped = true; clearTimeout(timer) }
-  }, [runId, pollKey])
+  }, [runId, pollKey, onOutcome])
 
   // 같은 Run을 이어서 진행한다(미결정 사항 확인 또는 실패 후 다시 시도). 서버가 중복 실행을 막는다.
   async function resume(body: { confirm_open_issues?: boolean; retry?: boolean }) {
@@ -140,13 +144,17 @@ export default function Generation({ runId, onHome }: { runId: string; onHome: (
       <h2>서비스를 만들지 못했습니다</h2>
       <p>{status.reason}</p>
       <p className="muted">
-        {checkFailed
+        {status.requires_cost_review
+          ? '중단된 호출의 비용을 운영자가 확인해야 다시 진행할 수 있습니다.'
+          : checkFailed
           ? '다시 시도하면 만든 코드 그대로 빌드와 점검만 다시 합니다. 패키지 설치 같은 일시적인 문제라면 통과할 수 있지만, 코드 문제라면 같은 이유로 다시 실패할 수 있습니다.'
           : '다시 시도하면 끝난 단계는 건너뛰고 멈춘 곳부터 이어서 진행합니다. 추가 비용이 발생할 수 있습니다.'}
       </p>
       {error && <p role="alert" className="error">{error}</p>}
       <div className="row">
-        <button type="button" onClick={() => resume({ retry: true })} disabled={busy}>{checkFailed ? '빌드와 점검 다시 하기' : '이어서 다시 시도'}</button>
+        {status.requires_cost_review
+          ? <button type="button" onClick={() => setPollKey(key => key + 1)}>비용 확인 상태 새로고침</button>
+          : <button type="button" onClick={() => resume({ retry: true })} disabled={busy}>{checkFailed ? '빌드와 점검 다시 하기' : '이어서 다시 시도'}</button>}
         {home}
       </div>
     </section>

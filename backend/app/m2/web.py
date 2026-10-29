@@ -68,6 +68,8 @@ def generate_prd(state):
         attempt = len(previous) + 1
         # earlier billed attempts count too, so an unknown-cost failure blocks the next paid call
         earlier = [c.get("cost_usd") for path in previous for c in run.load(path).get("calls", [])]
+        if any(c is None for c in earlier):
+            raise Conflict("비용 확인이 필요합니다 (unknown cost). 운영자가 이전 PRD 호출 비용을 확인한 뒤 다시 시도하세요.")
         run.dump(out / "reviewed.json", reviewed.model_dump())
         log = []
         source = {"analysis_project_id": state.project_id, "analysis_run_id": state.run_id,
@@ -98,7 +100,8 @@ def generate_prd(state):
 
 
 def prd_id_of(state):
-    return hashlib.sha256(state.model_dump_json().encode()).hexdigest()[:16]
+    excluded = {"proposal_conversions"} if not state.proposal_conversions else set()
+    return hashlib.sha256(state.model_dump_json(exclude=excluded).encode()).hexdigest()[:16]
 
 
 def prd_view(prd_id):
@@ -188,6 +191,8 @@ def start_run(prd_id, confirm_open_issues, retry=False):
                 return _start(run_id, ["--prd", str(out / "prd.json"), "--run-id", run_id], created=False)
             if not retry or not (web["status"] in ("failed", "interrupted") or verification_failed(target, web)):
                 return {"run_id": run_id, "created": False}
+            if cost_review_needed(prd_id):
+                raise Conflict("비용 확인이 필요합니다. 운영자가 중단된 호출 비용을 확인한 뒤 다시 시도하세요.")
             resumed = {**web, "status": "running", "error": None, "ended_at": None, "resumed_at": run.now(),
                        "budget_usd": RUN_BUDGET_USD, "task_budget_usd": TASK_BUDGET_USD,
                        "previous_errors": [*web.get("previous_errors", []), web.get("error")]}
@@ -237,6 +242,13 @@ def _run(run_id, source_args):
     run.dump(web, {**run.load(web), **result, "ended_at": run.now()})
 
 
+def cost_review_needed(prd_id):
+    out = prd_dir(prd_id)
+    previous = list(out.glob("prd.failed-*.json")) + list(out.glob("prd.rejected-*.json"))
+    return (any(c.get("cost_usd") is None for path in previous for c in run.load(path).get("calls", []))
+            or costs(read(run_dir(f"web-{prd_id}") / "run.json", {}))["unknown_cost_records"] > 0)
+
+
 def reason_for(outcome, error):
     """Short user-facing reason. The raw error (paths, codes) stays in `error` and web.json."""
     error = error or ""
@@ -244,6 +256,8 @@ def reason_for(outcome, error):
         return "서버가 다시 시작되어 생성이 멈췄습니다."
     if outcome == "verification_failed":
         return "만든 앱이 빌드 또는 최종 점검을 통과하지 못했습니다."
+    if "unknown cost" in error or "비용 확인" in error:
+        return "중단된 AI 호출의 비용 확인이 필요합니다."
     if "budget stop" in error or "예산" in error:
         return "이번 생성에 정한 비용 한도에 닿아 멈췄습니다."
     if "검증을 통과하지 못했습니다" in error or "rejected" in error:
@@ -293,6 +307,7 @@ def run_status(run_id):
     preview = verify.get("preview_url") if verify else None
     return {
         "run_id": run_id, "prd_id": web["prd_id"], "outcome": outcome, "error": web.get("error"),
+        "requires_cost_review": cost_review_needed(web["prd_id"]),
         "reason": reason_for(outcome, web.get("error")) if outcome in ("failed", "interrupted", "verification_failed") else None,
         "current_stage": current if outcome == "running" else None, "stages": stages_done,
         "tasks": tasks, "task_order": state.get("task_order", []),
