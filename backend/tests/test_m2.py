@@ -100,6 +100,18 @@ class ContractTest(unittest.TestCase):
                      "SCR-001 unknown role FR-001"):
             self.assertIn(part, errors)
 
+    def test_spec_keeps_acceptance_refs_separate_from_requirement_refs(self):
+        prd = PRD.model_validate(prd_data())
+        data = spec_data()
+        self.assertEqual(check_spec(Spec.model_validate(data), prd), [])
+        data["rule_implementations"][0]["requirement_ids"].append("AC-001")
+        self.assertEqual(check_spec(Spec.model_validate(data), prd),
+                         ["IMPL-001 requirement_ids invalid ['AC-001']"])
+        data = spec_data()
+        data["checks"][0]["ac_ids"].append("RULE-001")
+        self.assertEqual(check_spec(Spec.model_validate(data), prd),
+                         ["CHK-001 ac_ids invalid ['RULE-001']"])
+
     def test_plan_cycle_and_unknown_refs(self):
         spec = Spec.model_validate(spec_data())
         data = plan_data()
@@ -261,14 +273,13 @@ if __name__ == "__main__":
 
 
 class AgentCommandTest(unittest.TestCase):
-    def test_write_tool_exists_and_tools_stay_scoped(self):
+    def test_file_tools_are_requested_and_permissions_stay_scoped(self):
         with patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5"}):
             command = agent.agent_command("{}", 1.0)
         tools = command[command.index("--tools") + 1].split(",")
-        self.assertEqual(sorted(tools), ["Bash", "Edit", "Read", "Write"])  # --bare alone has no Write
+        self.assertEqual(sorted(tools), ["Bash", "Edit", "Read", "Write"])
         allowed = command[command.index("--allowedTools") + 1:command.index("--output-format")]
-        self.assertIn("Write(./**)", allowed)
-        self.assertTrue(all(a.startswith(("Read(./", "Edit(./", "Write(./", f"Bash({agent.SANDBOX}")) for a in allowed))
+        self.assertEqual(allowed, ["Read(./**)", "Edit(./**)", f"Bash({agent.SANDBOX}:*)"])
 
 
 class VerifyJudgeTest(unittest.TestCase):

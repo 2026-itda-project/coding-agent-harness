@@ -151,3 +151,4 @@ Claude 응답 중단과 Claude Code Agent Timeout은 비용이 `null`로 남을 
 - [run-20261027-web-01](runs/run-20261027-web-01.md): 웹 화면에서 입력부터 미리보기와 사람 확인까지 처음으로 끝까지 실행한 기록.
 
 - [check-20261030-user-flow](runs/check-20261030-user-flow.md): (가) 오프라인 124개와 Mock 브라우저 흐름 검증. 실제 모델 재실행은 하지 않았다.
+- [run-20261030-user-flow](runs/run-20261030-user-flow.md): 후속 실제 모델 실행. Spec·코딩 실패 보완 후 같은 Run 재개, Task 5개와 Docker 자동 점검 11/11, 실제 브라우저 흐름·생성 앱 동작 확인. 실패 포함 약 USD 1.86.
