@@ -170,7 +170,8 @@ def clarify_step(state, answers=None, provider=None):
                         "clarification_round": round + 1, "phase": "clarifying", "clarification_needed": True}
         case "proposal":
             questions = question_stage(provider, state.text, reqs, gaps, *args)  # ai_proposal만 쓴다
-            changes["requirements"] = to_proposals(reqs, gaps, questions, state.project_id)
+            changes["requirements"], conversions = to_proposals(reqs, gaps, questions, state.project_id)
+            changes["proposal_conversions"] = [*state.proposal_conversions, *conversions]
     changes["usage"] = [*state.usage, *records]
     return state.model_copy(update=changes)
 

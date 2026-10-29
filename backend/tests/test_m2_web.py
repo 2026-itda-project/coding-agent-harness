@@ -19,7 +19,7 @@ from app.llm.errors import AnalysisError
 from app.m2 import run, stages, web
 from app.m2.contracts import ReviewedPRD, check_reviewed_prd
 from app import main
-from app.schemas import (Answer, ClarificationQuestion, ClarificationRound, Gap, GapLink, Requirement,
+from app.schemas import (Answer, ClarificationQuestion, ClarificationRound, Gap, GapLink, ProposalConversion, Requirement,
                          WorkflowState)
 
 PID = "project-x"
@@ -343,6 +343,68 @@ class WebFlowTest(unittest.TestCase):
             second = self.client.post("/api/m2/prd", json=body)
         self.assertEqual((second.status_code, self.calls), (409, 1))
         self.assertIn("unknown cost", second.json()["message"])
+
+    def test_legacy_state_keeps_its_prd_id_and_cost_records(self):
+        import hashlib
+        state = approved_state()
+        old_json = state.model_dump_json(exclude={"proposal_conversions"})
+        old_id = hashlib.sha256(old_json.encode()).hexdigest()[:16]
+        out = web.prd_dir(old_id)
+        run.dump(out / "prd.failed-1.json", {"calls": [{"cost_usd": None}]})
+        with self.fake_complete(prd_output()):
+            blocked = self.client.post("/api/m2/prd", json={"state": state.model_dump()})
+        self.assertEqual(blocked.status_code, 409)
+        self.assertEqual(self.calls, 0)
+        run.dump(out / "prd.failed-1.json", {"calls": [{"cost_usd": 0.01}]})
+        self.assertEqual(self.make_prd().json()["prd_id"], old_id)
+
+    def test_conversion_trace_reaches_saved_handoff_without_becoming_acceptance(self):
+        state = approved_state()
+        origin = gap("GAP-010", ["REQ-005"], "알림 시점 미정").model_copy(update={"blocking": True})
+        state.proposal_conversions = [ProposalConversion(gap=origin, requirement_id="REQ-005", round=3)]
+        state.clarification_round = 3
+        with self.fake_complete(prd_output()):
+            result = self.client.post("/api/m2/prd", json={"state": state.model_dump()}).json()
+        saved = run.load(web.prd_dir(result["prd_id"]) / "reviewed.json")
+        self.assertEqual(saved["proposal_conversions"][0]["gap"], origin.model_dump())
+        self.assertEqual(saved["metrics"]["unaccepted_forced_proposal_count"], 1)
+        self.assertEqual(saved["requirements"][4]["status"], "proposed")
+
+    def test_unknown_message_and_agent_costs_block_retry_until_reconciled(self):
+        for record in ({"calls": [{"cost_usd": None}], "attempts": []},
+                       {"calls": [], "attempts": [{"agent": {"total_cost_usd": None}}]}):
+            with self.subTest(record=record):
+                def stopped(argv):
+                    run_id = argv[argv.index("--run-id") + 1]
+                    run.dump(Path(self.tmp.name) / run_id / "run.json", record)
+                    raise SystemExit("unknown cost")
+                # Independent approved inputs give independent stored runs.
+                state = approved_state().model_copy(update={"run_id": str(record)})
+                with self.fake_complete(prd_output()):
+                    prd_id = self.client.post("/api/m2/prd", json={"state": state.model_dump()}).json()["prd_id"]
+                run_id = f"web-{prd_id}"
+                body = {"prd_id": prd_id, "confirm_open_issues": True}
+                with patch.object(run, "main", stopped):
+                    self.client.post("/api/m2/runs", json=body)
+                    web._threads[run_id].join(5)
+                before = run.load(web.run_dir(run_id) / "web.json")
+                with patch.object(run, "main") as runner:
+                    response = self.client.post("/api/m2/runs", json={**body, "retry": True})
+                    self.assertEqual(response.status_code, 409)
+                    self.assertIn("비용 확인", response.json()["message"])
+                    runner.assert_not_called()
+                    self.assertEqual(run.load(web.run_dir(run_id) / "web.json"), before)
+                    status = self.client.get(f"/api/m2/runs/{run_id}").json()
+                    self.assertEqual(status["cost_usd"]["unknown_cost_records"], 1)
+                    for call in record["calls"]:
+                        call["cost_usd"] = 0.12
+                    for attempt in record["attempts"]:
+                        attempt["agent"]["total_cost_usd"] = 0.12
+                    run.dump(web.run_dir(run_id) / "run.json", record)
+                    self.assertEqual(self.client.post("/api/m2/runs", json={**body, "retry": True}).status_code, 200)
+                    web._threads[run_id].join(5)
+                    runner.assert_called_once()
+                    self.assertIn("--resume", runner.call_args.args[0])
 
     def test_unapproved_state_and_rejected_prd_cannot_run(self):
         state = approved_state().model_copy(update={"phase": "review"})

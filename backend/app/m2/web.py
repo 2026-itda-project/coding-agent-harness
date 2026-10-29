@@ -53,7 +53,9 @@ def generate_prd(state):
     require_phase(state, "approved")
     validate_state(state)
     _, reviewed = approve(state)
-    prd_id = hashlib.sha256(state.model_dump_json().encode()).hexdigest()[:16]
+    # Keep old states mapped to their existing PRD and failed-call budget records.
+    excluded = {"proposal_conversions"} if not state.proposal_conversions else set()
+    prd_id = hashlib.sha256(state.model_dump_json(exclude=excluded).encode()).hexdigest()[:16]
     out = prd_dir(prd_id)
     with _lock:
         if (out / "prd.json").exists():
@@ -66,6 +68,8 @@ def generate_prd(state):
         attempt = len(previous) + 1
         # earlier billed attempts count too, so an unknown-cost failure blocks the next paid call
         earlier = [c.get("cost_usd") for path in previous for c in run.load(path).get("calls", [])]
+        if any(c is None for c in earlier):
+            raise Conflict("비용 확인이 필요합니다 (unknown cost). 운영자가 이전 PRD 호출 비용을 확인한 뒤 다시 시도하세요.")
         run.dump(out / "reviewed.json", reviewed.model_dump())
         log = []
         source = {"analysis_project_id": state.project_id, "analysis_run_id": state.run_id,
@@ -129,6 +133,8 @@ def start_run(prd_id, confirm_open_issues, retry=False):
                 return {"run_id": run_id, "created": False}
             if not (target / "run.json").exists():
                 raise Conflict("이어서 실행할 기록이 없어 다시 시도할 수 없습니다.")
+            if costs(run.load(target / "run.json"))["unknown_cost_records"]:
+                raise Conflict("비용 확인이 필요합니다. 운영자가 중단된 호출 비용을 확인한 뒤 다시 시도하세요.")
             run.dump(target / "web.json", {
                 **web, "status": "running", "error": None, "ended_at": None, "resumed_at": run.now(),
                 "budget_usd": RUN_BUDGET_USD, "task_budget_usd": TASK_BUDGET_USD,

@@ -212,7 +212,12 @@ export default function M2Panel({ state }: { state: WorkflowState }) {
           {(status.outcome === 'failed' || status.outcome === 'interrupted') && (
             <>
               <p>실행 기록은 작업 폴더의 artifacts에 남아 있습니다. 자동 재시도는 하지 않습니다. 다시 시도하면 완료된 단계는 건너뛰고 이어서 실행하며 추가 비용이 발생합니다.</p>
-              <button type="button" onClick={retryRun} disabled={!!busy}>이어서 다시 시도</button>
+              {(status.cost_usd?.unknown_cost_records ?? 0) > 0 ? (
+                <>
+                  <p className="error">비용 확인이 필요합니다. 운영자가 중단된 호출의 비용을 확인한 뒤 다시 시도할 수 있습니다.</p>
+                  <button type="button" disabled={!!busy} onClick={() => setPollKey(key => key + 1)}>비용 확인 상태 새로고침</button>
+                </>
+              ) : <button type="button" onClick={retryRun} disabled={!!busy}>이어서 다시 시도</button>}
             </>
           )}
           {status.cost_usd && (

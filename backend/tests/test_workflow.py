@@ -44,8 +44,8 @@ def question(gap_id):
 def proposal_state():
     state = handoff_state(phase="review", clarification_round=MAX_ROUNDS)
     blocking = [g for g in state.gaps if g.blocking]
-    reqs = to_proposals(state.requirements, blocking, [question(g.id) for g in blocking], PID)
-    return state.model_copy(update={"requirements": reqs})
+    reqs, conversions = to_proposals(state.requirements, blocking, [question(g.id) for g in blocking], PID)
+    return state.model_copy(update={"requirements": reqs, "proposal_conversions": conversions})
 
 
 class NextStepTest(unittest.TestCase):
@@ -93,7 +93,7 @@ class ToProposalsTest(unittest.TestCase):
     def test_case_b_handoff_adds_new_proposals(self):
         state = handoff_state()
         blocking = [g for g in state.gaps if g.blocking]
-        result = to_proposals(state.requirements, blocking, [question(g.id) for g in blocking], PID)
+        result, conversions = to_proposals(state.requirements, blocking, [question(g.id) for g in blocking], PID)
         self.assertEqual(result[:5], state.requirements)
         new = result[5:]
         self.assertEqual([r.id for r in new], ["REQ-006", "REQ-007", "REQ-008", "REQ-009", "REQ-010"])
@@ -106,20 +106,47 @@ class ToProposalsTest(unittest.TestCase):
     def test_case_a_converts_linked_item_keeping_id(self):
         reqs = [req("REQ-001"), req("REQ-002", status="needs_clarification", blocking=True, category="permission"),
                 req("REQ-003", status="needs_clarification", blocking=True)]
-        result = to_proposals(reqs, [gap("GAP-001", ["REQ-001", "REQ-002", "REQ-003"])], [question("GAP-001")], PID)
+        result, conversions = to_proposals(reqs, [gap("GAP-001", ["REQ-001", "REQ-002", "REQ-003"])], [question("GAP-001")], PID)
         self.assertEqual([r.id for r in result], ["REQ-001", "REQ-002", "REQ-003"])
         self.assertEqual(result[0], reqs[0])
         converted = result[1]
         self.assertEqual((converted.status, converted.source, converted.blocking, converted.category),
                          ("proposed", "ai_proposal", False, "permission"))
         self.assertEqual(converted.description, "GAP-001 기본값을 적용한다.")
+        self.assertEqual((conversions[0].gap.id, conversions[0].requirement_id, conversions[0].reason, conversions[0].round),
+                         ("GAP-001", "REQ-002", "round_limit", MAX_ROUNDS))
         self.assertEqual((result[2].status, result[2].blocking), ("needs_clarification", False))
 
     def test_ignores_nonblocking_and_requires_question(self):
         reqs = [req("REQ-001")]
-        self.assertEqual(to_proposals(reqs, [gap("GAP-001", ["REQ-001"], blocking=False)], [], PID), reqs)
+        self.assertEqual(to_proposals(reqs, [gap("GAP-001", ["REQ-001"], blocking=False)], [], PID), (reqs, []))
         with self.assertRaises(ValueError):
             to_proposals(reqs, [gap("GAP-001", ["REQ-001"])], [], PID)
+
+
+class ConversionTraceTest(unittest.TestCase):
+    def test_trace_survives_edit_accept_and_handoff(self):
+        state = proposal_state()
+        conversion = state.proposal_conversions[0]
+        state = edit(state, EditAction(type="edit", id=conversion.requirement_id, description="사용자가 보완한 내용"))
+        state.requirements = accept(state.requirements, [conversion.requirement_id])
+        state = WorkflowState.model_validate_json(state.model_dump_json())
+        validate_state(state)
+        _, reviewed = approve(state)
+        self.assertEqual(reviewed.proposal_conversions[0], conversion)
+        self.assertEqual(reviewed.metrics["forced_proposal_count"], 5)
+        self.assertEqual(reviewed.metrics["unaccepted_forced_proposal_count"], 4)
+        self.assertEqual(reviewed.requirements[-5].source, "ai_proposal")
+
+    def test_invalid_conversion_links_are_rejected(self):
+        state = proposal_state()
+        conversion = state.proposal_conversions[0]
+        for entries in ([conversion, conversion],
+                        [conversion.model_copy(update={"requirement_id": "REQ-999"})],
+                        [conversion.model_copy(update={"requirement_id": "REQ-001"})],
+                        [conversion.model_copy(update={"round": 1})]):
+            with self.subTest(entries=entries), self.assertRaises(ValueError):
+                validate_state(state.model_copy(update={"proposal_conversions": entries}))
 
 
 class AcceptTest(unittest.TestCase):
@@ -201,9 +228,11 @@ class ApproveTest(unittest.TestCase):
         self.assertEqual(new_state.phase, "approved")
         self.assertEqual((reviewed.project_id, reviewed.run_id), (PID, HANDOFF["run_id"]))
         self.assertEqual(reviewed.requirements, state.requirements)
+        self.assertEqual(reviewed.proposal_conversions, state.proposal_conversions)
         self.assertEqual(sum(r.status == "proposed" for r in reviewed.requirements), 4)
         self.assertEqual(reviewed.metrics, {"question_count": 3, "turn_count": 2, "edit_count": 2,
-                                            "unaccepted_proposal_count": 4})
+                                            "unaccepted_proposal_count": 4, "forced_proposal_count": 5,
+                                            "unaccepted_forced_proposal_count": 4})
 
 
 class OpenGapsTest(unittest.TestCase):

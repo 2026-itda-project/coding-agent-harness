@@ -25,6 +25,7 @@ type Gap = {
 
 // Review에서 Requirement와 연결된 Gap (결정 입력·추천 연결)
 type GapLink = { gap: Gap; requirement_id: string }
+type ProposalConversion = GapLink & { reason: 'round_limit'; round: number }
 
 type Analysis = {
   project_id: string
@@ -59,6 +60,7 @@ export type WorkflowState = Analysis & {
   history: ClarificationRound[]
   edit_count: number
   gap_links: GapLink[]
+  proposal_conversions?: ProposalConversion[]
 }
 
 // backend RequirementCategory와 같은 값
@@ -91,6 +93,7 @@ type ReviewedRequirements = {
   requirements: Requirement[]
   open_gaps: Gap[]
   gap_links: GapLink[]
+  proposal_conversions?: ProposalConversion[]
   metrics: Record<string, number>
 }
 
