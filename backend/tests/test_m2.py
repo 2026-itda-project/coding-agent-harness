@@ -1,10 +1,13 @@
-"""Offline tests for the M2 E2E path. No model, Claude Code or Docker calls."""
+"""Offline tests for the M2 E2E path. No model, Claude Code or Docker calls. POSIX only, like the runner."""
 
 import json
 import os
 import subprocess
+import sys
 import tempfile
+import time
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
@@ -234,18 +237,57 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(ctx["repository"]["skipped"], {"key.txt": "symlink"})
         self.assertEqual(ctx["repository"]["contents"]["ok.txt"], "fine")
 
-    def run_fake(self, is_error, write=True):
-        def runner(command, cwd, **kw):
+    def run_fake(self, is_error, write=True, timeout=False, cleanup=None):
+        if cleanup is None:  # containers found before the attempt, then after it
+            left = iter([["before"], ["after"]])
+            cleanup = lambda run_id: next(left)
+        def runner(command, timeout_s, cwd, env):
             self.assertIn("--bare", command)
             self.assertIn(f"Bash({agent.SANDBOX}:*)", command)
+            self.assertEqual(env["HARNESS_RUN_ID"], agent.run_id_of(self.app))
             if write:
                 (Path(cwd) / "out.txt").write_text(str(is_error))
-            out = json.dumps({"is_error": is_error, "result": "요약", "total_cost_usd": 0.2, "num_turns": 3})
-            return subprocess.CompletedProcess(command, 0, out, "")
+            if timeout:
+                return None, "", "killed"
+            return 0, json.dumps({"is_error": is_error, "result": "요약", "total_cost_usd": 0.2, "num_turns": 3}), ""
 
         task = Plan.model_validate(plan_data()).tasks[1]
-        with patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5"}):
-            return agent.run_task(task, {"task": "x"}, self.app, 1.0, runner=runner)
+        with patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5"}), \
+                patch.object(agent, "cleanup", side_effect=cleanup) as cleaned:
+            record = agent.run_task(task, {"task": "x"}, self.app, 1.0, runner=runner)
+        run_id = agent.run_id_of(self.app)
+        self.assertEqual([c.args for c in cleaned.call_args_list], [(run_id,), (run_id,)])  # before and after
+        return record
+
+    def test_agent_timeout_fails_and_cleans_up(self):
+        record = self.run_fake(False, timeout=True)
+        self.assertEqual(record["status"], "failed")
+        self.assertIsNone(record["exit_code"])
+        self.assertEqual(record["agent"]["result"], "agent timeout")
+        self.assertEqual(record["leftover_containers"], ["before", "after"])
+        self.assertNotIn("cleanup_error", record)
+
+    def test_failed_cleanup_after_the_agent_keeps_its_result_and_cost(self):
+        calls = []
+
+        def cleanup(run_id):
+            calls.append(run_id)
+            if len(calls) == 2:  # the cleanup after the agent fails
+                raise agent.CleanupError("docker rm abc failed (exit 1): boom")
+            return []
+        record = self.run_fake(False, cleanup=cleanup)
+        self.assertIn("docker rm abc failed", record["cleanup_error"])
+        self.assertEqual((record["status"], record["agent"]["total_cost_usd"]), ("done", 0.2))
+        self.assertNotEqual(record["commit"], record["base_commit"])  # the agent's change is committed
+
+    def test_failed_cleanup_before_the_agent_stops_without_calling_it(self):
+        def runner(*args, **kwargs):
+            self.fail("the agent ran although earlier containers were not removed")
+        task = Plan.model_validate(plan_data()).tasks[1]
+        with patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5"}), \
+                patch.object(agent, "cleanup", side_effect=agent.CleanupError("docker ps timed out")):
+            with self.assertRaises(agent.CleanupError):
+                agent.run_task(task, {"task": "x"}, self.app, 1.0, runner=runner)
 
     def test_task_commit_and_failure_status(self):
         record = self.run_fake(False)
@@ -312,6 +354,32 @@ class ResumeAttemptsTest(unittest.TestCase):
                 self.assertTrue((art / f"agent/TASK-001-attempt-{n}.json").exists())
                 self.assertTrue((art / f"diffs/TASK-001-attempt-{n}.diff").exists())
 
+    def test_failed_cleanup_stops_the_run_and_keeps_the_attempt(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5",
+                                                                           "OPUS_MODEL": "claude-opus-5-5"}):
+            run_dir = Path(tmp) / "run"
+            agent.init_workspace(run_dir / "app")
+            for name, data in (("prd", prd_data()), ("spec", spec_data()), ("plan", plan_data())):
+                run.dump(run_dir / "artifacts" / f"{name}.json", data)
+            run.dump(run_dir / "run.json", {"run_id": "t", "stages": {}, "calls": [], "tasks": {}, "attempts": []})
+            args = ["run", "--resume", str(run_dir), "--until", "code"]
+
+            def done_but_not_cleaned(task, context, app_dir, budget):
+                head = agent.git(app_dir, "rev-parse", "HEAD").strip()
+                return {"task_id": task.id, "title": task.title, "status": "done", "base_commit": head,
+                        "commit": head, "files": [], "agent": {"total_cost_usd": 0.1},
+                        "cleanup_error": "docker rm abc failed (exit 1)"}
+            with patch.object(agent, "run_task", done_but_not_cleaned), self.assertRaises(SystemExit) as stop:
+                run.main(args)
+            self.assertIn("cleanup failed after TASK-001", str(stop.exception))
+            state = run.load(run_dir / "run.json")
+            self.assertEqual((len(state["attempts"]), state["cost_usd"]["agent"]), (1, 0.1))  # result and cost kept
+            with patch.object(agent, "run_task", side_effect=agent.CleanupError("docker ps timed out")), \
+                    self.assertRaises(SystemExit) as stop:
+                run.main(args)  # the next task does not start while leftovers are unknown
+            self.assertIn("not starting the next task", str(stop.exception))
+            self.assertEqual(run.load(run_dir / "run.json")["stages"]["error"], "cleanup_failed: docker ps timed out")
+
 
 class ReviewFixesTest(unittest.TestCase):
     def test_manual_only_and_mixed_checks_remain_pending(self):
@@ -366,3 +434,273 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertIsNone(log[0]["cost_usd"])
         with self.assertRaises(SystemExit):
             run.Budget(100, lambda: [r["cost_usd"] for r in log]).check(1, "next")
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    try:  # a zombie is dead, only not reaped yet
+        return Path(f"/proc/{pid}/stat").read_text().split()[2] != "Z"
+    except FileNotFoundError:  # reaped meanwhile; without /proc (macOS) trust os.kill
+        return not Path("/proc").is_dir()
+
+
+class SandboxTest(unittest.TestCase):
+    """#9 without Docker: process groups, sandbox.sh arguments, and how verify records failures."""
+
+    def test_run_group_returns_output_and_kills_children_on_timeout(self):
+        self.assertEqual(agent.run_group(["bash", "-c", "echo hi; echo err >&2; exit 3"], 10), (3, "hi\n", "err\n"))
+        with tempfile.TemporaryDirectory() as tmp:
+            pid_file = Path(tmp) / "pid"
+            code, _, _ = agent.run_group(["bash", "-c", f"sleep 60 & echo $! > {pid_file}; wait"], 1)
+            self.assertIsNone(code)
+            pid = int(pid_file.read_text())
+            for _ in range(50):
+                if not alive(pid):
+                    break
+                time.sleep(0.1)
+            self.assertFalse(alive(pid), "a child of the timed-out command survived")
+
+    def test_run_id_of_a_relative_app_dir(self):
+        self.assertEqual(agent.run_id_of(Path("app")), Path.cwd().name)  # `--resume .` inside the run folder
+
+    def test_cleanup_reports_what_failed_instead_of_none_left(self):
+        script = ('#!/bin/sh\ncase "$FAKE:$1" in\n  hang:*) sleep 60 ;;\n  psfail:ps) echo nope >&2; exit 1 ;;\n'
+                  '  rmfail:ps) echo abc ;;\n  rmfail:rm) echo boom >&2; exit 1 ;;\nesac\n')
+        cases = {"hang": "docker ps timed out", "psfail": "docker ps failed (exit 1): nope",
+                 "rmfail": "docker rm abc failed (exit 1): boom"}
+        with tempfile.TemporaryDirectory() as tmp:
+            docker = Path(tmp) / "docker"
+            docker.write_text(script)
+            docker.chmod(0o755)
+            for fake, message in cases.items():
+                with self.subTest(fake), patch.dict(os.environ, {"PATH": f"{tmp}:{os.environ['PATH']}", "FAKE": fake}), \
+                        patch.object(agent, "DOCKER_TIMEOUT_S", 1):
+                    started = time.monotonic()
+                    with self.assertRaises(agent.CleanupError) as failed:
+                        agent.cleanup("run-x")
+                    self.assertIn(message, str(failed.exception))
+                    self.assertLess(time.monotonic() - started, 10)
+
+    def test_dump_replaces_the_file_whole(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run" / "run.json"
+            run.dump(path, {"stage": "spec"})
+            run.dump(path, {"stage": "계획"})
+            self.assertEqual(run.load(path), {"stage": "계획"})
+            self.assertEqual([p.name for p in path.parent.iterdir()], ["run.json"])  # no temporary file left
+
+    def test_python_exit_stops_groups_left_running_in_threads(self):
+        # The web server runs the agent in a daemon thread: Ctrl+C ends only the main thread.
+        with tempfile.TemporaryDirectory() as tmp:
+            pid_file, cleaned = Path(tmp) / "pid", Path(tmp) / "cleaned"
+            script = "\n".join([
+                "import threading, time",
+                "from pathlib import Path",
+                "from app.m2 import agent",
+                f"agent.cleanup = lambda run_id: Path({str(cleaned)!r}).write_text(run_id)",
+                f"command = ['bash', '-c', 'echo $$ > {pid_file}; exec sleep 60']",
+                "env = {'PATH': '/usr/bin:/bin', 'HARNESS_RUN_ID': 'run-x'}",
+                "threading.Thread(target=agent.run_group, args=(command, 60), kwargs={'env': env}, daemon=True).start()",
+                f"while not (Path({str(pid_file)!r}).exists() and Path({str(pid_file)!r}).read_text().strip()):",
+                "    time.sleep(0.05)",
+            ])
+            subprocess.run([sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
+                           check=True, timeout=30)
+            self.assertFalse(alive(int(pid_file.read_text())), "the agent outlived the Python process")
+            self.assertEqual(cleaned.read_text(), "run-x")  # its sandbox containers were removed too
+
+    def test_sandbox_script_applies_limits_label_and_no_host_env(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp) / "docker"
+            fake.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+            fake.chmod(0o755)
+            env = {"PATH": f"{tmp}:{os.environ['PATH']}", "SANDBOX_IMAGE": "img", "HARNESS_RUN_ID": "run-x",
+                   "ANTHROPIC_API_KEY": "secret-key"}
+            args = subprocess.run([agent.SANDBOX, "npm run build"], cwd=tmp, env=env, capture_output=True,
+                                  text=True, check=True).stdout.splitlines()
+            self.assertIn("\n".join(agent.LIMITS), "\n".join(args))  # same limits as the app server
+            self.assertEqual(args[args.index("--label") + 1], "harness.run=run-x")
+            self.assertEqual([args[i + 1] for i, a in enumerate(args) if a == "-e"],
+                             ["HOME=/tmp", "npm_config_cache=/tmp/.npm"])
+            self.assertNotIn("secret-key", "\n".join(args))
+            self.assertEqual(args[-7:], ["timeout", "-k", "10", "900", "bash", "-c", "npm run build"])
+            del env["HARNESS_RUN_ID"]
+            self.assertNotEqual(subprocess.run([agent.SANDBOX, "true"], cwd=tmp, env=env,
+                                               capture_output=True).returncode, 0)
+
+    def test_wait_up_tells_http_error_from_no_connection(self):
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+        import threading
+
+        class Failing(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(500)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Failing)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        running = {"Running": True, "ExitCode": 0, "OOMKilled": False, "Error": ""}
+        with patch.object(verify, "container_state", return_value=running):
+            self.assertEqual(verify.wait_up(f"http://127.0.0.1:{server.server_port}", "c", seconds=0),
+                             {"status": 500, "error": "HTTP 500"})
+            closed = verify.wait_up(f"http://127.0.0.1:{verify.free_port()}", "c", seconds=0)
+        self.assertIsNone(closed["status"])
+        self.assertIn("refused", closed["error"].lower())
+        unknown = dict.fromkeys(running)  # docker inspect failed: not known to be stopped, keep waiting
+        with patch.object(verify, "container_state", return_value=unknown):
+            self.assertNotIn("container", verify.wait_up(f"http://127.0.0.1:{verify.free_port()}", "c", seconds=0))
+        crashed = {**running, "Running": False, "ExitCode": 1}
+        with patch.object(verify, "container_state", return_value=crashed):
+            up = verify.wait_up(f"http://127.0.0.1:{verify.free_port()}", "c", seconds=60)  # no 60 s wait
+        self.assertEqual(up["container"]["ExitCode"], 1)
+        failures = verify.judge({"root_status": None, "root_wait": up, "root_status_after_restart": None,
+                                 "checks": [], "checks_after_restart": []}, Spec.model_validate(spec_data()))["failures"]
+        self.assertIn("container stopped", failures[0])
+
+    def fake_docker(self, build=0, start=0, restart=0, docker=0, image=0):
+        """Stands in for run_group: sandbox.sh calls and docker CLI calls answer as configured."""
+        calls = []
+
+        def run(command, timeout, **kwargs):
+            calls.append(command)
+            if command[0] == agent.SANDBOX:
+                return (build, "", "build log") if command[1] == verify.BUILD else (0, "3221225472\n", "")
+            verb = command[1]
+            answers = {"version": (docker, "27.1.1\n", "Cannot connect to the Docker daemon"),
+                       "image": (image, "sha256:abc\n", ""),
+                       "run": (start, "", "port is already allocated" if start else "cid\n"),
+                       "restart": (restart, "", ""),
+                       "logs": (0, "GET / 200\n", "Traceback: boom\n"),
+                       "inspect": (0, json.dumps({"Running": True, "Memory": 3221225472, "PidsLimit": 512}), "")}
+            return answers.get(verb, (0, "", ""))
+        return run, calls
+
+    def stub_docker(self, stack, cleanup=None, **docker):
+        """Fake docker, container cleanup and HTTP checks for verify(); returns the docker calls."""
+        run_fn, calls = self.fake_docker(**docker)
+        stack.enter_context(patch.object(verify, "run_group", run_fn))
+        stack.enter_context(patch.object(verify, "cleanup", side_effect=cleanup or (lambda run_id: [])))
+        stack.enter_context(patch.object(verify, "wait_up", return_value={"status": 200, "error": None}))
+        stack.enter_context(patch.object(verify, "run_checks", side_effect=lambda base, checks: [
+            {"id": c.id, "passed": True} for c in checks if c.http_steps]))
+        return calls
+
+    def verify_with(self, cleanup=None, **docker):
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            calls = self.stub_docker(stack, cleanup, **docker)
+            app = Path(tmp) / "run-t" / "app"
+            (app / "data").mkdir(parents=True)
+            (app / "data" / "app.db").write_text("rows the agent added while testing")
+            result = verify.verify(app, Spec.model_validate(spec_data()), "harness-run-t")
+            result["data_left"] = (app / "data").exists()
+            kept = app.parent / "data-before-verify" / "app.db"
+            result["kept_text"] = kept.read_text() if kept.exists() else None
+            return result, calls
+
+    def test_verify_passes_and_records_environment_and_limits(self):
+        result, calls = self.verify_with()
+        self.assertEqual(result["status"], "passed")
+        self.assertIsNone(result["failure_stage"])
+        self.assertEqual(result["environment"]["image_id"], "sha256:abc")
+        self.assertEqual([s["phase"] for s in result["steps"]], ["limits", "build", "start", "restart"])
+        self.assertTrue(all(isinstance(s["duration_s"], float) for s in result["steps"]))
+        start = next(c for c in calls if c[:2] == ["docker", "run"])
+        self.assertIn("\n".join(agent.LIMITS), "\n".join(start))
+        self.assertEqual(result["server_limits"]["PidsLimit"], 512)
+        self.assertIn("Traceback: boom", result["server_log_tail"])  # the server's stderr is kept
+        self.assertFalse(result["data_left"])  # checks start from the seed, not the agent's test rows
+        self.assertTrue(result["data_kept"].endswith("data-before-verify"))
+        self.assertEqual(result["kept_text"], "rows the agent added while testing")
+        self.assertIn(["docker", "rm", "-f", "harness-run-t"], calls)  # not kept without keep_running
+
+    def test_verify_tells_each_failing_stage_apart(self):
+        cases = {"build timeout": ({"build": 124}, "build_failed", "build", "timeout"),
+                 "host timeout": ({"build": None}, "build_failed", "build", "timeout"),
+                 "build error": ({"build": 1}, "build_failed", "build", "failed"),
+                 "build killed": ({"build": 137}, "build_failed", "build", "killed"),
+                 "start failure": ({"start": 125}, "start_failed", "start", "docker_error"),
+                 "restart failure": ({"restart": 1}, "checks_failed", "restart", "failed")}
+        for name, (docker, status, stage, outcome) in cases.items():
+            with self.subTest(name):
+                result, _ = self.verify_with(**docker)
+                self.assertEqual((result["status"], result["failure_stage"]), (status, stage))
+                self.assertEqual(result["steps"][-1]["phase"], stage)
+                self.assertEqual(result["steps"][-1]["outcome"], outcome)
+                self.assertTrue(result["failures"])
+                if status != "checks_failed":  # stopped before the checks: counted as not run, not left blank
+                    self.assert_not_run(result)
+
+    def test_verify_stops_before_building_without_docker_or_image(self):
+        for docker in ({"docker": 1}, {"image": 1}):
+            with self.subTest(docker):
+                result, calls = self.verify_with(**docker)
+                self.assertEqual((result["status"], result["failure_stage"]), ("environment_error", "preflight"))
+                self.assertFalse(any(c[0] == agent.SANDBOX for c in calls))
+                self.assert_not_run(result)
+
+    def test_verify_refuses_symbolic_links_in_the_data_paths(self):
+        # data/ comes from generated code: a link must never make the host move or delete files elsewhere
+        spec = Spec.model_validate(spec_data())
+        for link in ("data", "data-before-verify"):
+            with self.subTest(link), tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+                self.stub_docker(stack)
+                outside = Path(tmp) / "outside"
+                outside.mkdir()
+                (outside / "keep.txt").write_text("outside the run folder")
+                app = Path(tmp) / "run-t" / "app"
+                link_path = app / "data" if link == "data" else app.parent / link
+                app.mkdir(parents=True)
+                if link != "data":
+                    (app / "data").mkdir()
+                link_path.symlink_to(outside, target_is_directory=True)
+                for _ in range(2):  # a second verification must not follow the link either
+                    result = verify.verify(app, spec, "harness-run-t")
+                    self.assertEqual((result["status"], result["failure_stage"]), ("workspace_error", "data"))
+                    self.assertIn("symbolic link", result["failures"][0])
+                    self.assert_not_run(result)
+                self.assertTrue(link_path.is_symlink())
+                self.assertEqual([p.name for p in outside.iterdir()], ["keep.txt"])
+
+    def test_verify_stops_when_the_old_backup_cannot_be_removed(self):
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
+            self.stub_docker(stack)
+            app = Path(tmp) / "run-t" / "app"
+            (app / "data").mkdir(parents=True)
+            (app.parent / "data-before-verify").mkdir()
+            stack.enter_context(patch.object(verify.shutil, "rmtree", side_effect=PermissionError("denied")))
+            result = verify.verify(app, Spec.model_validate(spec_data()), "harness-run-t")
+            self.assertEqual((result["status"], result["failure_stage"]), ("workspace_error", "data"))
+            self.assertIn("denied", result["failures"][0])
+            self.assertTrue((app / "data").is_dir())  # not moved next to a backup that is still there
+
+    def test_verify_records_failed_container_cleanup(self):
+        def before(run_id):
+            raise agent.CleanupError("docker ps timed out")
+        result, calls = self.verify_with(cleanup=before)  # nothing is built over unknown leftovers
+        self.assertEqual((result["status"], result["failure_stage"]), ("environment_error", "preflight"))
+        self.assertIn("docker ps timed out", result["failures"][0])
+        self.assertFalse(any(c[0] == agent.SANDBOX for c in calls))
+        seen = []
+
+        def after(run_id):  # only the cleanup after the checks fails
+            seen.append(run_id)
+            if len(seen) == 2:
+                raise agent.CleanupError("docker rm abc failed (exit 1)")
+            return []
+        result, _ = self.verify_with(cleanup=after)
+        self.assertEqual(result["status"], "passed")
+        self.assertIn("docker rm abc failed", result["cleanup_error"])
+
+    def assert_not_run(self, result):
+        planned, _ = verify.planned_checks(Spec.model_validate(spec_data()))
+        self.assertGreater(planned, 0)
+        self.assertEqual((result["passed"], result["total"], result["automatic_status"]), (0, planned, "failed"))
+        self.assertIn(f"{planned} planned checks did not run", result["failures"])

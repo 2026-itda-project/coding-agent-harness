@@ -18,7 +18,7 @@
 - PRD·Spec·Task·생성 코드는 LLM이 만듭니다. 코드는 입력·Context 전달, 응답 정리, 구조·참조 검증과 실행 연결을 담당합니다. 규칙 기반 PRD 조립을 M2 생성 경로로 확장하지 않습니다.
 - 사용자 미지정 내용은 AI 기본값으로 보완하고, `proposed`·`source`를 유지하면서 PRD 본문과 구현 범위에 포함합니다. 사용자 명시사항이 우선이며 핵심 결정만 질문합니다.
 - 생성 코드는 Harness 밖 작업 폴더와 로컬 Git으로 관리합니다. 원격 연결·결과물 내보내기 없이 서비스 내 실행 결과 미리보기를 제공합니다.
-- Jev는 별도 비교 실험 후 도입을 결정합니다. 기본 E2E의 선행조건이 아닙니다. 실행 환경의 구체적인 선택도 아직 미정입니다.
+- Jev는 별도 비교 실험 후 도입을 결정합니다. 기본 E2E의 선행조건이 아닙니다. 실행 환경은 로컬 Docker입니다(#9).
 - 생성 서비스는 FastAPI·React·SQLite로 고정하며 React 빌드 결과를 FastAPI가 함께 제공합니다. 초기 예시 데이터와 새로고침 후 데이터 유지를 지원하고, 실제 로그인·다중 계정 대신 단일 사용자 또는 역할 전환을 사용합니다. 외부 연동은 모의 동작으로 표시하고 외부 공유 링크는 제공하지 않습니다.
 - 생성 후 새 요구사항에 따른 수정은 범위 밖입니다. 생성 전 Review 수정·승인과 실패 시 자동 수정·재검증은 유지합니다.
 
@@ -35,7 +35,7 @@
 | 입력 | `AnalyzeRequest.text` 단일 문자열 | 목업 생성 중심 입력 항목(제안, 팀 컨펌 대기 — `docs/decisions/m2-development-direction.md` 3절). 필드 계약은 컨펌 후 #7·#8에서 구체화 |
 | 요구사항 루프 | Mock / SnowChat, Gap 분석, 최대 3라운드 Clarification, Review·승인 | Claude Sonnet, AI 기본값 우선·핵심 질문 최소화 |
 | PRD | M1 `/api/prd` 규칙 기반 미리보기 + M2 `/api/m2/prd` Review 결과 기반 Sonnet PRD와 상태·출처 검증 | 입력 양식 개편 |
-| M2 실행 | 웹에서 MVP 생성 요청 → 기존 실행기(Spec·Task·Context·Claude Code·Docker 점검) 백그라운드 실행, 상태·미리보기 ([review-runtime.md](docs/m2/review-runtime.md)) | Opus 검증, 재계획·재시도, 정식 Sandbox, 지표 |
+| M2 실행 | 웹에서 MVP 생성 요청 → 기존 실행기(Spec·Task·Context·Claude Code·Docker 점검) 백그라운드 실행, 상태·미리보기 ([review-runtime.md](docs/m2/review-runtime.md)) | Opus 검증, 재계획·재시도, 지표 |
 
 `backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계([NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17))는 `ReviewedRequirements.open_gaps`로 PRD Open Issues까지 전달하도록 보완했습니다.
 
