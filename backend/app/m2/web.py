@@ -249,11 +249,14 @@ def cost_review_needed(prd_id):
             or costs(read(run_dir(f"web-{prd_id}") / "run.json", {}))["unknown_cost_records"] > 0)
 
 
-def reason_for(outcome, error):
+def reason_for(outcome, error, verification=None):
     """Short user-facing reason. The raw error (paths, codes) stays in `error` and web.json."""
     error = error or ""
     if outcome == "interrupted":
         return "서버가 다시 시작되어 생성이 멈췄습니다."
+    if "sandbox cleanup failed" in error or (outcome == "verification_failed"
+                                            and verification and verification.get("status") == "environment_error"):
+        return "실행 환경을 준비하지 못했습니다. Docker 실행 상태와 샌드박스 설정을 확인한 뒤 다시 시도해 주세요."
     if outcome == "verification_failed":
         return "만든 앱이 빌드 또는 최종 점검을 통과하지 못했습니다."
     if "unknown cost" in error or "비용 확인" in error:
@@ -308,7 +311,7 @@ def run_status(run_id):
     return {
         "run_id": run_id, "prd_id": web["prd_id"], "outcome": outcome, "error": web.get("error"),
         "requires_cost_review": cost_review_needed(web["prd_id"]),
-        "reason": reason_for(outcome, web.get("error")) if outcome in ("failed", "interrupted", "verification_failed") else None,
+        "reason": reason_for(outcome, web.get("error"), verify) if outcome in ("failed", "interrupted", "verification_failed") else None,
         "current_stage": current if outcome == "running" else None, "stages": stages_done,
         "tasks": tasks, "task_order": state.get("task_order", []),
         "verify": {k: verify.get(k) for k in ("status", "automatic_status", "passed", "total", "failures")} if verify else None,

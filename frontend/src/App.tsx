@@ -79,6 +79,7 @@ export default function App() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState('')
   const [draft, setDraft] = useState<{ id: string; description: string } | null>(null)
+  const [editedIds, setEditedIds] = useState<string[]>([])
 
   async function call<T>(label: string, fn: () => Promise<T>): Promise<T | undefined> {
     setLoading(label)
@@ -125,6 +126,7 @@ export default function App() {
       () => post<{ state: WorkflowState }>('/api/review', { state, action }))
     if (result) {
       setState(result.state)
+      if (action.type === 'edit') setEditedIds(ids => ids.includes(action.id) ? ids : [...ids, action.id])
       setDraft(null)
     }
   }
@@ -134,6 +136,7 @@ export default function App() {
     if (!state) return
     const result = await call('생성을 시작하고 있습니다…', () => post<{ run_id: string }>('/api/m2/generate', { state }))
     if (result) {
+      setRunOutcome(null)
       rememberRun(result.run_id)
       setRunId(result.run_id)
     }
@@ -141,6 +144,7 @@ export default function App() {
 
   // 화면만 처음으로 돌린다. 서버에 저장된 입력, PRD, 실행 기록과 생성 결과는 지우지 않는다.
   function home() {
+    if (homeDisabled) return
     rememberRun(null)
     setRunId(null)
     setRunOutcome(null)
@@ -148,6 +152,7 @@ export default function App() {
     setText('')
     setAnswers({})
     setDraft(null)
+    setEditedIds([])
     setError('')
   }
 
@@ -155,10 +160,12 @@ export default function App() {
   const finished = runOutcome === 'auto_checks_passed' || runOutcome === 'manual_check_only'
   const stepIndex = screen === 'run' && finished ? 4 : { input: 0, questions: 1, review: 2, run: 3 }[screen]
   const editable = !loading && !draft
+  const homeDisabled = !!loading || !!runId && (runOutcome === null || runOutcome === 'running')
 
   // 검토 화면에는 사용자가 처음 입력한 내용을 다시 보여 주지 않는다. 질문 답변으로 정한 것, AI가 정한 것, 아직 정하지 않은 것만 보인다.
   const reqs = state?.requirements ?? []
-  const decisions = reqs.filter(r => r.status === 'confirmed' && (r.source === 'clarification_answer' || r.source === 'review_input'))
+  const decisions = reqs.filter(r => r.status === 'confirmed' && r.source !== 'ai_proposal'
+    && (r.source === 'clarification_answer' || r.source === 'review_input' || editedIds.includes(r.id)))
   const aiItems = reqs.filter(r => r.source === 'ai_proposal' && r.status !== 'needs_clarification')
   const undecided = reqs.filter(r => r.status === 'needs_clarification')
   const proposals = aiItems.filter(r => r.status === 'proposed')
@@ -185,7 +192,7 @@ export default function App() {
   return (
     <div className="page">
       <header className="top">
-        <button type="button" className="brand" onClick={home} disabled={!!loading}>Harness</button>
+        <button type="button" className="brand" onClick={home} disabled={homeDisabled}>Harness</button>
         <ol className="stepper" aria-label="진행 단계">
           {STEPS.map((label, index) => (
             <li key={label} className={index < stepIndex ? 'done' : index === stepIndex ? 'current' : ''}
@@ -217,7 +224,7 @@ export default function App() {
           state.questions.length > 0 ? (
             <section className="card">
               <h2>몇 가지만 확인할게요</h2>
-              <p className="muted">답하기 어려운 질문은 비워 두면 AI가 알맞게 정합니다.</p>
+              <p className="muted">답하기 어려운 질문은 비워 두셔도 됩니다. 다음에 다시 여쭤보고, 끝까지 비어 있으면 AI가 정합니다.</p>
               <form onSubmit={event => { event.preventDefault(); step(state) }}>
                 {state.questions.map((q, index) => (
                   <div key={q.gap_id} className="question">
@@ -249,7 +256,15 @@ export default function App() {
             {decisions.length > 0 && (
               <>
                 <h3>정한 내용</h3>
-                <ul className="items">{decisions.map(r => <li key={r.id}>{r.description}</li>)}</ul>
+                <ul className="items">{decisions.map(r => (
+                  <li key={r.id}>
+                    {r.description}
+                    {editor(r, '저장') ?? (
+                      <button type="button" className="link" disabled={!editable}
+                        onClick={() => setDraft({ id: r.id, description: r.description })}>수정</button>
+                    )}
+                  </li>
+                ))}</ul>
               </>
             )}
 

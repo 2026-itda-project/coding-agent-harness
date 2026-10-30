@@ -3,6 +3,7 @@ All HTTP requests are fulfilled locally; no backend, Docker, or paid API is used
 Optional: set PLAYWRIGHT_CHROMIUM_EXECUTABLE to an existing Chromium binary.
 """
 import json
+import copy
 import mimetypes
 import os
 from pathlib import Path
@@ -18,7 +19,10 @@ status = dict(run_id=RUN, prd_id=RUN[4:], outcome='running', reason=None,
 requests = []
 unexpected = []
 state = dict(project_id='test', run_id='analysis', clarification_round=0,
-             requirements=[], gaps=[], clarification_needed=False, analysis_mode='mock', usage=[],
+             requirements=[dict(project_id='test', id='REQ-001', category='scope', description='예약 기간 미정',
+                                status='needs_clarification', source='initial_input', blocking=False,
+                                acceptance_criteria=[])],
+             gaps=[], clarification_needed=False, analysis_mode='mock', usage=[],
              text='모임 관리 서비스', phase='review', questions=[], history=[], edit_count=0, gap_links=[])
 
 
@@ -30,6 +34,15 @@ def route_request(route):
             body = state
         elif path == '/api/clarification/step':
             body = state
+        elif path == '/api/review':
+            payload = route.request.post_data_json
+            updated = copy.deepcopy(payload['state'])
+            action = payload['action']
+            assert action['type'] == 'edit'
+            for item in updated['requirements']:
+                if item['id'] == action['id']:
+                    item.update(description=action['description'], status='confirmed', blocking=False)
+            body = {'state': updated}
         elif path == '/api/m2/generate':
             body = dict(run_id=RUN, created=True)
         elif path == f'/api/m2/runs/{RUN}':
@@ -66,9 +79,26 @@ with sync_playwright() as p:
     page.goto('http://harness.test/')
     page.get_by_role('textbox', name='서비스 설명').fill('모임 관리 서비스')
     page.get_by_role('button', name='시작하기', exact=True).click()
+    page.get_by_role('button', name='정하기', exact=True).click()
+    page.locator('form.editor textarea').fill('일주일 전부터 예약')
+    page.get_by_role('button', name='정하기', exact=True).click()
+    decision = page.locator('li').filter(has_text='일주일 전부터 예약')
+    expect(decision).to_have_count(1)
+    decision.get_by_role('button', name='수정', exact=True).click()
+    page.locator('form.editor textarea').fill('이틀 전부터 예약')
+    page.get_by_role('button', name='저장', exact=True).click()
+    expect(page.locator('li').filter(has_text='이틀 전부터 예약')).to_have_count(1)
     page.get_by_role('button', name='생성', exact=True).click()
     expect(page.get_by_role('heading', name='서비스를 만들고 있습니다')).to_be_visible()
     expect(page.locator('[aria-current="step"]')).to_have_text('생성')
+    expect(page.get_by_role('button', name='Harness', exact=True)).to_be_disabled()
+    generated = next(body for _, path, body in requests if path == '/api/m2/generate')
+    assert generated['state']['requirements'][0]['source'] == 'initial_input'
+    assert generated['state']['requirements'][0]['description'] == '이틀 전부터 예약'
+    page.reload()
+    expect(page.get_by_role('heading', name='서비스를 만들고 있습니다')).to_be_visible()
+    expect(page.get_by_role('button', name='Harness', exact=True)).to_be_disabled()
+    assert page.evaluate("localStorage.getItem('harness.currentRun')") == RUN
     assert sum(path == '/api/m2/generate' for _, path, _ in requests) == 1
 
     status.update(outcome='auto_checks_passed', preview_url='http://harness.test/preview')
@@ -94,10 +124,12 @@ with sync_playwright() as p:
 
     status.update(outcome='verification_failed', reason='자동 점검 실패')
     page.reload()
+    expect(page.get_by_text('직전 데이터 한 벌만', exact=False)).to_be_visible()
     page.get_by_role('button', name='빌드와 점검 다시 하기').click()
     expect(page.get_by_role('heading', name='서비스를 만들고 있습니다')).to_be_visible()
     assert requests[-2][2] == {'prd_id': RUN[4:], 'retry': True}
     expect(page.locator('[aria-current="step"]')).to_have_text('생성')
+    expect(page.get_by_role('button', name='Harness', exact=True)).to_be_disabled()
 
     status.update(outcome='awaiting_confirmation', open_issues=['예약 취소 정책'])
     page.reload()

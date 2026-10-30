@@ -63,18 +63,22 @@ export default function Generation({ runId, onHome, onOutcome }: {
   async function resume(body: { confirm_open_issues?: boolean; retry?: boolean }) {
     if (!status) return
     setBusy(true)
+    onOutcome('running')
     setError('')
     try {
       await post('/api/m2/runs', { prd_id: status.prd_id, ...body })
+      setStatus({ ...status, outcome: 'running' })
       setPollKey(key => key + 1)
     } catch (cause) {
+      onOutcome(status.outcome)
       setError(cause instanceof Error ? cause.message : '요청에 실패했습니다.')
     } finally {
       setBusy(false)
     }
   }
 
-  const home = <button type="button" className="secondary" onClick={onHome}>홈으로</button>
+  const home = <button type="button" className="secondary" onClick={onHome}
+    disabled={busy || !status || status.outcome === 'running'}>홈으로</button>
   if (!status) {
     return <section className="card">{error ? <p role="alert" className="error">{error}</p> : <p>불러오는 중…</p>}{error && home}</section>
   }
@@ -150,6 +154,7 @@ export default function Generation({ runId, onHome, onOutcome }: {
           ? '다시 시도하면 만든 코드 그대로 빌드와 점검만 다시 합니다. 패키지 설치 같은 일시적인 문제라면 통과할 수 있지만, 코드 문제라면 같은 이유로 다시 실패할 수 있습니다.'
           : '다시 시도하면 끝난 단계는 건너뛰고 멈춘 곳부터 이어서 진행합니다. 추가 비용이 발생할 수 있습니다.'}
       </p>
+      <p className="muted">다시 시도하여 검증 단계가 실행되면 미리보기에서 입력한 데이터는 초기화되고, 직전 데이터 한 벌만 보관됩니다.</p>
       {error && <p role="alert" className="error">{error}</p>}
       <div className="row">
         {status.requires_cost_review

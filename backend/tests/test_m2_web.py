@@ -700,6 +700,28 @@ class GenerateFlowTest(WebBase):
         self.assertEqual((seen[0][1], self.calls), ("--resume", 1))  # same code, no new model call
         self.assertEqual(self.status(run_id)["outcome"], "auto_checks_passed")
 
+    def test_environment_failures_are_not_reported_as_generated_app_failures(self):
+        run_id = self.generate().json()["run_id"]
+        target = web.run_dir(run_id)
+        original = run.load(target / "web.json")
+        cases = [
+            ("failed", "sandbox cleanup failed before TASK-001: private/path", None, True),
+            ("finished", None, {"status": "environment_error"}, True),
+            ("finished", None, {"status": "build_failed"}, False),
+            # An old verification failure must not hide a new model-call failure on retry.
+            ("failed", "Claude API failed", {"status": "environment_error"}, False),
+        ]
+        for status, error, verification, is_environment in cases:
+            with self.subTest(status=status, error=error, verification=verification):
+                run.dump(target / "web.json", {**original, "status": status, "error": error})
+                run.dump(target / "artifacts/verify.json", verification)
+                result = self.status(run_id)
+                self.assertEqual("Docker" in result["reason"], is_environment)
+                self.assertNotIn("private/path", result["reason"])
+                self.assertEqual(result["error"], error)
+                if status == "finished" and not is_environment:
+                    self.assertIn("빌드 또는 최종 점검", result["reason"])
+
     def test_another_service_cannot_start_while_one_runs(self):
         release = threading.Event()
         state = approved_state().model_copy(update={"phase": "review"})
