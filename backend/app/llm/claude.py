@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, build_opener
 
@@ -10,8 +11,11 @@ from app.llm.errors import AnalysisError
 from app.llm.snowchat import NoRedirect
 
 ENDPOINT = "https://api.anthropic.com/v1/messages"
-# USD per 1M input/output tokens (Claude model overview, checked 2026-10-14).
+# USD per 1M input/output tokens. PRICING says where the numbers come from; every computed cost
+# record carries it, so a run shows which rates its costs were calculated with (#12).
 PRICES = {"claude-sonnet-5-5": (2, 10), "claude-opus-5-5": (4, 20)}
+PRICING = {"source": "Claude model overview", "url": "https://docs.claude.com/en/docs/about-claude/models/overview",
+           "checked": "2026-10-14", "unit": "USD per 1M tokens", "basis": "input_tokens * input + output_tokens * output"}
 
 
 def model_for(role):
@@ -20,6 +24,16 @@ def model_for(role):
     if not model:
         raise AnalysisError("invalid_config", f"{role.upper()}_MODEL이 설정되지 않았습니다.", 503)
     return model
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def pricing(model):
+    """The rates a computed cost used, with their source."""
+    incoming, outgoing = PRICES[model]
+    return {"input_usd_per_mtok": incoming, "output_usd_per_mtok": outgoing, **PRICING}
 
 
 def cost(model, usage):
@@ -108,7 +122,7 @@ def complete(model, system, payload, schema, log, max_tokens=32000, effort=None,
     request = Request(ENDPOINT, data=json.dumps(body, ensure_ascii=False).encode(),
                       headers={"x-api-key": key, "anthropic-version": "2023-06-01",
                                "Content-Type": "application/json"})
-    started = time.perf_counter()
+    started, started_at = time.perf_counter(), now()
     opened = False
     try:
         with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
@@ -126,16 +140,21 @@ def complete(model, system, payload, schema, log, max_tokens=32000, effort=None,
         if opened or isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError):
             # The request reached the API and may be billed; an unknown cost must stop later paid calls.
             log.append({"model": model, "usage": {}, "stop_reason": None, "cost_usd": None,
-                        "error": f"interrupted: {type(exc).__name__}",
-                        "latency_s": round(time.perf_counter() - started, 2)})
+                        "cost_status": "unknown", "unknown_reason": "stream_interrupted",
+                        "error": f"interrupted: {type(exc).__name__}", "started_at": started_at,
+                        "ended_at": now(), "latency_s": round(time.perf_counter() - started, 2)})
             raise AnalysisError("gateway_error", "Claude API 응답이 중간에 끊겼습니다. 비용 미확인으로 기록했습니다.") from None
         raise AnalysisError("gateway_error", "Claude API에 연결하지 못했습니다.") from None
     usage = raw.get("usage") or {}
+    # cost_status: "computed" (usage x PRICES) or "unknown" with the reason; an unknown cost is never 0.
     record = {"model": raw.get("model"), "usage": usage, "stop_reason": raw.get("stop_reason"),
-              "latency_s": round(time.perf_counter() - started, 2), "cost_usd": None}
+              "started_at": started_at, "ended_at": now(), "latency_s": round(time.perf_counter() - started, 2),
+              "cost_usd": None, "cost_status": "unknown", "unknown_reason": "usage_missing"}
     log.append(record)
     if isinstance(usage.get("input_tokens"), int) and isinstance(usage.get("output_tokens"), int):
+        record["unknown_reason"] = "cost_calculation_failed"  # kept if cost() raises below
         record["cost_usd"] = cost(model, usage)
+        record.update(cost_status="computed", unknown_reason=None, pricing=pricing(model))
     return parse(raw, model)
 
 

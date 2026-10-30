@@ -7,6 +7,7 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from app.llm import claude
@@ -167,9 +168,11 @@ def run_task(task, context, app_dir, budget_usd, runner=run_group):
     command = agent_command(json.dumps(context, ensure_ascii=False), budget_usd)
     record = {"task_id": task.id, "title": task.title, "base_commit": before,
               "command": command[:3] + ["<context json>"] + command[4:], "leftover_containers": leftover}
+    record["started_at"], started = claude.now(), time.monotonic()
     try:
         code, out, err = runner(command, AGENT_TIMEOUT_S, cwd=app_dir, env=agent_env(app_dir))
     finally:
+        record["ended_at"], record["duration_s"] = claude.now(), round(time.monotonic() - started, 1)
         # Sandbox containers the agent started, background ones included, end with its task.
         try:
             record["leftover_containers"] += cleanup(run_id)
@@ -185,6 +188,14 @@ def run_task(task, context, app_dir, budget_usd, runner=run_group):
             result = {"is_error": True, "result": out[-2000:]}
     record["agent"] = {k: result.get(k) for k in
                        ("is_error", "subtype", "result", "num_turns", "total_cost_usd", "usage", "modelUsage")}
+    # Claude Code reports its own total (nested calls included); an agent that never finished reports
+    # nothing, and that cost stays unknown, never 0 (#12).
+    if code is None:
+        record.update(cost_status="unknown", unknown_reason="agent_timeout")
+    elif record["agent"]["total_cost_usd"] is None:
+        record.update(cost_status="unknown", unknown_reason="cost_not_reported")
+    else:
+        record.update(cost_status="reported", unknown_reason=None)
     git(app_dir, "add", "-A")
     changed = git(app_dir, "status", "--porcelain").strip()
     if changed:
