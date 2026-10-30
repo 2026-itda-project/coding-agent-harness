@@ -1,7 +1,7 @@
 """Clarification·Review 상태 전이 규칙. LLM을 호출하지 않는 순수 함수만 둔다."""
 from app.schemas import (
     AddAction, Answer, ClarificationQuestion, EditAction, Gap, Requirement, RequirementCategory,
-    GapLink, LinkGapAction, ResolveGapAction, ReviewedRequirements, UnlinkGapAction, UpdatedRequirement, WorkflowState,
+    GapLink, LinkGapAction, ProposalConversion, ResolveGapAction, ReviewedRequirements, UnlinkGapAction, UpdatedRequirement, WorkflowState,
 )
 
 MAX_ROUNDS = 3
@@ -48,9 +48,10 @@ def apply_update(reqs: list[Requirement], updates: list[UpdatedRequirement], pro
 
 
 def to_proposals(reqs: list[Requirement], gaps: list[Gap],
-                 questions: list[ClarificationQuestion], project_id: str) -> list[Requirement]:
+                 questions: list[ClarificationQuestion], project_id: str) -> tuple[list[Requirement], list[ProposalConversion]]:
     proposals = {q.gap_id: q.ai_proposal for q in questions}
     result = list(reqs)
+    conversions = []
     for g in (g for g in gaps if g.blocking):
         if g.id not in proposals:
             raise ValueError(f"{g.id}에 대한 AI Proposal이 없습니다.")
@@ -61,12 +62,15 @@ def to_proposals(reqs: list[Requirement], gaps: list[Gap],
         if linked:  # 경우 A: 미결정 항목을 id 그대로 Proposal로 전환
             first, *rest = linked
             result[first] = result[first].model_copy(update=changes)
+            target_id = result[first].id
             for i in rest:
                 result[i] = result[i].model_copy(update={"blocking": False})
         else:  # 경우 B: 새 Proposal 추가
             result.append(Requirement(project_id=project_id, id=next_requirement_id(result),
                                       category=GAP_TO_REQUIREMENT_CATEGORY[g.category], **changes))
-    return result
+            target_id = result[-1].id
+        conversions.append(ProposalConversion(gap=g, requirement_id=target_id, round=MAX_ROUNDS))
+    return result, conversions
 
 
 def accept(reqs: list[Requirement], ids: list[str]) -> list[Requirement]:
@@ -148,11 +152,16 @@ def approve(state: WorkflowState) -> tuple[WorkflowState, ReviewedRequirements]:
         raise ValueError("해소되지 않은 Blocking Requirement가 있습니다.")
     reviewed = ReviewedRequirements(
         project_id=state.project_id, run_id=state.run_id, requirements=state.requirements,
-        open_gaps=open_gaps(state), gap_links=state.gap_links, metrics={
+        open_gaps=open_gaps(state), gap_links=state.gap_links,
+        proposal_conversions=state.proposal_conversions, metrics={
             "question_count": sum(len(r.questions) for r in state.history),
             "turn_count": len(state.history),
             "edit_count": state.edit_count,
             "unaccepted_proposal_count": sum(r.status == "proposed" for r in state.requirements),
+            "forced_proposal_count": len(state.proposal_conversions),
+            "unaccepted_forced_proposal_count": sum(
+                r.status == "proposed" for r in state.requirements
+                if r.id in {c.requirement_id for c in state.proposal_conversions}),
         })
     return state.model_copy(update={"phase": "approved"}), reviewed
 
@@ -165,6 +174,17 @@ def validate_state(state: WorkflowState) -> None:
     if not {q.gap_id for q in state.questions} <= {g.id for g in state.gaps}:
         raise ValueError("질문이 현재 Gap 목록에 없는 Gap을 가리킵니다.")
     linked = [l.gap.id for l in state.gap_links]
+    conversions = state.proposal_conversions
+    converted = [c.gap.id for c in conversions]
+    by_id = {r.id: r for r in state.requirements}
+    if (len(converted) != len(set(converted))
+            or len({c.requirement_id for c in conversions}) != len(conversions)
+            or any(not c.gap.blocking or c.round != MAX_ROUNDS
+                   or c.requirement_id not in by_id
+                   or by_id[c.requirement_id].source != "ai_proposal"
+                   or by_id[c.requirement_id].status not in ("proposed", "confirmed")
+                   for c in conversions)):
+        raise ValueError("AI Proposal 전환 기록이 Gap·Requirement와 맞지 않습니다.")
     if (len(linked) != len(set(linked)) or set(linked) & {g.id for g in state.gaps}
             or any(l.requirement_id not in ids for l in state.gap_links)):
         raise ValueError("Gap 연결 기록이 현재 Gap·Requirement와 맞지 않습니다.")

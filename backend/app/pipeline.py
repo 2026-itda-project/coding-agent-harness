@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
+from app.llm.claude import ClaudeProvider
 from app.llm.errors import AnalysisError
 from app.llm.mock import MockProvider
 from app.llm.snowchat import SnowChatProvider
@@ -29,7 +30,22 @@ def get_provider():
         return MockProvider()
     if mode == "snowchat":
         return SnowChatProvider()
-    raise AnalysisError("invalid_config", "LLM_PROVIDER는 mock 또는 snowchat이어야 합니다.", 503)
+    if mode == "claude":
+        return ClaudeProvider()
+    raise AnalysisError("invalid_config", "LLM_PROVIDER는 mock, snowchat, claude 중 하나여야 합니다.", 503)
+
+
+def record_usage(record, usage):
+    if not isinstance(usage, dict):
+        return
+    record["usage"] = usage
+    # SnowChat reports prompt/completion tokens; Claude reports input/output tokens and a computed cost.
+    for source, target in [("prompt_tokens", "input_tokens"), ("completion_tokens", "output_tokens"),
+                           ("input_tokens", "input_tokens"), ("output_tokens", "output_tokens")]:
+        if isinstance(usage.get(source), int):
+            record[target] = usage[source]
+    if usage.get("cost_usd") is not None:
+        record["cost"] = usage["cost_usd"]
 
 
 def run_stage(provider, stage, payload, output_type, run_id, records, check=None):
@@ -40,11 +56,7 @@ def run_stage(provider, stage, payload, output_type, run_id, records, check=None
     try:
         record["model"] = provider.model_for(stage)
         content, usage = provider.complete(stage, (PROMPTS / f"{stage}.md").read_text(), payload, output_type, record["model"])
-        if isinstance(usage, dict):
-            record["usage"] = usage
-            for source, target in [("prompt_tokens", "input_tokens"), ("completion_tokens", "output_tokens")]:
-                if isinstance(usage.get(source), int):
-                    record[target] = usage[source]
+        record_usage(record, usage)
         output = output_type.model_validate_json(content)
         if stage == "requirement_extraction":
             ids = [r.id for r in output.requirements]
@@ -72,6 +84,7 @@ def run_stage(provider, stage, payload, output_type, run_id, records, check=None
         raise AnalysisError("structured_output_invalid", "LLM 결과가 출력 Schema를 충족하지 않습니다.") from None
     except AnalysisError as exc:
         record["error"] = exc.code
+        record_usage(record, getattr(exc, "usage", None))
         raise
     finally:
         record["latency"] = round(perf_counter() - started, 3)
@@ -157,7 +170,8 @@ def clarify_step(state, answers=None, provider=None):
                         "clarification_round": round + 1, "phase": "clarifying", "clarification_needed": True}
         case "proposal":
             questions = question_stage(provider, state.text, reqs, gaps, *args)  # ai_proposal만 쓴다
-            changes["requirements"] = to_proposals(reqs, gaps, questions, state.project_id)
+            changes["requirements"], conversions = to_proposals(reqs, gaps, questions, state.project_id)
+            changes["proposal_conversions"] = [*state.proposal_conversions, *conversions]
     changes["usage"] = [*state.usage, *records]
     return state.model_copy(update=changes)
 

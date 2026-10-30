@@ -245,6 +245,11 @@ class ClarificationApiTest(unittest.TestCase):
         self.assertEqual([h.round for h in state.history], [1, 2, 3])
         proposals = [r for r in state.requirements if r.status == "proposed"]
         self.assertEqual(len(proposals), 1)
+        self.assertEqual(len(state.proposal_conversions), 1)
+        conversion = state.proposal_conversions[0]
+        self.assertEqual((conversion.requirement_id, conversion.reason, conversion.round),
+                         (proposals[0].id, "round_limit", 3))
+        self.assertIn(conversion.gap, state.gaps)
         self.assertEqual((proposals[0].source, proposals[0].blocking), ("ai_proposal", False))
         self.assertFalse(any(r.source == "ai_proposal" and r.status == "confirmed" for r in state.requirements))
         # Blank rounds skip update·gap; only questions (and the final proposals) are generated.

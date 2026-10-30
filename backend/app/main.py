@@ -1,7 +1,9 @@
 import logging
 
 from fastapi import FastAPI, HTTPException
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
+
+from app.m2 import web
 
 from app.pipeline import analyze, clarify_step, review_step
 from app.prd import build_prd, draft_overview, validate_prd
@@ -55,3 +57,44 @@ def review(request: ReviewRequest) -> ReviewResponse:
 def generate_prd(request: PRDRequest) -> PRDResponse:
     prd = build_prd(request.reviewed, draft_overview(request.text))
     return PRDResponse(prd=prd, validation=validate_prd(prd, request.reviewed))
+
+# ===== M2: approved Review -> Sonnet PRD -> MVP run =====
+class M2PRDRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    state: WorkflowState
+
+
+class M2RunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    prd_id: str
+    confirm_open_issues: bool = False
+    retry: bool = False
+
+
+def m2_call(fn, *args):
+    try:
+        return fn(*args)
+    except web.Conflict as exc:
+        raise HTTPException(status_code=409, detail={"code": "conflict", "message": str(exc)}) from None
+    except (AnalysisError, ValueError) as exc:
+        raise http_error(exc) from None
+
+
+@app.post("/api/m2/prd")
+def m2_prd(request: M2PRDRequest) -> dict:
+    return m2_call(web.generate_prd, request.state)
+
+
+@app.post("/api/m2/runs")
+def m2_start_run(request: M2RunRequest) -> dict:
+    return m2_call(web.start_run, request.prd_id, request.confirm_open_issues, request.retry)
+
+
+@app.get("/api/m2/runs/{run_id}")
+def m2_run_status(run_id: str) -> dict:
+    return m2_call(web.run_status, run_id)
+
+
+@app.post("/api/m2/runs/{run_id}/preview/stop")
+def m2_stop_preview(run_id: str) -> dict:
+    return m2_call(web.stop_preview, run_id)

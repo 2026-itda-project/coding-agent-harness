@@ -128,13 +128,13 @@ def cmd_run(args):
         raise SystemExit(f"input PRD fails the contract: {check_prd(prd)}")
     try:
         if not (art / "spec.json").exists():
-            budget.reserve("opus")
+            budget.reserve("opus", max_output=stages.OPUS_MAX_TOKENS)
             spec = stages.generate_spec(prd, log)
             dump(art / "spec.json", spec.model_dump())
             state["stages"]["spec"] = "done"
         spec = Spec.model_validate(load(art / "spec.json"))
         if until >= 1 and not (art / "plan.json").exists():
-            budget.reserve("opus")
+            budget.reserve("opus", max_output=stages.OPUS_MAX_TOKENS)
             plan = stages.generate_plan(prd, spec, log)
             dump(art / "plan.json", plan.model_dump())
             state["stages"]["plan"] = "done"
