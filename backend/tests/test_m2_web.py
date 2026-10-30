@@ -370,7 +370,9 @@ class WebFlowTest(WebBase):
     def test_legacy_state_keeps_its_prd_id_and_cost_records(self):
         import hashlib
         state = approved_state()
-        old_json = state.model_dump_json(exclude={"proposal_conversions"})
+        old_json = state.model_dump_json(exclude={"proposal_conversions": True, "policy": True,
+            "selected_role_id": True, "out_of_scope_ids": True,
+            "history": {"__all__": {"answers": {"__all__": {"decision"}}}}})
         old_id = hashlib.sha256(old_json.encode()).hexdigest()[:16]
         out = web.prd_dir(old_id)
         run.dump(out / "prd.failed-1.json", {"calls": [{"cost_usd": None}]})
@@ -613,6 +615,30 @@ class GenerateFlowTest(WebBase):
         run_id = self.generate(state, output, seen.append).json()["run_id"]
         self.assertEqual((len(seen), seen[0][seen[0].index("--run-id") + 1]), (1, run_id))
         self.assertEqual(run.load(web.run_dir(run_id) / "web.json")["stage"], "run")
+
+    def test_single_round_api_handoff_runs_without_another_confirmation(self):
+        from app.llm.mock import MockProvider
+        with patch.object(pipeline, 'get_provider', return_value=MockProvider()):
+            text = '기록을 조회한다.'
+            analysis = main.analyze_requirements(main.AnalyzeRequest(text=text, policy='single_round_v1'))
+            initial = WorkflowState(**analysis.model_dump(), text=text)
+            state = main.clarification_step(main.ClarificationStepRequest(state=initial))
+        self.assertEqual((state.phase, state.clarification_round), ('review', 0))
+        role = next(r for r in state.requirements if r.id == state.selected_role_id)
+        feature = next(r for r in state.requirements if r.category != 'role')
+        output = prd_output(policy='single_round_v1', open_issues=[],
+            roles=[{**item('ROLE-001',[role.id], role.status, role.source), 'description':role.description}],
+            user_flows=[item('US-001',[feature.id])],
+            functional_requirements=[item('FR-001',[feature.id])],
+            acceptance_criteria=[{'id':'AC-001', 'description':'조회된다', 'target_ids':['FR-001']}])
+        seen = []
+        run_id = self.generate(state, output, seen.append).json()['run_id']
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(run.load(web.run_dir(run_id) / 'web.json')['stage'], 'run')
+        saved = run.load(web.prd_dir(run_id[4:]) / 'reviewed.json')
+        self.assertEqual((saved['policy'],saved['selected_role_id']), ('single_round_v1',role.id))
+        self.assertEqual(saved['requirements'][-1]['status'], 'proposed')
+        self.assertFalse(saved['open_gaps'])
 
     def test_rejected_prd_fails_and_retry_redoes_only_that_step(self):
         run_id = self.generate(output=prd_output(roles=[])).json()["run_id"]

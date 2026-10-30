@@ -19,25 +19,25 @@
 - 사용자 미지정 내용은 AI 기본값으로 보완하고, `proposed`·`source`를 유지하면서 PRD 본문과 구현 범위에 포함합니다. 사용자 명시사항이 우선이며 핵심 결정만 질문합니다.
 - 생성 코드는 Harness 밖 작업 폴더와 로컬 Git으로 관리합니다. 원격 연결·결과물 내보내기 없이 서비스 내 실행 결과 미리보기를 제공합니다.
 - Jev는 별도 비교 실험 후 도입을 결정합니다. 기본 E2E의 선행조건이 아닙니다. 실행 환경은 로컬 Docker입니다(#9).
-- 생성 서비스는 FastAPI·React·SQLite로 고정하며 React 빌드 결과를 FastAPI가 함께 제공합니다. 초기 예시 데이터와 새로고침 후 데이터 유지를 지원하고, 실제 로그인·다중 계정 대신 단일 사용자 또는 역할 전환을 사용합니다. 외부 연동은 모의 동작으로 표시하고 외부 공유 링크는 제공하지 않습니다.
+- 생성 서비스는 FastAPI·React·SQLite로 고정하며 React 빌드 결과를 FastAPI가 함께 제공합니다. 초기 예시 데이터와 새로고침 후 데이터 유지를 지원하고, 새 웹 생성은 주 역할 하나만 구현하고 역할 전환을 제공하지 않습니다. 기존 다중 역할 fixture와 실행 재개는 유지합니다. 외부 연동은 모의 동작으로 표시하고 외부 공유 링크는 제공하지 않습니다.
 - 생성 후 새 요구사항에 따른 수정은 범위 밖입니다. 생성 전 Review 수정·승인과 실패 시 자동 수정·재검증은 유지합니다.
 
-공식 정책 원문은 [M2 방향성 공유본](https://app.notion.com/p/3f7d4def234a80a4b221c99b30c787fb)입니다. 입력 양식 개편과 3라운드 뒤 핵심 미결정 처리 등 원문에서 미정인 내용은 별도 결정합니다.
+공식 정책 원문은 [M2 방향성 공유본](https://app.notion.com/p/3f7d4def234a80a4b221c99b30c787fb)입니다. 입력 양식 개편은 별도 결정합니다. 새 웹 입력의 1라운드·단일 역할 정책과 기존 저장물 호환 기준은 저장소 결정문과 아래 실행 계약을 따릅니다.
 
 [GitHub Issues](https://github.com/2026-itda-project/coding-agent-harness/issues) · [M2 October Execution Plan](https://github.com/orgs/2026-itda-project/projects/2) · [팀 10월 계획](https://app.notion.com/p/3ecd4def234a8103ba44d383ab1a18a0) · [M2 상세 기획](https://app.notion.com/p/3f5d4def234a81a4b371e6c7525b9688)
 
 ## 현재 구현 상태
 
-아래는 기존 M1 코드의 구현 상태와 M2 개발 목표입니다.
+아래는 현재 구현 상태와 남은 M2 개발 범위입니다.
 
 | 영역 | 현재 코드 | M2에서 바뀔 점 |
 | --- | --- | --- |
 | 입력 | `AnalyzeRequest.text` 단일 문자열 | 목업 생성 중심 입력 항목(제안, 팀 컨펌 대기 — `docs/decisions/m2-development-direction.md` 3절). 필드 계약은 컨펌 후 #7·#8에서 구체화 |
-| 요구사항 루프 | Mock / SnowChat / Claude Sonnet, Gap 분석, 최대 3라운드 Clarification, 단순화한 검토 화면 | AI 기본값 우선, 핵심 질문 1라운드 |
+| 요구사항 루프 | 새 웹 입력: 최대 1라운드·5개 질문, AI 추천 수락·거절, 중요한 AI 결정 검토, 주 역할 하나 선택. 기존 API·저장물은 3라운드 유지 | 실제 모델로 새 정책 품질 검증, Jev 도입 여부 결정 |
 | PRD | 생성 버튼 뒤 내부에서 Review 결과 기반 Sonnet PRD 생성과 상태, 출처 검증(사용자에게 보이지 않음). M1 `/api/prd`는 API로만 남음 | 입력 양식 개편 |
 | M2 실행 | 검토 화면의 '생성' 버튼 하나로 PRD부터 Docker 점검까지 백그라운드 실행, 단계별 진행 표시, 완료 화면 미리보기, 새로고침 뒤 복구 ([review-runtime.md](docs/m2/review-runtime.md)) | Opus 검증, 재계획과 재시도, 지표 |
 
-`backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계([NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17))는 `ReviewedRequirements.open_gaps`로 PRD Open Issues까지 전달하도록 보완했습니다.
+`backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. 이는 기존 M1 경로입니다. M2 Sonnet PRD는 AI 기본값의 상태·출처를 유지하며 본문에 포함합니다. 기존 non-blocking Gap 인계 한계([NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17))는 `ReviewedRequirements.open_gaps`로 PRD Open Issues까지 전달하도록 보완했습니다.
 
 ## 기존 M1 실행과 계약
 
@@ -181,7 +181,7 @@ Gap은 `AGENTS.md`의 8개 우선 확인 영역인 `user_role`, `core_flow`, `pe
 
 ## Clarification·Review 인계 계약 (초기 구현안)
 
-기존 M1의 AGENTS.md 7~10장을 구현한 부분입니다. 추가된 M2 7.4 정책은 아직 코드에 반영되지 않았습니다. Endpoint, 필드, `source` 값, metrics 정의는 현재 구현의 계약입니다.
+이 절은 `policy=legacy`인 기존 M1 호환 경로입니다. 새 웹 입력은 `single_round_v1`을 명시하며 [M2 요구사항·실행 계약](docs/m2/review-runtime.md)의 1라운드 정책을 따릅니다. Endpoint, 필드, `source` 값, metrics 정의는 현재 구현의 계약입니다.
 
 ### API
 

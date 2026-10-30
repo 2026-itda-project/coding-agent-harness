@@ -133,13 +133,13 @@ def update_stage(provider, text, requirements, gaps, questions, answers, project
     return run_stage(provider, "requirement_update", payload, RequirementUpdateOutput, run_id, records, check).requirements
 
 
-def analyze(text, provider=None):
+def analyze(text, provider=None, policy="legacy"):
     provider = provider if provider is not None else get_provider()
     project_id, run_id = str(uuid4()), str(uuid4())
     records = []
     requirements = extract_stage(provider, text, project_id, run_id, records)
     gaps = gap_stage(provider, text, requirements, run_id, records)
-    return AnalyzeResponse(project_id=project_id, run_id=run_id, requirements=requirements,
+    return AnalyzeResponse(policy=policy, project_id=project_id, run_id=run_id, requirements=requirements,
                            gaps=gaps, clarification_needed=any(g.blocking for g in gaps),
                            analysis_mode=provider.mode, usage=records)
 
@@ -148,6 +148,9 @@ def clarify_step(state, answers=None, provider=None):
     """답변 반영 → Gap 재분석 → 다음 질문 / Proposal 전환 / Review 이동. 규칙 위반은 ValueError."""
     require_phase(state, "clarifying")
     validate_state(state)
+    if state.policy == "single_round_v1":
+        from app.m2.requirements import clarify
+        return clarify(state, answers, provider if provider is not None else get_provider())
     reqs, gaps, history, round = state.requirements, state.gaps, state.history, state.clarification_round
     if state.questions:
         answers = fill_answers(state.questions, answers)
@@ -177,13 +180,19 @@ def clarify_step(state, answers=None, provider=None):
 
 
 def review_step(state, action):
-    """Requirement Review 작업. LLM 호출 없음. approve일 때만 인계물(ReviewedRequirements)을 함께 반환한다."""
+    """Review 작업. 새 정책의 역할 수정만 LLM으로 범위를 재정리한다. approve는 인계물도 반환한다."""
     require_phase(state, "review")
     validate_state(state)
     if action.type == "accept":
         return state.model_copy(update={"requirements": accept(state.requirements, action.ids)}), None
     if action.type == "edit":
-        return edit(state, action), None
+        updated = edit(state, action)
+        validate_state(updated)
+        if state.policy == "single_round_v1" and action.id == state.selected_role_id:
+            from app.m2.requirements import finish_review
+            updated = finish_review(updated, get_provider(), role_override=action.id)
+        validate_state(updated)
+        return updated, None
     if action.type == "add":
         return add(state, action), None
     if action.type == "resolve_gap":

@@ -20,33 +20,38 @@
 
 입력 → 질문 → 검토 → 생성 → 완료의 단계형 화면이다. 사용자에게는 개발 산출물을 보여 주지 않는다.
 
-- 검토 화면: 질문 답변과 Review에서 정한 내용, AI가 정한 내용(개별 또는 일괄 수락, 문장 수정), 아직 정하지 않은 내용(필수 항목은 정해야 생성 가능)만 보인다. 사용자가 처음 입력한 내용을 항목별로 다시 확인받지 않는다.
+- 검토 화면: 질문 답변과 Review에서 정한 내용, 중요한 AI 결정사항, 그 밖의 AI 기본값, 주 역할과 제외 범위를 보여 준다. 새 정책에서는 미정 사항을 검토 전에 보완한다. 기존 legacy 상태의 필수 미정 항목은 정해야 생성할 수 있다. 사용자가 처음 입력한 내용을 항목별로 다시 확인받지 않는다.
 - 보이지 않는 것: 확정 요구사항 전체 목록, 남은 Gap과 연결 UI, AC 입력과 편집, 인계 JSON, PRD 원문과 내부 ID, Task 상세, 토큰과 비용. 내부 기록(`proposed`와 `ai_proposal` 출처, 비용과 비용 미확인 기록)은 그대로 저장한다. 내부 AC는 M2 PRD 생성 단계에서 LLM이 만들고 Spec 점검과 검증에 쓴다. 사용자가 보지 않았다는 이유로 `confirmed`로 바꾸지 않는다.
-- 검토 화면에서 AI 제안의 문장을 고치면 기존 `edit`(확정 포함)으로 저장되어 `confirmed` + `ai_proposal`이 된다(기존 Review 수정과 같은 규칙).
-- 검토에서 직접 정하거나 수정한 항목은 원래 출처를 유지하며 같은 화면에서 계속 확인·수정할 수 있다. 최초 입력의 확정 항목 전체를 선택적으로 펼쳐 보는 방식은 PR #24에서 논의 중이며 아직 구현하지 않았다(결정문 3절).
+- 새 정책에서 문장을 고치면 `confirmed + review_input`, 추천을 그대로 수락하면 `confirmed + ai_proposal`이다. 이전 질문·추천·답변은 이력에 남는다. legacy 상태의 수정은 이전처럼 출처를 유지한다.
+- 검토에서 정하거나 수정한 항목은 같은 화면에서 계속 확인·수정할 수 있다. 최초 입력의 확정 항목 전체를 선택적으로 펼쳐 보는 방식은 PR #24에서 논의 중이며 아직 구현하지 않았다(결정문 3절).
 - 실행 상태를 처음 조회하거나 생성·재시도 중일 때는 홈 이동을 막아 저장된 실행 ID를 유지한다. 실패·확인 대기·완료 상태에서는 홈으로 돌아갈 수 있다. 실행 환경 오류는 앱의 빌드·점검 실패와 구분해 Docker 실행 상태와 샌드박스 설정을 확인하도록 안내한다.
 
 ## 2. 요구사항 루프의 Claude 경로 (#7)
 
-- `LLM_PROVIDER=claude`이면 `app/llm/claude.py`의 `ClaudeProvider`를 쓴다. 기존 Provider 인터페이스(`model_for`, `complete`)와 `pipeline.run_stage`의 출력 검증을 그대로 쓰고, 추출·Gap 분석·질문 생성·답변 반영 4단계 모두 `SONNET_MODEL`을 쓴다. 프롬프트는 기존 단계별 프롬프트를 공유한다.
+- `LLM_PROVIDER=claude`이면 `app/llm/claude.py`의 `ClaudeProvider`를 쓴다. 기존 Provider 인터페이스(`model_for`, `complete`)와 `pipeline.run_stage`의 출력 검증을 그대로 쓰고, 모든 요구사항 단계는 `SONNET_MODEL`을 쓴다. 추출·Gap 분석 프롬프트는 공유하며, 새 정책의 질문 계획과 검토 보완은 `m2_clarification_plan.md`, `m2_review_completion.md`로 분리한다.
 - 응답 `analysis_mode`는 `claude`다. 화면은 Claude가 아닌 분석(Mock, SnowChat)일 때만 검토 화면에 개발용 표시를 한다. 단계 기록(`usage`)에 모델, 입력·출력 토큰, 계산 비용(`cost`)이 남는다.
 - 오류는 명시적으로 실패한다: `missing_api_key`, `invalid_config`(모델 미설정), `authentication_failed`(401), `model_unavailable`(403·404·응답 모델 불일치), `rate_limit`, `empty_response`, `incomplete_response`, `structured_output_invalid`, `gateway_error`. Mock/SnowChat으로 대체하지 않는다. 검증에 실패한 유료 응답도 비용을 기록한다.
-- 질문 라운드 정책은 기존과 같다(최대 3라운드, 이후 남은 Blocking은 AI Proposal로 전환). 팀 합의(PR #22 리뷰)에 따른 임시 결정으로 Claude 경로도 M1 규칙을 유지한다. Review의 수정, 개별과 일괄 수락, 승인은 그대로이며 LLM을 호출하지 않는다. Gap 정리(`resolve_gap`, `link_gap`) API는 남아 있지만 M2 화면에서는 쓰지 않는다. 입력은 기존 `text` 하나다(입력 양식 개편은 미정).
+- 새 화면은 분석 요청에 `policy=single_round_v1`을 명시한다. 최대 1라운드·5개 핵심 질문이며 0개도 가능하다. 기존 JSON/API 요청은 정책 생략 시 `legacy`로 읽으며 최대 3라운드, 기존 PRD 확인·재개 동작을 유지한다.
+- 새 정책에서는 추출·Gap 분석 다음 `m2_clarification_plan`으로 질문을 선별한다. 모든 Gap을 상태에 보존하고, 답변 후(질문이 없으면 즉시) `m2_review_completion`으로 전체 요구사항, Gap별 결정 연결, 주 역할, 제외 범위를 만든다. 두 단계 모두 LLM 출력에 스키마·참조·원문 보존·출처 검증을 적용하며 잘못된 내용을 코드가 만들어 채우지 않는다.
+- 질문은 `{gap_id, question, ai_proposal}`, 답변은 `{gap_id, answer, decision}`이다. `decision`은 `accept / reject / answer / skip`. 추천 수락은 서버가 해당 질문의 추천 문구를 사용한다. 거절은 대안 없이 제출할 수 없고 같은 화면에서 작성한다. 질문·추천·답변을 함께 Sonnet에 전달한다. 누락 답변과 빈 답변은 skip이며 다시 묻지 않는다.
+- 수락은 `confirmed + ai_proposal`, 직접 작성·거절 대안은 `confirmed + clarification_answer`, 미응답·미질문 보완은 `proposed + ai_proposal`이다. 연결되지 않은 Gap과 non-blocking Gap도 포함한다. 질문 수를 줄이느라 제외한 핵심 결정은 Review의 중요한 AI 결정사항에서 보여 준다. 생성 버튼이 미수락 AI 제안을 확정하지 않는다.
+- `selected_role_id`는 주 역할 Requirement 하나, `out_of_scope_ids`는 제외 역할·전용 기능의 Requirement ID들이다. 제외 항목은 삭제하지 않고 원문·상태·출처를 보존한다. 여러 역할을 입력하면 동일한 다섯 질문 안에서 선택한다. 역할 수정만 Sonnet을 다시 호출해 제외 범위를 정리하며, 일반 문장 수정·수락·승인은 모델을 호출하지 않는다.
+- Gap 관리 API는 legacy 호환용으로 남으며 새 화면에서는 쓰지 않는다. 입력은 기존 `text` 하나다(입력 양식 개편은 미정).
 
 ### 라운드 제한 전환 기록
 
-`WorkflowState`와 `ReviewedRequirements`의 `proposal_conversions`는 원본 `gap`, 전환 대상 `requirement_id`, `reason=round_limit`, `round`를 보존한다. 기본값은 빈 배열이라 기존 JSON도 읽을 수 있다. 사용자 결정으로 만든 `gap_links`와 구분하며, 수락·수정 후에도 기록을 유지한다. LLM 추출 출력 스키마는 변경하지 않는다.
+`WorkflowState`와 `ReviewedRequirements`의 `proposal_conversions`는 원본 `gap`, 전환 대상 `requirement_id`, `reason`, `round`를 보존한다. 새 정책의 reason은 `round_limit`(질문을 했으나 미응답), `question_limit`(질문 대상으로 선별하지 않은 핵심 Gap), `ai_default`(일반 보완)이며 round는 0 또는 1이다. legacy는 기존 round_limit·3을 유지한다. 기본값은 빈 배열이라 기존 JSON도 읽을 수 있다. 직접 답변과 명시적 추천 수락으로 만든 `gap_links`와 구분하며, 수락·수정 후에도 기록을 유지한다. LLM 추출 출력 스키마는 변경하지 않는다.
 
-`approve()` metrics의 `forced_proposal_count`는 전환 건수, `unaccepted_forced_proposal_count`는 승인 시점에 아직 proposed인 전환 항목 수다. 기록은 `reviewed.json`에 저장되고 Run의 PRD 경로로 추적한다. 과거 전환 이력이 없는 JSON에 기록을 추측해 채우지 않는다. 기존 내용에 필드가 없거나 빈 경우 이전 PRD id를 유지하여 실패 시도 비용 차단을 우회하지 않는다.
+`approve()` metrics의 `forced_proposal_count`는 blocking Gap의 전환 건수(일반 보완과 명시적 추천 수락 제외), `unaccepted_forced_proposal_count`는 승인 시점에 아직 proposed인 전환 항목 수다. 기록은 `reviewed.json`에 저장되고 Run의 PRD 경로로 추적한다. 과거 전환 이력이 없는 JSON에 기록을 추측해 채우지 않는다. 기존 내용에 필드가 없거나 빈 경우 이전 PRD id를 유지하여 실패 시도 비용 차단을 우회하지 않는다.
 
-강제 전환 Proposal의 별도 표시·추가 확인은 후속 합의 대상이다. 이번 변경은 기존 상태·출처와 생성 확인 정책을 유지한다.
+새 정책에서는 중요한 AI 결정을 검토 화면에서 별도로 보여 주고 수정할 수 있다. 별도 확인창은 추가하지 않는다. 역할도 같은 검토 화면에서 확인·수정한다. legacy 실행의 생성 후 Open Issue 확인은 유지한다.
 
 
 ## 3. Review 결과 → M2 PRD (#8)
 
 `POST /api/m2/prd` `{state}`: 승인된(`phase=approved`) `WorkflowState`를 받는다. 서버가 상태를 검증하고 `approve()`로 인계물(`ReviewedRequirements`)을 다시 만들어 Sonnet에 넘긴다. 같은 승인 상태는 같은 `prd_id`가 되어 다시 요청해도 모델을 다시 부르지 않는다.
 
-Sonnet 입력: 원문(배경), 질문과 답변, 승인 인계물(Requirement의 id·내용·상태·출처·AC, `open_gaps`, `gap_links`). 프롬프트는 `prompts/m2_reviewed_prd_generation.md`이며 **Review 결과가 원문보다 우선**한다.
+Sonnet 입력: 원문(배경), 질문과 답변, 승인 인계물(Requirement의 id·내용·상태·출처·AC, `open_gaps`, `gap_links`). 프롬프트는 `prompts/m2_reviewed_prd_generation.md`이며 새 정책에는 `m2_single_role_policy.md`와 단일 역할 스택 계약을 덧붙인다. **Review 결과가 원문보다 우선**한다.
 
 PRD 계약 확장(`app/m2/contracts.py`):
 - `PRDItem`에 `requirement_ids`, `gap_ids`를 추가했다. 기본값은 빈 배열이라 기존 고정 PRD fixture와 CLI는 그대로 동작한다. 모델 출력용 `ReviewedPRD`에서는 필수다.
@@ -71,6 +76,8 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 
 저장 위치: `HARNESS_WORKSPACE_ROOT/prds/<prd_id>/` — `prd.json`, `provenance.json`(분석 ID, 분석 모드, 요구사항 루프 usage, PRD 호출 기록과 비용, 프롬프트·PRD 해시), `reviewed.json`.
 
+새 정책의 `PRD.policy`는 `single_round_v1`이며 주 역할 하나와 `open_issues=[]`를 검증한다. 선택 역할의 내용·상태·출처·참조를 보존하고, 제외 요구사항은 PRD `out_of_scope`에만 대응시킨다. 미수락 AI 기본값의 상태·출처도 바꾸지 않는다. 새 Open Issue가 나오면 재확인 화면으로 넘기지 않고 산출물 검증 실패로 처리한다. Spec 화면은 선택 역할만 참조하고 HTTP 점검의 `role_header`는 빈 값이다. Plan과 Task Context에도 단일 역할 스택 및 역할·제외 범위를 전달한다. 기존 fixture/CLI의 `policy=legacy`와 역할 전환 계약은 보존한다.
+
 ## 4. MVP 실행 (#13 일부)
 
 | API | 동작 |
@@ -83,7 +90,7 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 - 클라이언트는 `prd_id`만 보낸다. 파일 경로, PRD 내용, 명령, URL은 받지 않는다. id는 형식을 검사한 뒤에만 경로와 컨테이너 이름에 쓴다.
 - `run_id = web-<prd_id>`라 같은 PRD의 중복 요청은 기존 Run을 돌려준다. 서버당 동시에 하나의 Run만 허용한다(다른 Run 실행 중이면 409). 실패 후 `retry` 없이 다시 요청해도 새로 실행하지 않는다. 다시 시도는 완료된 단계를 건너뛰고, 이전 시도의 오류(`web.json.previous_errors`)와 비용(`run.json`)을 그대로 남긴다. 자동 재시도는 없다.
 - Opus Spec·Plan 호출의 출력 상한은 64,000토큰이다(`stages.OPUS_MAX_TOKENS`). 첫 실제 실행에서 항목이 많은 PRD의 Spec이 effort high의 생각 토큰(26K/32K)으로 32,000에서 잘렸다. 예산 예약도 같은 값으로 한다.
-- Open Issue가 있으면 `confirm_open_issues=true`가 있어야 시작한다(팀 합의(PR #22 리뷰)에 따른 임시 결정). 생성 버튼 흐름에서는 PRD를 만든 뒤 `awaiting_confirmation`으로 멈추고, 화면이 미결정 사항을 보여 준 뒤 "이대로 계속 생성"으로 같은 Run을 이어 간다. 이 단계는 질문 정책 변경 작업에서 없앨 예정이다.
+- 기존 legacy PRD에 Open Issue가 있으면 `confirm_open_issues=true`가 있어야 시작한다(팀 합의(PR #22 리뷰)에 따른 임시 결정). 생성 버튼 흐름에서는 PRD를 만든 뒤 `awaiting_confirmation`으로 멈추고, 화면이 미결정 사항을 보여 준 뒤 "이대로 계속 생성"으로 같은 Run을 이어 간다. 새 single_round_v1 PRD는 open_issues가 있으면 검증에서 거부하므로 이 확인 단계에 진입하지 않는다.
 - 실패한 단계가 PRD 생성이면 `retry`는 PRD 단계부터 다시 하고, 실행기에서 멈췄으면 `--resume`으로 이어 간다. 빌드나 점검 실패(`verification_failed`)도 `retry`로 같은 코드를 다시 빌드하고 점검한다(모델 호출 없음). 코드를 고치거나 다시 계획하지 않으므로 코드 문제라면 같은 이유로 다시 실패할 수 있다.
 - 예산: `M2_RUN_BUDGET_USD`(기본 8), `M2_TASK_BUDGET_USD`(기본 1.5), PRD 생성은 `M2_PRD_BUDGET_USD`(기본 0.5). 실행기의 기존 예산 검사와 비용 미확인 차단을 그대로 쓴다.
 - 결과 표시(`outcome`):
@@ -91,7 +98,7 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
   | outcome | 조건 |
   | --- | --- |
   | `running` | 실행 중 |
-  | `awaiting_confirmation` | PRD에 미결정 사항이 있어 사용자 확인을 기다림 |
+  | `awaiting_confirmation` | legacy PRD에 미결정 사항이 있어 사용자 확인을 기다림 |
   | `failed` | 실행기가 멈춤(예산, 계약 거부, Task 실패 등). 사유 포함 |
   | `interrupted` | 실행 중에 서버가 재시작됨 |
   | `verification_failed` | 빌드 또는 자동 점검 실패 |
@@ -154,3 +161,9 @@ Claude 응답 중단과 Claude Code Agent Timeout은 비용이 `null`로 남을 
 
 - [check-20261030-user-flow](runs/check-20261030-user-flow.md): (가) 오프라인 124개와 Mock 브라우저 흐름 검증. 실제 모델 재실행은 하지 않았다.
 - [run-20261030-user-flow](runs/run-20261030-user-flow.md): 후속 실제 모델 실행. Spec·코딩 실패 보완 후 같은 Run 재개, Task 5개와 Docker 자동 점검 11/11, 실제 브라우저 흐름·생성 앱 동작 확인. 실패 포함 약 USD 1.86.
+
+## 9. 1라운드·단일 역할 정책 검증
+
+`tests/test_m2_requirements.py`는 질문 0개·5개 상한, 연결되지 않은 Gap과 질문 제외 항목의 보존, 수락·거절·직접 답변의 출처, 잘못된 모델 출력 거부, 역할 수정, 예전 PRD ID, Spec·Plan·Context 정책 전달을 Mock으로 확인한다. `test_m2_web.py`는 새 정책 Review에서 PRD 생성 후 재확인 없이 실행기에 진입하고 기존 3라운드·실패 비용·재개가 유지되는지 검사한다.
+
+브라우저 회귀 검사는 `frontend/tests/user_flow_smoke.py`와 `single_round_smoke.py`이며, 빌드된 화면의 요청을 로컬 fixture로 응답한다. 실제 Claude·Docker 생성 품질 검증을 뜻하지 않는다. 새 정책의 실제 모델 E2E는 별도 비용 승인 후 실행해야 한다. 질문 선별과 거절 대안의 의미 보존, 역할별 전용 기능 분리는 구조 검사만으로 품질을 보장할 수 없으므로 실제 결과를 확인해야 한다.

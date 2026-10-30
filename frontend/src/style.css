@@ -44,6 +44,7 @@ textarea:focus { outline: 2px solid var(--primary-soft); border-color: var(--pri
 button, .button { justify-self: start; display: inline-block; padding: .65rem 1.3rem; font: inherit; font-weight: 600; text-decoration: none;
   color: white; background: var(--primary); border: 1px solid var(--primary); border-radius: 10px; cursor: pointer; }
 button.secondary { color: var(--text); background: var(--card); border-color: var(--line); }
+button[aria-pressed="true"] { color: var(--primary); background: var(--primary-soft); border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
 button.link { padding: .1rem .4rem; color: var(--primary); background: none; border: 0; font-weight: 600; font-size: .9rem; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 .row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: 1.2rem; }

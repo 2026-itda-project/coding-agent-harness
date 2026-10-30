@@ -84,7 +84,8 @@ def cmd_prd(args):
         "kind": "model_generated_fixture",
         "note": "Sonnet이 예시 입력 하나로 생성한 고정 PRD. 요구사항 루프(질문, Review 승인)를 거치지 않았다.",
         "generated_at": now(), "input_file": Path(args.input).name, "input_sha256": sha(user_input),
-        "prompt_sha256": sha(stages.prompt("prd_generation") + stages.prompt("stack_contract")),
+        "prompt_sha256": sha(stages.prompt("prd_generation") + "\n\n" + stages.prompt("stack_contract")
+                             + "\nPRD.policy must be legacy."),
         "prd_sha256": sha((out / "prd.json").read_text()), "calls": log,
         "contract_check": {"errors": check_generated_prd(prd)}})
     print(f"PRD saved to {out / 'prd.json'}; cost {sum(r.get('cost_usd') or 0 for r in log):.4f} USD")

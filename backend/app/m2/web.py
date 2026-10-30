@@ -91,7 +91,7 @@ def generate_prd(state):
         run.dump(out / "prd.json", prd.model_dump())
         run.dump(out / "provenance.json", {
             "kind": "reviewed_prd", "generated_at": run.now(), "prd_sha256": run.sha((out / "prd.json").read_text()),
-            "prompt_sha256": run.sha(stages.prompt("reviewed_prd_generation") + stages.prompt("stack_contract")),
+            "prompt_sha256": run.sha(stages.review_prompt(reviewed.policy)),
             "calls": log, **source})
         return prd_view(prd_id)
     finally:
@@ -100,7 +100,10 @@ def generate_prd(state):
 
 
 def prd_id_of(state):
-    excluded = {"proposal_conversions"} if not state.proposal_conversions else set()
+    excluded = {"proposal_conversions": True} if not state.proposal_conversions else {}
+    if state.policy == "legacy":
+        excluded.update(policy=True, selected_role_id=True, out_of_scope_ids=True,
+                        history={"__all__": {"answers": {"__all__": {"decision"}}}})
     return hashlib.sha256(state.model_dump_json(exclude=excluded).encode()).hexdigest()[:16]
 
 

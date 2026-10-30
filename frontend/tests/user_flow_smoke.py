@@ -127,7 +127,8 @@ with sync_playwright() as p:
     expect(page.get_by_text('직전 데이터 한 벌만', exact=False)).to_be_visible()
     page.get_by_role('button', name='빌드와 점검 다시 하기').click()
     expect(page.get_by_role('heading', name='서비스를 만들고 있습니다')).to_be_visible()
-    assert requests[-2][2] == {'prd_id': RUN[4:], 'retry': True}
+    retry = next(body for method, path, body in reversed(requests) if method == 'POST' and path == '/api/m2/runs')
+    assert retry == {'prd_id': RUN[4:], 'retry': True}
     expect(page.locator('[aria-current="step"]')).to_have_text('생성')
     expect(page.get_by_role('button', name='Harness', exact=True)).to_be_disabled()
 

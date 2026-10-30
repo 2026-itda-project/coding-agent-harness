@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.m2.agent import git
 from app.m2.contracts import prd_items, spec_items
-from app.m2.stages import prompt
+from app.m2.stages import stack_contract
 
 MAX_FILE_CHARS = 20_000
 MAX_TOTAL_CHARS = 120_000
@@ -60,7 +60,8 @@ def build_context(task, prd, spec, app_dir, results, sandbox, last_error=None):
         "repository": {"files": files, "contents": contents, "skipped": skipped,
                        "omitted": [f for f in files if f not in contents and f not in skipped]},
         "last_error": last_error,
-        "environment": {"sandbox": sandbox, "stack_contract": prompt("stack_contract")},
+        "environment": {"sandbox": sandbox, "stack_contract": stack_contract(prd.policy), "roles": [r.model_dump() for r in prd.roles],
+                        "out_of_scope": [r.model_dump() for r in prd.out_of_scope]},
         "sources": {
             "task": f"plan.json#{task.id}",
             "spec_items": [f"spec.json#{s}" for s in task_specs] + [f"spec.json#{c}" for c in checks],

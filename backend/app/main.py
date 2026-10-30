@@ -21,7 +21,7 @@ def analyze_requirements(request: AnalyzeRequest) -> AnalyzeResponse:
     if not request.text.strip():
         raise HTTPException(status_code=422, detail="text must not be blank")
     try:
-        return analyze(request.text)
+        return analyze(request.text, policy=request.policy)
     except AnalysisError as exc:
         logging.getLogger("uvicorn.error").warning("analysis_failed code=%s", exc.code)
         raise HTTPException(status_code=exc.status, detail={"code": exc.code, "message": exc.message}) from None
@@ -48,7 +48,7 @@ def clarification_step(request: ClarificationStepRequest) -> WorkflowState:
 def review(request: ReviewRequest) -> ReviewResponse:
     try:
         state, reviewed = review_step(request.state, request.action)
-    except ValueError as exc:
+    except (AnalysisError, ValueError) as exc:
         raise http_error(exc) from None
     return ReviewResponse(state=state, reviewed=reviewed)
 

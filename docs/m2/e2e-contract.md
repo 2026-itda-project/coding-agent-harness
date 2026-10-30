@@ -63,7 +63,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 
 ## 4. 생성 범위 (고정 스택 계약)
 
-`backend/app/prompts/m2_stack_contract.md`: FastAPI + React(Vite) + SQLite, React 빌드를 FastAPI가 함께 제공, `data/app.db`에 초기 예시 데이터와 지속 저장, 실제 로그인 대신 역할 전환(`X-Role`), 외부 연동은 모의 동작으로 표시, 공유·내보내기·생성 후 변경 없음. 도메인 규칙은 Harness 코드에 넣지 않는다.
+기존 고정 PRD·CLI(`policy=legacy`)의 `backend/app/prompts/m2_stack_contract.md`: FastAPI + React(Vite) + SQLite, React 빌드를 FastAPI가 함께 제공, `data/app.db`에 초기 예시 데이터와 지속 저장, 실제 로그인 대신 역할 전환(`X-Role`), 외부 연동은 모의 동작으로 표시, 공유·내보내기·생성 후 변경 없음. 도메인 규칙은 Harness 코드에 넣지 않는다.
 
 ## 5. 작업 폴더와 실행 경계 (E5·E6)
 
@@ -125,3 +125,7 @@ uv run --env-file ../.env python -m app.m2.run run --prd ../docs/m2/fixtures/lea
 uv run --env-file ../.env python -m app.m2.run run --resume <run dir>   # 실패 지점부터 이어 실행
 uv run python -m unittest tests.test_m2                                  # 오프라인 테스트
 ```
+
+## 새 웹 입력의 단일 역할 계약
+
+`policy=single_round_v1` PRD는 주 역할 하나만 포함하고 미결정 `open_issues`를 남기지 않는다. `m2_stack_contract_single_role.md`를 Spec·Plan·Task Context에 전달한다. 생성 서비스는 역할 전환과 `X-Role` 라우팅 없이 선택 역할 하나의 화면·동작을 구현하며, 제외 역할의 결과는 예시 데이터로만 나타낼 수 있다. 제외 요구사항은 PRD `out_of_scope`에 원문 추적을 유지한다. 기존 다중 역할 fixture와 저장 Run은 legacy 계약으로 재개한다. 입력부터의 상세 인계 계약은 [review-runtime.md](review-runtime.md)를 따른다.

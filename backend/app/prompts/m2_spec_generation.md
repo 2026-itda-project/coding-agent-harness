@@ -12,7 +12,7 @@ Sections and ID prefixes (3 digits, unique):
 - `screens` (`SCR-`): purpose, which roles see it (`role_ids` are PRD `ROLE-` ids), main UI elements.
 - `data_models` (`DATA-`): SQLite tables with fields, and how many sample rows to seed (`seed_rows`).
 - `apis` (`API-`): paths start with `/api/`. Describe request and response JSON in prose.
-- `permissions` (`AUTH-`): for each PRD role, which actions it may do, enforced via the `X-Role` header.
+- `permissions` (`AUTH-`): for each PRD role, which actions it may do. Follow the supplied stack contract: legacy role switching may use `X-Role`; single_round_v1 has one role and no role-switch/header routing.
 - `rule_implementations` (`IMPL-`): how each business rule is enforced; `where` lists the SCR/API ids involved.
 - `mock_integrations` (`MOCK-`): any mocked external behavior. Empty if none.
 - `checks` (`CHK-`): acceptance checks the harness runs against the running app. Every PRD acceptance criterion must be covered by at least one check (`ac_ids`).
