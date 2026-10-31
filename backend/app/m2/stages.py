@@ -6,8 +6,8 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from app.llm import claude
-from app.m2.contracts import (PRD, Plan, ReviewedPRD, Spec, check_generated_prd, check_plan, check_reviewed_prd,
-                              check_spec, output_schema)
+from app.m2.contracts import (PRD, Diagnosis, Plan, ReviewedPRD, Spec, check_diagnosis, check_generated_prd, check_plan,
+                              check_reviewed_prd, check_spec, output_schema)
 
 PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
 
@@ -25,6 +25,8 @@ def prompt(name):
 # Opus spends most of a high-effort reply on thinking (26K of 32K in a rich-PRD Spec), so Spec and Plan
 # get a larger cap; `run.Budget` reserves the same amount before each call.
 OPUS_MAX_TOKENS = 64000
+# A diagnosis has a far smaller input and output than a Spec; `run.Budget` reserves the same amount.
+DIAGNOSIS_MAX_TOKENS = 16000
 
 
 def generate(stage, role, system, payload, model_cls, checker, log, effort, constrained=True, max_tokens=32000):
@@ -72,3 +74,10 @@ def generate_plan(prd, spec, log):
     payload = {"prd": prd.model_dump(), "spec": spec.model_dump(), "stack_contract": prompt("stack_contract")}
     return generate("plan", "opus", prompt("coding_plan"), payload, Plan,
                     lambda plan: check_plan(plan, spec), log, effort="high", max_tokens=OPUS_MAX_TOKENS)
+
+
+def generate_diagnosis(context, log):
+    """Cause analysis of a verdict already made by code (`acceptance`). Nothing here can change it."""
+    return generate("diagnosis", "opus", prompt("verification_diagnosis"), context, Diagnosis,
+                    lambda diagnosis: check_diagnosis(diagnosis, context), log, effort="high",
+                    max_tokens=DIAGNOSIS_MAX_TOKENS)

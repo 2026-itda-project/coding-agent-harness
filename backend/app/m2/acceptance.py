@@ -1,6 +1,9 @@
 """#10: the final verdict of a run, decided by code from execution evidence only: verify.json, the
 Spec and Plan it was planned from, and recorded human reviews. Pure functions, no files or model
-calls. No model output is an input here, so none can change a verdict."""
+calls. No model output is an input to the verdict; a stored diagnosis is only attached beside it."""
+
+import hashlib
+import json
 
 from pydantic import ValidationError
 
@@ -23,7 +26,11 @@ NO_APP_EVIDENCE = {"environment_error": "실행 환경 오류로 검증이 중�
 KNOWN_STATUSES = {*NO_APP_EVIDENCE, "build_failed", "checks_failed", "manual_pending", "passed"}
 # A command that ran out of time or was killed: the app, its size or the machine may be the cause.
 AMBIGUOUS_OUTCOMES = ("timeout", "killed")
-NO_DIAGNOSIS = {"status": "not_implemented", "summary": None, "failures": [], "replan_scope": None, "call": None}
+NO_DIAGNOSIS = {"summary": None, "failures": [], "replan_scope": None, "call": None}
+# Only these call the model by themselves. A manual failure is diagnosed on request (`run diagnose`).
+AUTO_DIAGNOSIS = ("build_failed", "auto_failed")
+NOTHING_TO_DIAGNOSE = ("passed", "manual_pending")
+TAIL_CHARS, INSTRUCTION_CHARS = 4000, 4000
 
 
 def worst(states):
@@ -282,7 +289,76 @@ def build_verification(prd, spec, plan, record, raw_review, tasks, spec_sha, jud
         "gates": gates(record, rows, final_status), "checks": rows, "acceptance": acceptance, "tasks": per_task,
         "evidence_refs": {"verify": "verify.json", "server_log": "verify.json#/server_log_tail",
                           "manual_review": "manual-review.json" if raw_review is not None else None},
-        "diagnosis": dict(NO_DIAGNOSIS),
+        "diagnosis": {"status": "not_run", **NO_DIAGNOSIS},
         "handoff": {"final_status": final_status, "route": ROUTES[final_status], "cause_ambiguous": ambiguous,
                     "reasons": reasons, "failures": targets, "suspected_task_ids": [], "replan_scope": None},
     }
+
+
+def diagnosis_payload(verification, spec, plan, record, tasks):
+    """What the model sees. Output tails and response bodies come from generated code: data to read,
+    and harmless to the verdict since it is already made."""
+    record, tasks = record or {}, tasks or {}
+    targets = verification["handoff"]["failures"]
+    failed_ids = {t["check_id"] for t in targets}
+    related = {t for target in targets for t in target["task_ids"]} or {t.id for t in plan.tasks}
+    steps = record.get("steps") or []
+    index = {t["evidence_ref"] for t in targets} | {f"verify.json#/steps/{i}" for i in range(len(steps))}
+    if record.get("server_log_tail"):
+        index.add("verify.json#/server_log_tail")
+    task_rows = []
+    for task in plan.tasks:
+        row = next(t for t in verification["tasks"] if t["id"] == task.id)
+        task_rows.append({"id": task.id, "title": task.title, "depends_on": task.depends_on, "check_ids": task.check_ids,
+                          "agent_status": row["agent_status"],
+                          **({"instructions": task.instructions[:INSTRUCTION_CHARS], "files": task.files,
+                              "diff_stat": (tasks.get(task.id, {}).get("diff_stat") or "")[:TAIL_CHARS]}
+                             if task.id in related else {})})
+    results = [{"run": name, **result} for name in ("checks", "checks_after_restart") for result in record.get(name) or []
+               if result.get("id") in failed_ids]
+    return {
+        "final_status": verification["final_status"], "reasons": verification["reasons"],
+        "cause_ambiguous": verification["cause_ambiguous"],
+        "environment_failure": verification["final_status"] == "insufficient_evidence",
+        "failure_targets": targets,
+        "acceptance": [a for a in verification["acceptance"] if a["state"] not in ("auto_passed", "manual_passed")],
+        "verify": {"status": record.get("status"), "failure_stage": record.get("failure_stage"), "failures": record.get("failures") or [],
+                   "root_status": record.get("root_status"), "root_status_after_restart": record.get("root_status_after_restart"),
+                   # durations differ on every run of the same code, so they stay out of the evidence hash
+                   "steps": [{"evidence_ref": f"verify.json#/steps/{i}", "phase": s.get("phase"), "outcome": s.get("outcome"),
+                              "exit_code": s.get("exit_code"),
+                              **({"output_tail": (s.get("output_tail") or "")[-TAIL_CHARS:]} if s.get("outcome") != "ok" else {})}
+                             for i, s in enumerate(steps)],
+                   "server_log_tail": (record.get("server_log_tail") or "")[-TAIL_CHARS:]},
+        "failed_check_results": results, "tasks": task_rows, "evidence_index": sorted(index),
+        "known_checks": {c.id: c.ac_ids for c in spec.checks},
+        "known_ac_ids": [a["id"] for a in verification["acceptance"]], "known_task_ids": [t.id for t in plan.tasks],
+    }
+
+
+def evidence_hash(payload):
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+def attach_diagnosis(verification, stored, sha):
+    """Put the stored diagnosis beside the verdict. It fills only `diagnosis` and the two fields of the
+    handoff kept for it, and only while it was made from this same evidence."""
+    final_status = verification["final_status"]
+    if stored and stored.get("evidence_sha256") == sha:
+        verification["diagnosis"] = {k: stored.get(k) for k in ("status", "summary", "failures", "replan_scope", "call", "error")}
+        verification["diagnosis"]["evidence_sha256"] = sha
+        if stored.get("status") == "done":
+            verification["handoff"]["replan_scope"] = stored["replan_scope"]
+            verification["handoff"]["suspected_task_ids"] = sorted(
+                {t for f in stored["failures"] for t in f["suspected_task_ids"]})
+        return verification
+    if final_status in NOTHING_TO_DIAGNOSE:
+        status = "not_needed"
+    elif final_status == "insufficient_evidence":
+        status = "skipped_environment"
+    elif final_status == "manual_failed" or stored:
+        status = "stale"
+    else:
+        status = "not_run"
+    verification["diagnosis"] = {"status": status, **NO_DIAGNOSIS, "evidence_sha256": sha}
+    return verification

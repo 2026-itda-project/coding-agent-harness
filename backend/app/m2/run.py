@@ -5,6 +5,7 @@
   uv run --env-file ../.env python -m app.m2.run run --resume <run dir>
   uv run python -m app.m2.run judge --run-dir <run dir>                                 # no Docker, no model
   uv run python -m app.m2.run manual-review --run-dir <run dir> --input <review.json>   # no Docker, no model
+  uv run --env-file ../.env python -m app.m2.run diagnose --run-dir <run dir>           # paid: one Opus call
 
 Every paid call checks the run budget first. Nothing is retried automatically (#11)."""
 
@@ -61,23 +62,62 @@ def read_json(path, unreadable=None):
         return unreadable
 
 
+# Characters of diagnosis input; never more tokens than this, so the reservation below holds.
+DIAGNOSIS_MAX_INPUT = 60000
+
+
 class ManualReviewRejected(ValueError):
     """A submission that was refused and saved to manual-review.rejected.json."""
 
 
 # ---------- verdict (#10): evidence files -> acceptance.build_verification ----------
 
-def judge_run(run_dir, tasks):
+def judge_run(run_dir, tasks, with_payload=False):
     """Judge from the files as they are now, writing nothing. Raises ValueError or OSError when the
     Spec or Plan the evidence is judged against cannot be read."""
     art = Path(run_dir) / "artifacts"
     record = read_json(art / "verify.json")
+    record = record if isinstance(record, dict) else None
     # A damaged review must count as invalid, not as "none yet": the marker fails the contract.
     review = read_json(art / "manual-review.json", unreadable={"unreadable": True})
-    return acceptance.build_verification(
-        PRD.model_validate(load(art / "prd.json")), Spec.model_validate(load(art / "spec.json")),
-        Plan.model_validate(load(art / "plan.json")), record if isinstance(record, dict) else None, review,
-        tasks, sha((art / "spec.json").read_text()), now())
+    spec, plan = Spec.model_validate(load(art / "spec.json")), Plan.model_validate(load(art / "plan.json"))
+    verification = acceptance.build_verification(PRD.model_validate(load(art / "prd.json")), spec, plan, record, review,
+                                                 tasks, sha((art / "spec.json").read_text()), now())
+    payload = acceptance.diagnosis_payload(verification, spec, plan, record, tasks)
+    acceptance.attach_diagnosis(verification, read_json(art / "diagnosis.json"), acceptance.evidence_hash(payload))
+    return (verification, payload) if with_payload else verification
+
+
+def diagnose(run_dir, state, budget, requested=False):
+    """Ask Opus why a run failed, after the verdict is saved. Whatever goes wrong here is recorded in
+    diagnosis.json and raises nothing: a missing diagnosis must not hide or change the verdict. The
+    same evidence is never sent twice by itself, and a finished diagnosis not even on request."""
+    art = Path(run_dir) / "artifacts"
+    verification, payload = judge_run(run_dir, state["tasks"], with_payload=True)
+    evidence_sha = acceptance.evidence_hash(payload)
+    stored = read_json(art / "diagnosis.json")
+    if stored and stored.get("evidence_sha256") == evidence_sha and (stored.get("status") == "done" or not requested):
+        return verification
+    log = state["calls"]
+    calls = len(log)
+    result = {"status": "failed", "summary": None, "failures": [], "replan_scope": None, "error": None}
+    try:
+        if len(json.dumps(payload, ensure_ascii=False)) > DIAGNOSIS_MAX_INPUT:  # the budget reserves this much
+            raise ValueError(f"input is larger than the {DIAGNOSIS_MAX_INPUT} reserved")
+        budget.reserve("opus", max_output=stages.DIAGNOSIS_MAX_TOKENS, max_input=DIAGNOSIS_MAX_INPUT)
+        result.update(status="done", **stages.generate_diagnosis(payload, log).model_dump())
+    except SystemExit as exc:  # the budget stops the CLI this way; here the verdict still stands
+        result.update(status="budget_stopped", error=str(exc.code))
+    except stages.ContractError as exc:
+        dump(art / "diagnosis.rejected.json", {"errors": exc.errors, "data": exc.data})
+        result.update(status="rejected", error="; ".join(exc.errors))
+    except (AnalysisError, ValueError, KeyError) as exc:
+        result["error"] = f"{exc.code}: {exc.message}" if isinstance(exc, AnalysisError) else f"{type(exc).__name__}: {exc}"
+    dump(art / "diagnosis.json", {**result, "evidence_sha256": evidence_sha, "diagnosed_at": now(),
+                                  "call": log[-1] if len(log) > calls else None})
+    verification = judge_run(run_dir, state["tasks"])
+    dump(art / "verification.json", verification)
+    return verification
 
 
 def save_verdict(run_dir):
@@ -270,6 +310,8 @@ def cmd_run(args):
                 state["verify_phase"] = phase
                 save()
             state.pop("final_status", None)
+            # A retry promises to rebuild and check only, so only the first verification may call the model.
+            first_verification = not ((art / "verify.json").exists() or (art / "verify.previous.json").exists())
             retire_verification(art)
             evidence_of = {"code_commit": agent.git(app_dir, "rev-parse", "HEAD").strip(),
                            "spec_sha256": sha((art / "spec.json").read_text())}
@@ -281,6 +323,9 @@ def cmd_run(args):
             dump(art / "verification.json", verification)
             state["final_status"] = verification["final_status"]
             print(f"final status: {verification['final_status']}")
+            save()  # the verdict is on record before any paid call
+            if first_verification and verification["final_status"] in acceptance.AUTO_DIAGNOSIS:
+                print(f"diagnosis: {diagnose(run_dir, state, budget)['diagnosis']['status']}")
             print(f"verify: {result['status']} ({result.get('passed')}/{result.get('total')} checks)"
                   + (f", preview {result['preview_url']}" if result.get("preview_url") else ""))
             if result.get("cleanup_error"):  # the next task or verification checks again before it starts
@@ -322,6 +367,30 @@ def cmd_manual_review(args):
     print(f"final status: {verification['final_status']}\n" + "\n".join(verification["reasons"]))
 
 
+def cmd_diagnose(args):
+    """The explicit, paid path: a manual failure and a retry of a failed diagnosis come here."""
+    run_dir = finished_run_dir(args)
+    state = load(run_dir / "run.json")
+    state.setdefault("calls", [])
+    attempts = state.get("attempts", [])
+    log = state["calls"]
+    budget = Budget(args.budget_usd, lambda: [r.get("cost_usd") for r in log] + [a["agent"].get("total_cost_usd") for a in attempts])
+    verification, payload = judge_run(run_dir, state.get("tasks"), with_payload=True)
+    if verification["final_status"] in acceptance.NOTHING_TO_DIAGNOSE:
+        raise SystemExit(f"nothing to diagnose: {verification['final_status']}")
+    if not payload["failure_targets"]:
+        raise SystemExit("no failure evidence to diagnose; fix the environment and verify again")
+    state["tasks"] = state.get("tasks") or {}
+    try:
+        verification = diagnose(run_dir, state, budget, requested=True)
+    finally:
+        dump(run_dir / "run.json", {**state, "final_status": verification["final_status"], "updated_at": now()})
+    status = verification["diagnosis"]["status"]
+    if status != "done":
+        raise SystemExit(f"diagnosis {status}: {verification['diagnosis'].get('error')}")
+    print(f"diagnosis: {status}, replan_scope {verification['diagnosis']['replan_scope']}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -343,8 +412,12 @@ def main(argv=None):
     m = sub.add_parser("manual-review")
     m.add_argument("--run-dir", required=True)
     m.add_argument("--input", required=True)
+    d = sub.add_parser("diagnose")
+    d.add_argument("--run-dir", required=True)
+    d.add_argument("--budget-usd", type=float, default=8.0)
     args = parser.parse_args(argv)
-    {"prd": cmd_prd, "run": cmd_run, "judge": cmd_judge, "manual-review": cmd_manual_review}[args.cmd](args)
+    {"prd": cmd_prd, "run": cmd_run, "judge": cmd_judge, "manual-review": cmd_manual_review,
+     "diagnose": cmd_diagnose}[args.cmd](args)
 
 
 if __name__ == "__main__":
