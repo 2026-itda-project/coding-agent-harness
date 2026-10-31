@@ -1,8 +1,14 @@
 """Offline tests for the #10 verdict. No model or Docker calls: the verify.json records are written here."""
 
+import json
+import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from app.m2 import acceptance
+from app.llm import claude
+from app.m2 import acceptance, agent, run, verify
 from app.m2.contracts import PRD, Plan, Spec
 
 COMMIT, OTHER = "c" * 40, "d" * 40
@@ -252,6 +258,184 @@ class FinalStatusTest(unittest.TestCase):
         self.assertEqual(result["diagnosis"]["status"], "not_implemented")
         self.assertEqual(set(result["handoff"]), {"final_status", "route", "cause_ambiguous", "reasons", "failures",
                                                   "suspected_task_ids", "replan_scope"})
+
+
+class RunFiles(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.run_dir = Path(self.tmp.name) / "run"
+        self.art = self.run_dir / "artifacts"
+        no_paid_calls = patch.object(claude, "complete", side_effect=AssertionError("model call"))
+        no_docker = patch.object(verify, "run_group", side_effect=AssertionError("docker call"))
+        for patcher in (no_paid_calls, no_docker):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def write(self, planned, **changes):
+        run.dump(self.art / "prd.json", prd_data(["AC-001"]))
+        run.dump(self.art / "spec.json", spec_data(planned))
+        run.dump(self.art / "plan.json", plan_data(planned))
+        sha = run.sha((self.art / "spec.json").read_text())
+        run.dump(self.art / "verify.json", {**evidence(planned, spec_sha256=sha), **changes})
+        run.dump(self.run_dir / "run.json", {"run_id": "t", "stages": {"code": "done"}, "calls": [], "attempts": [],
+                                             "tasks": {"TASK-001": DONE_TASK}})
+
+    def entry(self, check_id="CHK-003", index=0, step="화면을 본다", verdict="pass", evidence_text="목록이 보였다"):
+        return {"check_id": check_id, "step_index": index, "step": step, "verdict": verdict, "evidence": evidence_text}
+
+    def submit(self, *items, reviewer="검토자"):
+        return run.submit_manual_review(self.run_dir, {"reviewer": reviewer, "items": list(items)})
+
+
+class ManualReviewTest(RunFiles):
+    def test_accepted_review_is_stamped_and_changes_the_verdict(self):
+        self.write([MIXED])
+        result = self.submit(self.entry())
+        self.assertEqual(result["final_status"], "passed")
+        stored_item = run.load(self.art / "manual-review.json")["items"][0]
+        self.assertEqual((stored_item["reviewer"], stored_item["code_commit"]), ("검토자", COMMIT))
+        self.assertTrue(stored_item["reviewed_at"])
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "passed")
+        self.assertEqual(run.load(self.run_dir / "run.json")["final_status"], "passed")
+
+    def test_refused_input_is_kept_and_changes_nothing(self):
+        self.write([MIXED])
+        self.submit(self.entry(verdict="fail"))
+        before = (self.art / "manual-review.json").read_text()
+        cases = {"no evidence": [self.entry(evidence_text=" ")], "unknown check": [self.entry(check_id="CHK-999")],
+                 "out of range": [self.entry(index=5)], "other text": [self.entry(step="다른 문구")],
+                 "duplicate": [self.entry(), self.entry()], "empty": [],
+                 "bad verdict": [self.entry(verdict="maybe")]}
+        for name, items in cases.items():
+            with self.subTest(name), self.assertRaises(run.ManualReviewRejected):
+                self.submit(*items)
+            saved = run.load(self.art / "manual-review.rejected.json")
+            self.assertEqual(saved["data"]["items"], items)
+            self.assertTrue(saved["errors"])
+        with self.assertRaises(run.ManualReviewRejected):
+            self.submit(self.entry(), reviewer=" ")
+        with self.assertRaises(run.ManualReviewRejected):  # the server records the time, not the client
+            run.submit_manual_review(self.run_dir, {"reviewer": "r", "reviewed_at": "2000", "items": [self.entry()]})
+        self.assertEqual((self.art / "manual-review.json").read_text(), before)
+
+    def test_partial_submissions_merge_and_history_keeps_what_they_replaced(self):
+        self.write([MANUAL])
+        first = self.submit(self.entry("CHK-002", 0, "화면을 본다", "fail"))
+        self.assertEqual(first["final_status"], "manual_failed")
+        second = self.submit(self.entry("CHK-002", 1, "버튼을 누른다"))
+        self.assertEqual(second["final_status"], "manual_failed")
+        third = self.submit(self.entry("CHK-002", 0, "화면을 본다"), reviewer="다른 검토자")
+        self.assertEqual(third["final_status"], "passed")
+        lines = [json.loads(l) for l in (self.art / "manual-review.history.jsonl").read_text().splitlines()]
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(lines[2]["replaced"][0]["verdict"], "fail")
+        self.assertEqual(run.load(self.art / "manual-review.json")["reviewer"], "다른 검토자")
+
+    def test_only_a_verification_with_a_running_app_can_be_reviewed(self):
+        for status in ("environment_error", "build_failed", "start_failed", "passed"):
+            with self.subTest(status=status):
+                self.write([MIXED], status=status)
+                with self.assertRaises(run.ManualReviewRejected):
+                    self.submit(self.entry())
+        with self.assertRaises(run.ManualReviewRejected):
+            self.write([MIXED], code_commit=None)
+            self.submit(self.entry())
+
+    def test_a_stored_file_that_fails_the_contract_is_not_overwritten(self):
+        self.write([MIXED])
+        (self.art / "manual-review.json").write_text("{not json")
+        with self.assertRaises(run.ManualReviewRejected):
+            self.submit(self.entry())
+        self.assertEqual((self.art / "manual-review.json").read_text(), "{not json")
+        self.assertEqual(run.judge_run(self.run_dir, {})["basis"]["manual_review_state"], "invalid")
+
+
+class JudgeCommandTest(RunFiles):
+    def test_judge_records_the_verdict_without_docker_or_a_model(self):
+        self.write([MIXED])
+        run.main(["judge", "--run-dir", str(self.run_dir)])
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "manual_pending")
+        state = run.load(self.run_dir / "run.json")
+        self.assertEqual((state["final_status"], state["run_id"]), ("manual_pending", "t"))
+
+    def test_manual_review_command(self):
+        self.write([MIXED])
+        path = Path(self.tmp.name) / "review.json"
+        path.write_text(json.dumps({"reviewer": "r", "items": [self.entry()]}))
+        run.main(["manual-review", "--run-dir", str(self.run_dir), "--input", str(path)])
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "passed")
+        path.write_text(json.dumps({"reviewer": "r", "items": [self.entry(evidence_text="")]}))
+        with self.assertRaises(SystemExit):
+            run.main(["manual-review", "--run-dir", str(self.run_dir), "--input", str(path)])
+
+    def test_commands_refuse_a_run_that_is_still_running(self):
+        self.write([MIXED])
+        run.dump(self.run_dir / "web.json", {"status": "running"})
+        with self.assertRaises(SystemExit):
+            run.main(["judge", "--run-dir", str(self.run_dir)])
+        self.assertFalse((self.art / "verification.json").exists())
+
+    def test_judging_a_run_without_evidence(self):
+        self.write([AUTO])
+        (self.art / "verify.json").unlink()
+        run.main(["judge", "--run-dir", str(self.run_dir)])
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "insufficient_evidence")
+        (self.art / "verify.json").write_text("{damaged")
+        run.main(["judge", "--run-dir", str(self.run_dir)])
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "insufficient_evidence")
+
+
+class RunnerConnectionTest(RunFiles):
+    def prepare(self, checks):
+        env = patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5", "OPUS_MODEL": "claude-opus-5-5"})
+        env.start()
+        self.addCleanup(env.stop)
+        self.app = agent.init_workspace(self.run_dir / "app")
+        self.write(checks)
+        run.dump(self.run_dir / "run.json", {"run_id": "t", "stages": {}, "calls": [], "attempts": [], "task_order": [],
+                                             "tasks": {"TASK-001": DONE_TASK}})
+        self.resume = ["run", "--resume", str(self.run_dir)]
+
+    def test_verification_is_written_and_tied_to_the_code_it_checked(self):
+        self.prepare([AUTO])
+        head = agent.git(self.app, "rev-parse", "HEAD").strip()
+        result = {k: v for k, v in evidence([AUTO]).items() if k not in ("code_commit", "spec_sha256")}
+        with patch.object(verify, "verify", lambda *a, **k: result):
+            run.main(self.resume)
+        record = run.load(self.art / "verify.json")
+        self.assertEqual((record["code_commit"], record["spec_sha256"]), (head, run.sha((self.art / "spec.json").read_text())))
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "passed")
+        self.assertEqual(run.load(self.run_dir / "run.json")["final_status"], "passed")
+
+    def test_interrupted_verification_leaves_no_old_verdict(self):
+        self.prepare([AUTO])
+        run.main(["judge", "--run-dir", str(self.run_dir)])
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "passed")
+        with patch.object(verify, "verify", side_effect=KeyboardInterrupt), self.assertRaises(KeyboardInterrupt):
+            run.main(self.resume)
+        self.assertFalse((self.art / "verification.json").exists())
+        self.assertFalse((self.art / "verify.json").exists())
+        self.assertEqual(run.load(self.art / "verify.previous.json")["status"], "passed")
+        state = run.load(self.run_dir / "run.json")
+        self.assertNotIn("final_status", state)
+        self.assertEqual(run.judge_run(self.run_dir, state["tasks"])["final_status"], "insufficient_evidence")
+
+    def test_verifying_the_same_code_again_keeps_manual_passes(self):
+        self.prepare([MIXED])
+        head = agent.git(self.app, "rev-parse", "HEAD").strip()
+        make = lambda: {k: v for k, v in evidence([MIXED]).items() if k not in ("code_commit", "spec_sha256")}
+        with patch.object(verify, "verify", lambda *a, **k: make()):
+            run.main(self.resume)
+        self.submit(self.entry())
+        with patch.object(verify, "verify", lambda *a, **k: make()):
+            run.main(self.resume)
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "passed")
+        agent.git(self.app, "commit", "-q", "--allow-empty", "-m", "changed code")
+        self.assertNotEqual(head, agent.git(self.app, "rev-parse", "HEAD").strip())
+        with patch.object(verify, "verify", lambda *a, **k: make()):
+            run.main(self.resume)
+        self.assertEqual(run.load(self.art / "verification.json")["final_status"], "manual_pending")
 
 
 if __name__ == "__main__":
