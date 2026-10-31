@@ -48,17 +48,22 @@ class GapLink(BaseModel):
     requirement_id: str
 
 
+Policy = Literal["legacy", "single_round_v1"]
+
+
 class AnalyzeRequest(BaseModel):
+    policy: Policy = "legacy"
     text: str = Field(min_length=1)
 
 
 class ProposalConversion(GapLink):
     """라운드 제한으로 AI 제안이 된 Gap. 사용자 확인으로 만든 gap_links와 구분한다."""
-    reason: Literal["round_limit"] = "round_limit"
-    round: int = Field(ge=1)
+    reason: Literal["round_limit", "question_limit", "ai_default"] = "round_limit"
+    round: int = Field(ge=0)
 
 
 class AnalyzeResponse(BaseModel):
+    policy: Policy = "legacy"
     project_id: str
     run_id: str
     clarification_round: int = 0
@@ -96,6 +101,7 @@ class Answer(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     gap_id: str
     answer: str
+    decision: Literal["answer", "accept", "reject", "skip"] = "answer"
 
 
 class ClarificationRound(BaseModel):
@@ -115,6 +121,8 @@ class WorkflowState(AnalyzeResponse):
     edit_count: int = 0
     gap_links: list[GapLink] = Field(default_factory=list)
     proposal_conversions: list[ProposalConversion] = Field(default_factory=list)
+    selected_role_id: str | None = None
+    out_of_scope_ids: list[str] = Field(default_factory=list)
 
 
 class QuestionOutput(BaseModel):
@@ -191,6 +199,7 @@ ReviewAction = Annotated[AcceptAction | EditAction | AddAction | ResolveGapActio
 
 
 class ReviewedRequirements(BaseModel):
+    policy: Policy = "legacy"
     model_config = ConfigDict(extra="forbid", strict=True)
     project_id: str
     run_id: str
@@ -200,6 +209,8 @@ class ReviewedRequirements(BaseModel):
     # Review에서 Requirement와 연결(결정 입력·추천 연결)된 Gap. 기본값은 빈 배열.
     gap_links: list[GapLink] = Field(default_factory=list)
     proposal_conversions: list[ProposalConversion] = Field(default_factory=list)
+    selected_role_id: str | None = None
+    out_of_scope_ids: list[str] = Field(default_factory=list)
     metrics: dict
 
 

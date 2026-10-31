@@ -141,9 +141,11 @@ def agent_command(task_prompt, budget_usd):
             "--model", claude.model_for("sonnet"),
             "--append-system-prompt", prompt("coding_task").replace("{sandbox}", SANDBOX),
             "--permission-mode", "dontAsk",
-            # File tools are scoped to the workspace (cwd). Glob/Grep are left out because they
-            # can search outside it; the agent searches with the sandbox, which only mounts cwd.
-            "--allowedTools", "Read(./**)", "Edit(./**)", "Write(./**)", f"Bash({SANDBOX}:*)",
+            # --tools selects built-ins; availability can vary by CLI/model.
+            # Edit path rules cover both Edit and Write. Glob/Grep
+            # are left out because they can search outside it; the agent searches with the sandbox.
+            "--tools", "Read,Edit,Write,Bash",
+            "--allowedTools", "Read(./**)", "Edit(./**)", f"Bash({SANDBOX}:*)",
             "--output-format", "json", "--max-budget-usd", str(budget_usd),
             "--no-session-persistence"]
 

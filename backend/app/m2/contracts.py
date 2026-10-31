@@ -45,6 +45,7 @@ class Overview(Strict):
 
 
 class PRD(Strict):
+    policy: Literal["legacy", "single_round_v1"] = "legacy"
     title: str
     overview: Overview
     in_scope: list[PRDItem]
@@ -80,6 +81,11 @@ def prd_items(prd):
 
 def check_prd(prd):
     errors = []
+    if prd.policy == "single_round_v1":
+        if len(prd.roles) != 1:
+            errors.append("single-role PRD requires exactly one role")
+        if prd.open_issues:
+            errors.append("single-round PRD cannot reopen decisions")
     seen = set()
     for section, prefix in PRD_PREFIX.items():
         for item in getattr(prd, section):
@@ -129,6 +135,24 @@ def check_reviewed_prd(prd, reviewed):
     sources must be backed by the handoff: the code checks the links, never rewrites content."""
     errors = check_prd(prd)
     reqs = {r.id: r for r in reviewed.requirements}
+    if prd.policy != reviewed.policy:
+        errors.append("PRD policy differs from the reviewed policy")
+    if reviewed.policy == "single_round_v1":
+        chosen = reqs.get(reviewed.selected_role_id)
+        if not chosen or len(prd.roles) != 1 or (prd.roles[0].description, prd.roles[0].status, prd.roles[0].source) != (chosen.description, chosen.status, chosen.source):
+            errors.append("PRD must preserve the selected role")
+        elif chosen.id not in prd.roles[0].requirement_ids:
+            errors.append("PRD role must reference the selected requirement")
+        excluded = set(reviewed.out_of_scope_ids)
+        for section in PRD_PREFIX:
+            for item in getattr(prd, section):
+                if any(rid in reqs and (reqs[rid].status, reqs[rid].source) != (item.status, item.source)
+                       for rid in item.requirement_ids):
+                    errors.append(f"{item.id}: reviewed status and source must be preserved")
+                if section != "out_of_scope" and excluded.intersection(item.requirement_ids):
+                    errors.append(f"{item.id}: excluded requirement returned to implementation")
+                if section == "out_of_scope" and set(item.requirement_ids) - excluded:
+                    errors.append(f"{item.id}: active requirement excluded without review")
     open_gap_ids = {g.id for g in reviewed.open_gaps}
     linked = {l.gap.id: l.requirement_id for l in reviewed.gap_links}
     covered_reqs, gap_items = set(), {}
@@ -262,6 +286,12 @@ def spec_items(spec):
 def check_spec(spec, prd):
     errors = []
     prd_ids = set(prd_items(prd))
+    if prd.policy == "single_round_v1":
+        roles = {r.id for r in prd.roles}
+        if len(roles) != 1 or any(set(s.role_ids) != roles for s in spec.screens):
+            errors.append("all screens must use the single PRD role")
+        if any(step.role_header for c in spec.checks for step in c.http_steps):
+            errors.append("single-role checks must not switch X-Role")
     ac_ids = {ac.id for ac in prd.acceptance_criteria}
     seen = set()
     for section, prefix in SPEC_PREFIX.items():
@@ -378,8 +408,13 @@ def output_schema(model):
         if isinstance(node, dict):
             if "$ref" in node:
                 return inline(defs[node["$ref"].split("/")[-1]])
-            # Drop pydantic's "title" metadata, but keep properties that are named "title".
-            return {k: inline(v, k == "properties") for k, v in node.items() if is_properties or k != "title"}
+            # Claude rejects maxItems; Pydantic still enforces it after generation.
+            # Keep actual property names even when they match stripped schema metadata.
+            result = {k: inline(v, k == "properties") for k, v in node.items()
+                      if is_properties or k not in ("title", "default", "maxItems")}
+            if "properties" in result:
+                result["required"] = list(result["properties"])
+            return result
         if isinstance(node, list):
             return [inline(v) for v in node]
         return node

@@ -87,6 +87,10 @@ def edit(state: WorkflowState, action: EditAction) -> WorkflowState:
                if (v := getattr(action, k)) is not None}
     if action.confirm:
         changes |= {"status": "confirmed", "blocking": False}
+    if not (action.description or "").strip() and action.description is not None:
+        raise ValueError("내용을 입력해야 합니다.")
+    if state.policy == "single_round_v1" and action.description is not None:
+        changes["source"] = "review_input"
     reqs = [r.model_copy(update=changes) if r.id == action.id else r for r in state.requirements]
     return state.model_copy(update={"requirements": reqs, "edit_count": state.edit_count + 1})
 
@@ -148,9 +152,12 @@ def unlink_gap(state: WorkflowState, action: UnlinkGapAction) -> WorkflowState:
 
 
 def approve(state: WorkflowState) -> tuple[WorkflowState, ReviewedRequirements]:
+    validate_state(state)
     if any(r.blocking and r.status == "needs_clarification" for r in state.requirements):
         raise ValueError("해소되지 않은 Blocking Requirement가 있습니다.")
+    forced = [c for c in state.proposal_conversions if c.gap.blocking]
     reviewed = ReviewedRequirements(
+        policy=state.policy, selected_role_id=state.selected_role_id, out_of_scope_ids=state.out_of_scope_ids,
         project_id=state.project_id, run_id=state.run_id, requirements=state.requirements,
         open_gaps=open_gaps(state), gap_links=state.gap_links,
         proposal_conversions=state.proposal_conversions, metrics={
@@ -158,10 +165,10 @@ def approve(state: WorkflowState) -> tuple[WorkflowState, ReviewedRequirements]:
             "turn_count": len(state.history),
             "edit_count": state.edit_count,
             "unaccepted_proposal_count": sum(r.status == "proposed" for r in state.requirements),
-            "forced_proposal_count": len(state.proposal_conversions),
+            "forced_proposal_count": len(forced),
             "unaccepted_forced_proposal_count": sum(
                 r.status == "proposed" for r in state.requirements
-                if r.id in {c.requirement_id for c in state.proposal_conversions}),
+                if r.id in {c.requirement_id for c in forced}),
         })
     return state.model_copy(update={"phase": "approved"}), reviewed
 
@@ -173,15 +180,18 @@ def validate_state(state: WorkflowState) -> None:
         raise ValueError("Requirement의 id가 중복되거나 project_id가 일치하지 않습니다.")
     if not {q.gap_id for q in state.questions} <= {g.id for g in state.gaps}:
         raise ValueError("질문이 현재 Gap 목록에 없는 Gap을 가리킵니다.")
+    if state.policy == "single_round_v1":
+        from app.m2.requirements import validate_review
+        validate_review(state)
     linked = [l.gap.id for l in state.gap_links]
     conversions = state.proposal_conversions
     converted = [c.gap.id for c in conversions]
     by_id = {r.id: r for r in state.requirements}
     if (len(converted) != len(set(converted))
-            or len({c.requirement_id for c in conversions}) != len(conversions)
-            or any(not c.gap.blocking or c.round != MAX_ROUNDS
+            or (state.policy == "legacy" and len({c.requirement_id for c in conversions}) != len(conversions))
+            or any((state.policy == "legacy" and (not c.gap.blocking or c.round != MAX_ROUNDS or c.reason != "round_limit"))
                    or c.requirement_id not in by_id
-                   or by_id[c.requirement_id].source != "ai_proposal"
+                   or by_id[c.requirement_id].source not in (("ai_proposal", "review_input") if state.policy != "legacy" else ("ai_proposal",))
                    or by_id[c.requirement_id].status not in ("proposed", "confirmed")
                    for c in conversions)):
         raise ValueError("AI Proposal 전환 기록이 Gap·Requirement와 맞지 않습니다.")

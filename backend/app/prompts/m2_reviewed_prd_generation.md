@@ -16,7 +16,7 @@ Every item has `status`, `source`, `requirement_ids` and `gap_ids`:
 - Each `open_gaps` entry must appear in `gap_ids` of exactly one item. If a conventional default keeps the user's intent, write that default as a `proposed` + `ai_proposal` item in the right body section. If the answer would change what the service fundamentally is, put it in `open_issues` as `needs_clarification` + `ai_proposal`. Add related requirement ids when the gap names them.
 - Each `gap_links` entry is already settled: put its gap id in `gap_ids` of the item that carries its linked requirement. Never turn it into an open issue.
 - Content nobody stated that a working demo needs: decide it with common service conventions as `proposed` + `ai_proposal`, with empty `requirement_ids` unless it details a listed requirement. Never contradict a reviewed requirement.
-- Platform constraints from the stack contract below (no real login, role switch, mocked integrations, persistent data with sample data, no sharing/export): `confirmed` + `harness_policy`, in `in_scope`, `out_of_scope` or `nfrs`, with empty links.
+- Platform constraints from the stack contract below (no real login, the specified role policy, mocked integrations, persistent data with sample data, no sharing/export): `confirmed` + `harness_policy`, in `in_scope`, `out_of_scope` or `nfrs`, with empty links.
 
 IDs: `SCOPE-`, `OUT-`, `ROLE-`, `US-`, `FR-`, `RULE-`, `NFR-`, `ISSUE-`, `AC-` followed by 3 digits, unique across the document.
 - `user_flows` are the main user scenarios. `functional_requirements` are individual features. `business_rules` say who may do what and how states change.

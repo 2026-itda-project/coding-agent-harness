@@ -84,7 +84,8 @@ def cmd_prd(args):
         "kind": "model_generated_fixture",
         "note": "Sonnet이 예시 입력 하나로 생성한 고정 PRD. 요구사항 루프(질문, Review 승인)를 거치지 않았다.",
         "generated_at": now(), "input_file": Path(args.input).name, "input_sha256": sha(user_input),
-        "prompt_sha256": sha(stages.prompt("prd_generation") + stages.prompt("stack_contract")),
+        "prompt_sha256": sha(stages.prompt("prd_generation") + "\n\n" + stages.prompt("stack_contract")
+                             + "\nPRD.policy must be legacy."),
         "prd_sha256": sha((out / "prd.json").read_text()), "calls": log,
         "contract_check": {"errors": check_generated_prd(prd)}})
     print(f"PRD saved to {out / 'prd.json'}; cost {sum(r.get('cost_usd') or 0 for r in log):.4f} USD")
@@ -123,6 +124,7 @@ def cmd_run(args):
                              "unknown_cost_records": sum(c is None for c in msg + agt)}
         dump(run_dir / "run.json", state)
 
+    save()  # status readers see the run from its first stage, not only after the first task
     prd = PRD.model_validate(load(art / "prd.json"))
     if check_prd(prd):
         raise SystemExit(f"input PRD fails the contract: {check_prd(prd)}")
@@ -132,15 +134,18 @@ def cmd_run(args):
             spec = stages.generate_spec(prd, log)
             dump(art / "spec.json", spec.model_dump())
             state["stages"]["spec"] = "done"
+            save()
         spec = Spec.model_validate(load(art / "spec.json"))
         if until >= 1 and not (art / "plan.json").exists():
             budget.reserve("opus", max_output=stages.OPUS_MAX_TOKENS)
             plan = stages.generate_plan(prd, spec, log)
             dump(art / "plan.json", plan.model_dump())
             state["stages"]["plan"] = "done"
+            save()
         if until >= 2:
             plan = Plan.model_validate(load(art / "plan.json"))
             state["task_order"] = order_tasks(plan)
+            save()
             tasks = {t.id: t for t in plan.tasks}
             for tid in state["task_order"]:
                 if state["tasks"].get(tid, {}).get("status") == "done":
@@ -169,7 +174,12 @@ def cmd_run(args):
                     raise SystemExit(f"{tid} failed; see {art / f'agent/{name}.json'}")
             state["stages"]["code"] = "done"
         if until >= 3:
-            result = verify.verify(app_dir, spec, f"harness-{state['run_id']}", keep_running=args.keep_running)
+            state["stages"].pop("verify", None)  # a resumed run checks the same code again
+            def progress(phase):  # lets a status reader tell building from checking
+                state["verify_phase"] = phase
+                save()
+            result = verify.verify(app_dir, spec, f"harness-{state['run_id']}", keep_running=args.keep_running,
+                                   progress=progress)
             dump(art / "verify.json", result)
             state["stages"]["verify"] = result["status"]
             print(f"verify: {result['status']} ({result.get('passed')}/{result.get('total')} checks)"

@@ -21,7 +21,7 @@ def analyze_requirements(request: AnalyzeRequest) -> AnalyzeResponse:
     if not request.text.strip():
         raise HTTPException(status_code=422, detail="text must not be blank")
     try:
-        return analyze(request.text)
+        return analyze(request.text, policy=request.policy)
     except AnalysisError as exc:
         logging.getLogger("uvicorn.error").warning("analysis_failed code=%s", exc.code)
         raise HTTPException(status_code=exc.status, detail={"code": exc.code, "message": exc.message}) from None
@@ -48,7 +48,7 @@ def clarification_step(request: ClarificationStepRequest) -> WorkflowState:
 def review(request: ReviewRequest) -> ReviewResponse:
     try:
         state, reviewed = review_step(request.state, request.action)
-    except ValueError as exc:
+    except (AnalysisError, ValueError) as exc:
         raise http_error(exc) from None
     return ReviewResponse(state=state, reviewed=reviewed)
 
@@ -78,6 +78,11 @@ def m2_call(fn, *args):
         raise HTTPException(status_code=409, detail={"code": "conflict", "message": str(exc)}) from None
     except (AnalysisError, ValueError) as exc:
         raise http_error(exc) from None
+
+
+@app.post("/api/m2/generate")
+def m2_generate(request: M2PRDRequest) -> dict:
+    return m2_call(web.start_generation, request.state)
 
 
 @app.post("/api/m2/prd")

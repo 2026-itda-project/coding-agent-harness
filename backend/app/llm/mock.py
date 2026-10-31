@@ -151,6 +151,10 @@ class MockProvider:
         return None
 
     def complete(self, stage, prompt, payload, output_type, model):
+        if stage in ("m2_clarification_plan", "m2_review_completion"):
+            from app.m2.requirements_mock import plan, complete_review
+            result = plan(payload) if stage == "m2_clarification_plan" else complete_review(payload)
+            return output_type.model_validate(result).model_dump_json(), None
         handlers = {
             "requirement_extraction": lambda: {"requirements": extract_requirements(payload["text"], payload["project_id"])},
             "gap_analysis": lambda: {"gaps": analyze_gaps([Requirement.model_validate(r) for r in payload["requirements"]])},

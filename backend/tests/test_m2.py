@@ -103,6 +103,18 @@ class ContractTest(unittest.TestCase):
                      "SCR-001 unknown role FR-001"):
             self.assertIn(part, errors)
 
+    def test_spec_keeps_acceptance_refs_separate_from_requirement_refs(self):
+        prd = PRD.model_validate(prd_data())
+        data = spec_data()
+        self.assertEqual(check_spec(Spec.model_validate(data), prd), [])
+        data["rule_implementations"][0]["requirement_ids"].append("AC-001")
+        self.assertEqual(check_spec(Spec.model_validate(data), prd),
+                         ["IMPL-001 requirement_ids invalid ['AC-001']"])
+        data = spec_data()
+        data["checks"][0]["ac_ids"].append("RULE-001")
+        self.assertEqual(check_spec(Spec.model_validate(data), prd),
+                         ["CHK-001 ac_ids invalid ['RULE-001']"])
+
     def test_plan_cycle_and_unknown_refs(self):
         spec = Spec.model_validate(spec_data())
         data = plan_data()
@@ -300,6 +312,16 @@ class WorkspaceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AgentCommandTest(unittest.TestCase):
+    def test_file_tools_are_requested_and_permissions_stay_scoped(self):
+        with patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5"}):
+            command = agent.agent_command("{}", 1.0)
+        tools = command[command.index("--tools") + 1].split(",")
+        self.assertEqual(sorted(tools), ["Bash", "Edit", "Read", "Write"])
+        allowed = command[command.index("--allowedTools") + 1:command.index("--output-format")]
+        self.assertEqual(allowed, ["Read(./**)", "Edit(./**)", f"Bash({agent.SANDBOX}:*)"])
 
 
 class VerifyJudgeTest(unittest.TestCase):
@@ -593,20 +615,22 @@ class SandboxTest(unittest.TestCase):
             {"id": c.id, "passed": True} for c in checks if c.http_steps]))
         return calls
 
-    def verify_with(self, cleanup=None, **docker):
+    def verify_with(self, cleanup=None, progress=lambda phase: None, **docker):
         with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
             calls = self.stub_docker(stack, cleanup, **docker)
             app = Path(tmp) / "run-t" / "app"
             (app / "data").mkdir(parents=True)
             (app / "data" / "app.db").write_text("rows the agent added while testing")
-            result = verify.verify(app, Spec.model_validate(spec_data()), "harness-run-t")
+            result = verify.verify(app, Spec.model_validate(spec_data()), "harness-run-t", progress=progress)
             result["data_left"] = (app / "data").exists()
             kept = app.parent / "data-before-verify" / "app.db"
             result["kept_text"] = kept.read_text() if kept.exists() else None
             return result, calls
 
     def test_verify_passes_and_records_environment_and_limits(self):
-        result, calls = self.verify_with()
+        phases = []
+        result, calls = self.verify_with(progress=phases.append)
+        self.assertEqual(phases, ["build", "check"])
         self.assertEqual(result["status"], "passed")
         self.assertIsNone(result["failure_stage"])
         self.assertEqual(result["environment"]["image_id"], "sha256:abc")
@@ -630,7 +654,9 @@ class SandboxTest(unittest.TestCase):
                  "restart failure": ({"restart": 1}, "checks_failed", "restart", "failed")}
         for name, (docker, status, stage, outcome) in cases.items():
             with self.subTest(name):
-                result, _ = self.verify_with(**docker)
+                phases = []
+                result, _ = self.verify_with(progress=phases.append, **docker)
+                self.assertEqual(phases, ["build"] if stage == "build" else ["build", "check"])
                 self.assertEqual((result["status"], result["failure_stage"]), (status, stage))
                 self.assertEqual(result["steps"][-1]["phase"], stage)
                 self.assertEqual(result["steps"][-1]["outcome"], outcome)
