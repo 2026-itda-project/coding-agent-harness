@@ -11,12 +11,13 @@ Opus 원인 분석의 변경 내역이다. 비교 기준은 PR A(`feat/m2-opus-v
 | `backend/app/m2/acceptance.py` | `diagnosis_payload`, `evidence_hash`, `attach_diagnosis`. 판정 함수는 그대로 |
 | `backend/app/m2/run.py` | `diagnose`, `cmd_diagnose`, `run diagnose`, `judge_run`의 진단 연결, 검증 뒤 자동 호출 |
 | `backend/app/prompts/m2_verification_diagnosis.md` | 진단 프롬프트 (신규) |
-| `backend/tests/test_m2_acceptance.py` | 진단 테스트 23개 추가 |
+| `backend/app/llm/claude.py` | `request_bytes`: 요청 크기 추정 |
+| `backend/tests/test_m2_acceptance.py` | 진단 테스트 25개 추가 |
 | `docs/m2/e2e-contract.md`, `docs/m2/review-runtime.md` | 진단 계약 |
 
 ## 달라지는 동작
 
-- Run의 첫 검증이 `build_failed`, `auto_failed`이면 Opus를 1회 호출한다. **Run 비용이 늘어난다.** 예약은 입력 60,000 토큰, 출력 16,000 토큰 기준 약 USD 0.56이다.
+- Run의 첫 검증이 `build_failed`, `auto_failed`이면 Opus를 1회 호출한다. **Run 비용이 늘어난다.** 예약은 요청 전체의 UTF-8 바이트 수를 입력 토큰 수로 보고 출력 16,000 토큰을 더해 계산하며, 요청 상한 100,000바이트에서 최대 약 USD 0.72다. 입력 토큰 수는 호출 전 추정치이므로 예약액이 실제 비용의 상한을 보장하지는 않는다.
 - 재검증(`--resume`, 웹 `retry`)은 호출하지 않는다. #24의 "빌드와 점검만 다시 한다"는 안내를 지키기 위한 결정이다. 재검증 뒤 진단은 `run diagnose`로 요청한다.
 - 진단이 거부·실패·예산 차단되어도 Run을 멈추지 않고, `final_status`와 `route`는 그대로다.
 - `diagnosis.status`의 `not_implemented`가 사라졌다. 진단 전 기본값은 `not_run`이다.
@@ -24,7 +25,7 @@ Opus 원인 분석의 변경 내역이다. 비교 기준은 PR A(`feat/m2-opus-v
 
 ## 검증
 
-- 오프라인 테스트 208개 통과(PR A 185개 + 새 23개). 테스트의 모델 호출은 모두 가짜로 대체했다.
+- 오프라인 테스트 211개 통과. 테스트의 모델 호출은 모두 가짜로 대체했다.
 - 실제 Opus 호출 기록은 [run-20261031-diagnosis-01](runs/run-20261031-diagnosis-01.md)에 있다.
 - **하지 않은 것:** Docker 실행, 실제 생성 앱에서의 진단.
 

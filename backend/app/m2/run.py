@@ -62,8 +62,8 @@ def read_json(path, unreadable=None):
         return unreadable
 
 
-# Characters of diagnosis input; never more tokens than this, so the reservation below holds.
-DIAGNOSIS_MAX_INPUT = 60000
+# Bytes of a whole diagnosis request (`stages.diagnosis_request_bytes`); a larger one is not sent.
+DIAGNOSIS_MAX_INPUT = 100000
 
 
 class ManualReviewRejected(ValueError):
@@ -102,9 +102,10 @@ def diagnose(run_dir, state, budget, requested=False):
     calls = len(log)
     result = {"status": "failed", "summary": None, "failures": [], "replan_scope": None, "error": None}
     try:
-        if len(json.dumps(payload, ensure_ascii=False)) > DIAGNOSIS_MAX_INPUT:  # the budget reserves this much
-            raise ValueError(f"input is larger than the {DIAGNOSIS_MAX_INPUT} reserved")
-        budget.reserve("opus", max_output=stages.DIAGNOSIS_MAX_TOKENS, max_input=DIAGNOSIS_MAX_INPUT)
+        size = stages.diagnosis_request_bytes(payload)
+        if size > DIAGNOSIS_MAX_INPUT:
+            raise ValueError(f"request of {size} bytes is over the {DIAGNOSIS_MAX_INPUT} limit")
+        budget.reserve("opus", max_output=stages.DIAGNOSIS_MAX_TOKENS, max_input=size)
         result.update(status="done", **stages.generate_diagnosis(payload, log).model_dump())
     except SystemExit as exc:  # the budget stops the CLI this way; here the verdict still stands
         result.update(status="budget_stopped", error=str(exc.code))

@@ -172,7 +172,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 - 출력: `summary`, `failures[]`(`stages`, `check_ids`, `ac_ids`, `category`, `root_cause`, `evidence`, `suspected_task_ids`, `fix_hint`), `replan_scope`(`task`·`plan`·`spec`·`environment`).
 - 검증(`check_diagnosis`): 참조는 입력에 있어야 한다. 실패 단계와 실패 점검을 모두 덮어야 하고, 실패하지 않은 단계는 넣을 수 없으며, 근거가 하나 이상 있어야 한다. 근거는 모델이 내용을 받은 항목(`evidence_index`)만 쓴다. 전체 diff는 입력에 없으므로 근거가 될 수 없다. 환경 실패면 `replan_scope`는 `environment`여야 한다. 코드가 앱 실패로 본 증거(`cause_ambiguous`도 아닌 경우)에는 `environment`를 쓸 수 없다. 거부된 출력은 `diagnosis.rejected.json`에 남기고 고쳐 쓰지 않는다.
 - 호출: 이 Run의 첫 검증(`verify.json`, `verify.previous.json`이 없을 때)이 `build_failed`, `auto_failed`이면 자동으로 1회 호출한다. `--resume`이나 웹 `retry`의 재검증은 호출하지 않는다. 재검증 뒤 진단, `manual_failed`와 `test_failed`, 실패한 진단의 재시도는 명시적 `run diagnose`로만 호출한다. 수동 기록 제출과 `run judge`, 상태 조회는 호출하지 않는다.
-- 예산: `stages.DIAGNOSIS_MAX_TOKENS`(16,000)와 입력 60,000자 상한으로 `Budget.reserve`를 한다. 입력이 상한을 넘으면 호출하지 않는다. 비용 미확인 기록이 있으면 호출하지 않는다.
+- 예산: 시스템 프롬프트, 스키마, 입력을 합친 요청의 UTF-8 바이트 수를 입력 토큰 수로 보고, 출력은 `stages.DIAGNOSIS_MAX_TOKENS`(16,000)로 `Budget.reserve`를 한다. 요청이 100,000바이트를 넘으면 호출하지 않는다. 비용 미확인 기록이 있으면 호출하지 않는다. 출력 비용은 `max_tokens`로 제한되지만 입력 토큰 수는 호출 전 추정치다. 따라서 예약액은 실제 비용의 상한이 아니며, 제공자 측 청구 한도도 아니다.
 - 기록: `artifacts/diagnosis.json`. `call`에 응답의 실제 모델 ID, usage, 비용이 있고 `run.json`의 `calls[]`에도 `stage: diagnosis`로 남는다.
 - 재호출 방지: `evidence_sha256`은 입력 해시다. 소요 시간은 입력에 없으므로 같은 코드를 재검증해 결과와 로그가 같으면 진단이 `done`으로 유지된다. 로그 내용이 달라지면 `stale`이 되고, `run diagnose`를 실행해야 다시 호출한다.
 

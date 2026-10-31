@@ -501,11 +501,27 @@ class DiagnosisTest(RunFiles):
         self.assertEqual(run.load(self.run_dir / "run.json")["calls"][0]["stage"], "diagnosis")
         self.assertEqual(self.calls[0]["max_tokens"], stages.DIAGNOSIS_MAX_TOKENS)
 
-    def test_reserves_with_the_diagnosis_token_cap(self):
+    def test_reserves_the_whole_request_and_the_diagnosis_token_cap(self):
         self.failed_check_run()
         with self.model_returning(), patch.object(run.Budget, "reserve") as reserve:
             self.run_diagnose()
-        reserve.assert_called_once_with("opus", max_output=16000, max_input=run.DIAGNOSIS_MAX_INPUT)
+        call = self.calls[0]
+        size = claude.request_bytes(call["system"], call["payload"], call["schema"])
+        self.assertGreater(size, len(json.dumps(call["payload"], ensure_ascii=False).encode()) + len(call["system"]))
+        reserve.assert_called_once_with("opus", max_output=16000, max_input=size)
+
+    def test_request_size_counts_system_schema_and_korean_as_bytes(self):
+        self.assertEqual(claude.request_bytes("시스템", {"a": "가"}, {"s": 1}),
+                         len("시스템".encode()) + len('{"s": 1}') + len('{"a": "가"}'.encode()))
+
+    def test_a_request_over_the_limit_is_not_sent_and_the_verdict_stands(self):
+        self.failed_check_run()
+        with self.model_returning(), patch.object(run, "DIAGNOSIS_MAX_INPUT", 100), self.assertRaises(SystemExit):
+            self.run_diagnose()
+        saved = self.saved()
+        self.assertEqual(self.calls, [])
+        self.assertEqual((saved["diagnosis"]["status"], saved["final_status"]), ("failed", "auto_failed"))
+        self.assertIn("over the 100 limit", run.load(self.art / "diagnosis.json")["error"])
 
     def test_input_has_the_evidence_for_the_failure(self):
         self.failed_check_run()

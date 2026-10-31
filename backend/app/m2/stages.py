@@ -76,6 +76,10 @@ def generate_plan(prd, spec, log):
                     lambda plan: check_plan(plan, spec), log, effort="high", max_tokens=OPUS_MAX_TOKENS)
 
 
+def diagnosis_request_bytes(context):
+    return claude.request_bytes(prompt("verification_diagnosis"), context, output_schema(Diagnosis))
+
+
 def generate_diagnosis(context, log):
     """Cause analysis of a verdict already made by code (`acceptance`). Nothing here can change it."""
     return generate("diagnosis", "opus", prompt("verification_diagnosis"), context, Diagnosis,
