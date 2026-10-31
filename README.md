@@ -35,7 +35,7 @@
 | 입력 | `AnalyzeRequest.text` 단일 문자열 | 목업 생성 중심 입력 항목(제안, 팀 컨펌 대기 — `docs/decisions/m2-development-direction.md` 3절). 필드 계약은 컨펌 후 #7·#8에서 구체화 |
 | 요구사항 루프 | Mock / SnowChat / Claude Sonnet, Gap 분석, 최대 3라운드 Clarification, 단순화한 검토 화면 | AI 기본값 우선, 핵심 질문 1라운드 |
 | PRD | 생성 버튼 뒤 내부에서 Review 결과 기반 Sonnet PRD 생성과 상태, 출처 검증(사용자에게 보이지 않음). M1 `/api/prd`는 API로만 남음 | 입력 양식 개편 |
-| M2 실행 | 검토 화면의 '생성' 버튼 하나로 PRD부터 Docker 점검까지 백그라운드 실행, 단계별 진행 표시, 완료 화면 미리보기, 새로고침 뒤 복구 ([review-runtime.md](docs/m2/review-runtime.md)) | Opus 검증, 재계획과 재시도, 지표 |
+| M2 실행 | 검토 화면의 '생성' 버튼 하나로 PRD부터 Docker 점검까지 백그라운드 실행, 단계별 진행 표시, 완료 화면 미리보기, 새로고침 뒤 복구 ([review-runtime.md](docs/m2/review-runtime.md)) | 재계획과 자동 재시도, 지표 |
 
 `backend/app/prd.py`는 `proposed`를 Assumptions로만 분류합니다. M2의 AI 기본값 본문 포함 정책은 아직 구현되지 않았습니다. 기존 non-blocking Gap 인계 한계([NL-to-PRD#17](https://github.com/2026-itda-project/NL-to-PRD/issues/17))는 `ReviewedRequirements.open_gaps`로 PRD Open Issues까지 전달하도록 보완했습니다.
 

@@ -15,7 +15,7 @@ Docker 샌드박스에서 빌드·실행 -> Spec의 HTTP 점검 -> 재시작 후
 
 - 모델 ID는 환경 변수 `SONNET_MODEL`, `OPUS_MODEL`에서만 읽는다. 다른 모델로 자동 대체하지 않는다.
 - "Opus가 조종하는 Sonnet"은 Opus가 쓴 Task별 `instructions`를 Sonnet Agent가 실행하는 구조다.
-- 자동 재시도, Opus 진단, 재계획(#10 후속, #11)은 포함하지 않는다. 실행 증거로 내리는 최종 판정은 [7절](#7-최종-판정-10)에 있다. 요구사항 루프와 UI 연결(#7, #8, #13 일부)은 이 문서가 아니라 [review-runtime.md](review-runtime.md)에서 다룬다.
+- 자동 재시도와 재계획(#11)은 포함하지 않는다. 실행 증거로 내리는 최종 판정과 Opus 원인 분석은 [7절](#7-최종-판정-10)에 있다. 요구사항 루프와 UI 연결(#7, #8, #13 일부)은 이 문서가 아니라 [review-runtime.md](review-runtime.md)에서 다룬다.
 
 ## 2. PRD 입력 계약 (E1)
 
@@ -115,7 +115,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 
 ## 7. 최종 판정 (#10)
 
-코드(`backend/app/m2/acceptance.py`)가 실행 증거로만 판정한다. 입력은 `verify.json`, PRD·Spec·Plan, `manual-review.json`, Task 기록이다. 모델 출력은 입력이 아니며, 이 단계에는 유료 호출이 없다. 결과는 `artifacts/verification.json`과 `run.json`의 `final_status`에 남는다. 원인 분석(Opus 진단)은 아직 구현하지 않았고 `diagnosis.status`는 `not_implemented`다.
+코드(`backend/app/m2/acceptance.py`)가 실행 증거로만 판정한다. 입력은 `verify.json`, PRD·Spec·Plan, `manual-review.json`, Task 기록이다. 모델 출력은 판정 입력이 아니다. 판정에는 유료 호출이 없고, 결과는 `artifacts/verification.json`과 `run.json`의 `final_status`에 남는다. 판정을 저장한 뒤 필요한 경우에만 Opus가 원인을 분석한다.
 
 ### `final_status` (위에서부터 처음 해당하는 값)
 
@@ -143,7 +143,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 | `acceptance[]` | AC별 `state`, `check_ids`, `task_ids` |
 | `tasks[]` | Task별 `agent_status`, `attempt`, `commit`, `check_ids`, `state`(점검이 없으면 `no_checks`), `diff` |
 | `evidence_refs` | `verify.json`, 서버 로그, 수동 기록 위치 |
-| `diagnosis` | 진단 자리. 지금은 `status: not_implemented` |
+| `diagnosis` | Opus 원인 분석. 아래 "Opus 진단" 참고 |
 | `handoff` | 재계획 인계. 아래 참고 |
 
 점검·AC·Task 상태는 가장 나쁜 값을 따른다: `no_evidence` > `auto_failed` > `manual_failed` > `not_run` > `manual_pending` > `manual_passed` > `auto_passed`.
@@ -164,9 +164,30 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 - `run --resume`: 검증을 다시 실행한다. 시작할 때 `verification.json`을 지우고 `verify.json`을 `verify.previous.json`으로 옮겨, 중단되어도 이전 판정이 남지 않는다. 중단된 Run은 `insufficient_evidence`다.
 - `verify.json`에 `code_commit`, `spec_sha256`이 추가되었다. 이전 기록에는 없으며, 그 기록에 대한 수동 제출은 거부된다.
 
+### Opus 진단
+
+판정을 설명할 뿐 바꾸지 못한다. 출력 계약(`contracts.Diagnosis`)에 판정 필드가 없고 정의되지 않은 필드는 거부한다.
+
+- 입력(`acceptance.diagnosis_payload`): 실패 목록, 미통과 AC, 단계 결과, 실패 단계의 출력 꼬리, 서버 로그 꼬리, 실패 점검 응답, 관련 Task의 지시·파일·`diff_stat`. 로그와 응답 본문은 생성 코드에서 온 데이터로 다룬다.
+- 출력: `summary`, `failures[]`(`stages`, `check_ids`, `ac_ids`, `category`, `root_cause`, `evidence`, `suspected_task_ids`, `fix_hint`), `replan_scope`(`task`·`plan`·`spec`·`environment`).
+- 검증(`check_diagnosis`): 참조는 입력에 있어야 한다. 실패 단계와 실패 점검을 모두 덮어야 하고, 실패하지 않은 단계는 넣을 수 없으며, 근거가 하나 이상 있어야 한다. 근거는 모델이 내용을 받은 항목(`evidence_index`)만 쓴다. 전체 diff는 입력에 없으므로 근거가 될 수 없다. 환경 실패면 `replan_scope`는 `environment`여야 한다. 코드가 앱 실패로 본 증거(`cause_ambiguous`도 아닌 경우)에는 `environment`를 쓸 수 없다. 거부된 출력은 `diagnosis.rejected.json`에 남기고 고쳐 쓰지 않는다.
+- 호출: 이 Run의 첫 검증(`verify.json`, `verify.previous.json`이 없을 때)이 `build_failed`, `auto_failed`이면 자동으로 1회 호출한다. `--resume`이나 웹 `retry`의 재검증은 호출하지 않는다. 재검증 뒤 진단, `manual_failed`와 `test_failed`, 실패한 진단의 재시도는 명시적 `run diagnose`로만 호출한다. 수동 기록 제출과 `run judge`, 상태 조회는 호출하지 않는다.
+- 예산: `stages.DIAGNOSIS_MAX_TOKENS`(16,000)와 입력 60,000자 상한으로 `Budget.reserve`를 한다. 입력이 상한을 넘으면 호출하지 않는다. 비용 미확인 기록이 있으면 호출하지 않는다.
+- 기록: `artifacts/diagnosis.json`. `call`에 응답의 실제 모델 ID, usage, 비용이 있고 `run.json`의 `calls[]`에도 `stage: diagnosis`로 남는다.
+- 재호출 방지: `evidence_sha256`은 입력 해시다. 소요 시간은 입력에 없으므로 같은 코드를 재검증해 결과와 로그가 같으면 진단이 `done`으로 유지된다. 로그 내용이 달라지면 `stale`이 되고, `run diagnose`를 실행해야 다시 호출한다.
+
+| `diagnosis.status` | 뜻 |
+| --- | --- |
+| `not_needed` | `passed`, `manual_pending`이라 분석할 실패가 없음 |
+| `skipped_environment` | `insufficient_evidence`. 자동 호출하지 않음. 실패 증거가 함께 있으면 `run diagnose` 가능 |
+| `not_run` | 진단 대상이지만 아직 호출하지 않음. 첫 검증이 환경 오류였고 재검증에서 앱 실패가 나온 경우 등 |
+| `stale` | 현재 증거로 만든 진단이 없음. 진단 뒤 증거가 바뀌었거나 수동 실패가 기록됨 |
+| `done` | 현재 증거로 만든 진단이 계약을 통과함 |
+| `rejected`, `failed`, `budget_stopped` | 계약 거부, 모델 호출 실패, 예산·비용 미확인 차단. `error`에 사유가 있으며 판정은 그대로다 |
+
 ### `handoff` (#11 인계)
 
-`final_status`, `route`, `cause_ambiguous`, `reasons`, `failures[]`, `suspected_task_ids`, `replan_scope`. `failures[]`는 코드가 만들며 항목은 `kind`(`build`·`start`·`restart`·`serve`·`serve_after_restart`·`auto_check`·`manual_step`), `check_id`, `ac_ids`, `task_ids`, `detail`, `evidence_ref`다. `task_ids`는 Plan의 `check_ids` 배정이며 원인 Task라는 뜻이 아니다. `suspected_task_ids`와 `replan_scope`는 Opus 진단이 채울 자리로 지금은 비어 있다.
+`final_status`, `route`, `cause_ambiguous`, `reasons`, `failures[]`, `suspected_task_ids`, `replan_scope`. `failures[]`는 코드가 만들며 항목은 `kind`(`build`·`start`·`restart`·`serve`·`serve_after_restart`·`auto_check`·`manual_step`), `check_id`, `ac_ids`, `task_ids`, `detail`, `evidence_ref`다. `task_ids`는 Plan의 `check_ids` 배정이며 원인 Task라는 뜻이 아니다. `suspected_task_ids`와 `replan_scope`는 현재 증거로 만든 진단이 `done`일 때만 값이 있고, 그 외에는 빈 배열과 `null`이다. `replan_scope`는 Opus의 제안이며 `route`는 바꾸지 못한다.
 
 ### 미결정
 
@@ -184,5 +205,6 @@ uv run --env-file ../.env python -m app.m2.run run --prd ../docs/m2/fixtures/lea
 uv run --env-file ../.env python -m app.m2.run run --resume <run dir>   # 실패 지점부터 이어 실행
 uv run python -m app.m2.run manual-review --run-dir <run dir> --input <review.json>   # 수동 확인 기록
 uv run python -m app.m2.run judge --run-dir <run dir>                    # 다시 판정 (Docker·모델 호출 없음)
+uv run --env-file ../.env python -m app.m2.run diagnose --run-dir <run dir>   # 원인 분석 (유료, Opus 1회)
 uv run python -m unittest discover -s tests                              # 오프라인 테스트
 ```
