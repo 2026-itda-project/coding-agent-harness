@@ -153,6 +153,42 @@ class SingleRoundTest(unittest.TestCase):
         self.assertFalse(changed.questions)
         validate_state(changed)
 
+    def test_role_decision_can_select_an_existing_related_role(self):
+        asked = pipeline.clarify_step(state('직원이 신청하고 관리자가 승인한다.'), provider=MockProvider())
+        question = next(q for q in asked.questions if q.gap_id.startswith('GAP-ROLE'))
+        role_gap = next(g for g in asked.gaps if g.id == question.gap_id)
+        chosen = next(r.id for r in asked.requirements if r.category == 'role' and r.id in role_gap.related_requirement_ids)
+
+        def keep_existing_role(draft):
+            decision = next(r for r in draft['requirements'] if r['id'] == draft['selected_role_id'])
+            decision['category'] = 'scope'
+            draft['selected_role_id'] = chosen
+            draft['out_of_scope_ids'].remove(chosen)
+
+        done = pipeline.clarify_step(asked, [Answer(gap_id=question.gap_id, answer='', decision='accept')],
+                                    RecordingMock(keep_existing_role))
+        validate_state(done)
+        self.assertEqual(done.selected_role_id, chosen)
+        self.assertEqual(next(r for r in done.requirements if r.id == chosen),
+                         next(r for r in asked.requirements if r.id == chosen))
+        resolution = next(l for l in done.gap_links if l.gap.id == question.gap_id)
+        decision = next(r for r in done.requirements if r.id == resolution.requirement_id)
+        self.assertEqual((decision.category, decision.description, decision.status, decision.source),
+                         ('scope', question.ai_proposal, 'confirmed', 'ai_proposal'))
+        self.assertNotEqual(decision.id, chosen)
+
+        # An unrelated role cannot replace the role referenced by the question.
+        unrelated = next(r for r in asked.requirements if r.id == chosen).model_copy(update={'id': 'REQ-999'})
+        asked.requirements.append(unrelated)
+        def select_unrelated(draft):
+            keep_existing_role(draft)
+            draft['selected_role_id'] = unrelated.id
+            draft['out_of_scope_ids'].remove(unrelated.id)
+            draft['out_of_scope_ids'].append(chosen)
+        with self.assertRaises(AnalysisError):
+            pipeline.clarify_step(asked, [Answer(gap_id=question.gap_id, answer='', decision='accept')],
+                                 RecordingMock(select_unrelated))
+
     def test_invalid_review_edit_is_rejected_before_model_call(self):
         done = pipeline.clarify_step(state('기록을 조회한다.'), provider=MockProvider())
         with patch.object(pipeline, 'get_provider') as provider, self.assertRaises(ValueError):
@@ -217,6 +253,23 @@ class SingleRoundTest(unittest.TestCase):
             ctx = build_context(plan.tasks[1], prd, spec, Path(tmp), {}, 'offline')
         self.assertIn('Exactly one primary', ctx['environment']['stack_contract'])
         self.assertEqual(ctx['environment']['roles'], [r.model_dump() for r in prd.roles])
+
+    def test_user_prohibition_is_preserved_as_a_constraint_not_an_unreviewed_exclusion(self):
+        from test_m2_web import prd_output, approved_state, item
+        reviewed = approve(approved_state())[1]
+        reviewed.policy = 'single_round_v1'
+        reviewed.selected_role_id = 'REQ-001'
+        reviewed.requirements[0].description = '직원'
+        restriction = reviewed.requirements[-1]
+        restriction.description = '알림 발송 기능은 만들지 않는다.'
+        restriction.status = 'confirmed'
+        data = prd_output(policy='single_round_v1', open_issues=[],
+                          nfrs=[{**item('NFR-001', ['REQ-007']), 'description': restriction.description}])
+        data['roles'][0]['description'] = '직원'
+        self.assertEqual(check_reviewed_prd(ReviewedPRD.model_validate(data), reviewed), [])
+        data['out_of_scope'] = [{**data['nfrs'].pop(), 'id': 'OUT-001'}]
+        self.assertIn('OUT-001: active requirement excluded without review',
+                      check_reviewed_prd(ReviewedPRD.model_validate(data), reviewed))
 
 
 if __name__ == '__main__': unittest.main()

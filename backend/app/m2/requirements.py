@@ -159,8 +159,12 @@ def finish_review(state, provider, role_override=None):
                 targets = {rid, *gaps[gid].related_requirement_ids}
                 if any(reqs[i].description == questions[gid].ai_proposal for i in targets):
                     raise ValueError("거절한 추천안을 다시 적용할 수 없습니다.")
-        role_decisions = [rid for gid, rid in resolutions.items() if gaps[gid].category == "user_role" and gid in questions]
-        if role_decisions and not role_override and draft.selected_role_id not in role_decisions:
+        role_gaps = [g for g in gaps.values() if g.category == "user_role" and g.id in questions]
+        # A role-choice decision may describe scope while selecting an existing role from the same gap.
+        role_choices = {resolutions[g.id] for g in role_gaps}
+        role_choices.update(rid for g in role_gaps for rid in g.related_requirement_ids
+                            if original[rid].category == "role")
+        if role_gaps and not role_override and draft.selected_role_id not in role_choices:
             raise ValueError("질문에서 정한 역할을 선택해야 합니다.")
         if role_override and draft.selected_role_id != role_override:
             raise ValueError("검토에서 수정한 역할을 변경할 수 없습니다.")

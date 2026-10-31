@@ -14,7 +14,7 @@
 
 ## 무료 검증
 
-- 백엔드 `uv run python -m unittest discover -s tests`: 최초 158개, 실제 API에서 발견한 스키마 호환 오류 수정 후 159개 통과. Mock, 임시 Git, 로컬 HTTP를 사용하며 실제 모델과 Docker를 호출하지 않는다.
+- 백엔드 `uv run python -m unittest discover -s tests`: 최초 158개, 실제 실행에서 발견한 스키마 호환·역할 참조·제약 배치 검증 보완 후 161개 통과. Mock, 임시 Git, 로컬 HTTP를 사용하며 실제 모델과 Docker를 호출하지 않는다.
 - 프론트 `npm run build`: TypeScript 검사와 Vite 빌드 통과.
 - Chromium `frontend/tests/user_flow_smoke.py`: 기존 검토·생성 요청·새로고침 복구·완료·비용 차단·재시도·Open Issue·홈 복귀 통과.
 - Chromium `frontend/tests/single_round_smoke.py`: 추천 일괄 수락·거절, 대안 없는 거절 차단, 질문·답변 제출, 중요한 AI 결정 수정, 역할 수정, 미수락 제안을 확정하지 않는 생성 요청 통과.
@@ -25,7 +25,7 @@
 
 여러 역할을 명시한 소규모 예약 서비스 한 건으로 질문·추천·주 역할 선택부터 PRD, Spec, Plan, 코딩, Docker 점검, 생성 앱 미리보기까지 확인한다. 비용 승인 전에는 실행하지 않는다. 실패 시 기록을 보존하고 추가 유료 재호출은 별도로 승인받는다.
 
-첫 실제 실행은 요구사항 추출·Gap 분석 후 질문 계획의 API 스키마 오류로 멈췄다. 원인·수정·비용과 미검증 범위는 [실제 실행 기록](run-20261031-single-round.md)에 남겼다. 수정본의 실제 E2E 검증은 아직 남아 있다.
+실제 실행에서 발견한 문제, 수정, 비용과 재개 범위는 [실제 실행 기록](run-20261031-single-round.md)에 남겼다. 수정본의 실제 E2E 검증은 진행 중이다.
 
 ## 후속 범위
 
