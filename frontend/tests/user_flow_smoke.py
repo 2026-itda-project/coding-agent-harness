@@ -18,10 +18,15 @@ status = dict(run_id=RUN, prd_id=RUN[4:], outcome='running', reason=None,
               preview_url=None, open_issues=[])
 requests = []
 unexpected = []
+reject_review = False
 state = dict(project_id='test', run_id='analysis', clarification_round=0,
              requirements=[dict(project_id='test', id='REQ-001', category='scope', description='예약 기간 미정',
                                 status='needs_clarification', source='initial_input', blocking=False,
-                                acceptance_criteria=[])],
+                                acceptance_criteria=[]),
+                           dict(project_id='test', id='REQ-002', category='functional', description='모임을 삭제할 수 있다',
+                                status='confirmed', source='initial_input', blocking=False, acceptance_criteria=['삭제 가능']),
+                           dict(project_id='test', id='REQ-003', category='functional', description='목록은 최신순으로 표시',
+                                status='proposed', source='ai_proposal', blocking=False, acceptance_criteria=[])],
              gaps=[], clarification_needed=False, analysis_mode='mock', usage=[],
              text='모임 관리 서비스', phase='review', questions=[], history=[], edit_count=0, gap_links=[])
 
@@ -35,6 +40,9 @@ def route_request(route):
         elif path == '/api/clarification/step':
             body = state
         elif path == '/api/review':
+            if reject_review:
+                route.fulfill(status=500, content_type='application/json', body=json.dumps({'detail': '저장 실패'}))
+                return
             payload = route.request.post_data_json
             updated = copy.deepcopy(payload['state'])
             action = payload['action']
@@ -79,6 +87,37 @@ with sync_playwright() as p:
     page.goto('http://harness.test/')
     page.get_by_role('textbox', name='서비스 설명').fill('모임 관리 서비스')
     page.get_by_role('button', name='시작하기', exact=True).click()
+    interpretation = page.locator('details.input-review')
+    original = interpretation.locator('li').filter(has_text='모임을 삭제할 수 있다')
+    expect(interpretation).to_be_visible()
+    expect(original).not_to_be_visible()
+    expect(page.get_by_role('button', name='생성', exact=True)).to_be_enabled()
+    interpretation.locator('summary').focus()
+    page.keyboard.press('Enter')
+    expect(original).to_be_visible()
+    interpretation.get_by_role('button', name='수정', exact=True).click()
+    page.get_by_role('textbox', name='요구사항 수정').fill('저장하지 않을 내용')
+    page.get_by_role('button', name='취소', exact=True).click()
+    expect(original).to_be_visible()
+    assert not any(path == '/api/review' for _, path, _ in requests)
+    interpretation.get_by_role('button', name='수정', exact=True).click()
+    page.get_by_role('textbox', name='요구사항 수정').fill('모임을 보관할 수 있다')
+    expect(page.get_by_role('button', name='생성', exact=True)).to_be_disabled()
+    reject_review = True
+    page.get_by_role('button', name='저장', exact=True).click()
+    expect(page.get_by_role('alert')).to_contain_text('저장 실패')
+    expect(page.get_by_role('textbox', name='요구사항 수정')).to_have_value('모임을 보관할 수 있다')
+    expect(original).to_be_visible()
+    reject_review = False
+    page.get_by_role('button', name='저장', exact=True).click()
+    corrected = page.locator('li').filter(has_text='모임을 보관할 수 있다')
+    expect(corrected).to_have_count(1)
+    expect(corrected).to_be_visible()
+    expect(interpretation).to_have_count(0)
+    corrected.get_by_role('button', name='수정', exact=True).click()
+    page.get_by_role('textbox', name='요구사항 수정').fill('종료한 모임만 보관할 수 있다')
+    page.get_by_role('button', name='저장', exact=True).click()
+    expect(page.locator('li').filter(has_text='종료한 모임만 보관할 수 있다')).to_be_visible()
     page.get_by_role('button', name='정하기', exact=True).click()
     page.locator('form.editor textarea').fill('일주일 전부터 예약')
     page.get_by_role('button', name='정하기', exact=True).click()
@@ -95,6 +134,9 @@ with sync_playwright() as p:
     generated = next(body for _, path, body in requests if path == '/api/m2/generate')
     assert generated['state']['requirements'][0]['source'] == 'initial_input'
     assert generated['state']['requirements'][0]['description'] == '이틀 전부터 예약'
+    updated = generated['state']['requirements'][1]
+    assert updated == {**state['requirements'][1], 'description': '종료한 모임만 보관할 수 있다'}
+    assert generated['state']['requirements'][2] == state['requirements'][2]
     page.reload()
     expect(page.get_by_role('heading', name='서비스를 만들고 있습니다')).to_be_visible()
     expect(page.get_by_role('button', name='Harness', exact=True)).to_be_disabled()
@@ -143,7 +185,17 @@ with sync_playwright() as p:
     page.get_by_role('button', name='홈으로', exact=True).click()
     expect(page.get_by_role('heading', name='어떤 서비스를 만들까요?')).to_be_visible()
     assert page.evaluate("localStorage.getItem('harness.currentRun')") is None
+    # The optional interpretation panel adds no approval or review request when skipped.
+    reviews_before = sum(path == '/api/review' for _, path, _ in requests)
+    page.get_by_role('textbox', name='서비스 설명').fill('모임 관리 서비스')
+    page.get_by_role('button', name='시작하기', exact=True).click()
+    expect(page.locator('details.input-review li').filter(has_text='모임을 삭제할 수 있다')).not_to_be_visible()
+    page.get_by_role('button', name='생성', exact=True).click()
+    expect(page.get_by_role('heading', name='생성이 완료되었습니다!')).to_be_visible()
+    assert sum(path == '/api/review' for _, path, _ in requests) == reviews_before
+    skipped = [body for _, path, body in requests if path == '/api/m2/generate'][-1]
+    assert skipped['state']['requirements'] == state['requirements']
     assert not errors, errors
     assert not unexpected, unexpected
     browser.close()
-print('PASS: input → review → generate, refresh/completion, manual-only, cost lock/recovery, retry, confirmation, home')
+print('PASS: optional input interpretation/edit/cancel/save failure/handoff/skip, input → review → generate, refresh/completion, manual-only, cost lock/recovery, retry, confirmation, home')

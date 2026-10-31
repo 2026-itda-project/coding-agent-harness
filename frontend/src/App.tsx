@@ -162,10 +162,11 @@ export default function App() {
   const editable = !loading && !draft
   const homeDisabled = !!loading || !!runId && (runOutcome === null || runOutcome === 'running')
 
-  // 검토 화면에는 사용자가 처음 입력한 내용을 다시 보여 주지 않는다. 질문 답변으로 정한 것, AI가 정한 것, 아직 정하지 않은 것만 보인다.
+  // 최초 입력의 해석은 필요한 경우에만 펼친다. 검토에서 수정한 항목은 '정한 내용'에 계속 보인다.
   const reqs = state?.requirements ?? []
   const decisions = reqs.filter(r => r.status === 'confirmed' && r.source !== 'ai_proposal'
     && (r.source === 'clarification_answer' || r.source === 'review_input' || editedIds.includes(r.id)))
+  const inputItems = reqs.filter(r => r.status === 'confirmed' && r.source === 'initial_input' && !editedIds.includes(r.id))
   const aiItems = reqs.filter(r => r.source === 'ai_proposal' && r.status !== 'needs_clarification')
   const undecided = reqs.filter(r => r.status === 'needs_clarification')
   const proposals = aiItems.filter(r => r.status === 'proposed')
@@ -179,7 +180,7 @@ export default function App() {
         if (!draft.description.trim()) { setError('내용을 입력해 주세요.'); return }
         review({ type: 'edit', id: r.id, description: draft.description.trim(), confirm: true })
       }}>
-        <textarea rows={2} value={draft.description} autoFocus
+        <textarea aria-label="요구사항 수정" rows={2} value={draft.description} autoFocus
           onChange={event => setDraft({ ...draft, description: event.target.value })} />
         <div className="row">
           <button disabled={!!loading}>{confirmLabel}</button>
@@ -251,6 +252,22 @@ export default function App() {
             {state.analysis_mode !== 'claude' && <p className="notice small">개발용 {state.analysis_mode} 분석 결과입니다.</p>}
             {state.history.every(round => round.questions.length === 0) && (
               <p className="notice small">추가로 확인할 질문이 없어 바로 검토로 넘어왔습니다.</p>
+            )}
+
+            {inputItems.length > 0 && (
+              <details className="input-review">
+                <summary>입력 내용이 어떻게 정리됐는지 보기</summary>
+                <p className="muted small">처음 입력하신 내용을 정리했습니다. 다르게 이해한 부분만 수정해 주세요. 모두 확인하지 않아도 생성할 수 있습니다.</p>
+                <ul className="items">{inputItems.map(r => (
+                  <li key={r.id}>
+                    {r.description}
+                    {editor(r, '저장') ?? (
+                      <button type="button" className="link" disabled={!editable}
+                        onClick={() => setDraft({ id: r.id, description: r.description })}>수정</button>
+                    )}
+                  </li>
+                ))}</ul>
+              </details>
             )}
 
             {decisions.length > 0 && (
