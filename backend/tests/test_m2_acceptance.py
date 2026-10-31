@@ -489,6 +489,23 @@ class WebStatusTest(RunFiles):
         run.submit_manual_review(self.run_dir, {"reviewer": "r", "items": [self.entry(verdict="fail")]})
         self.assertIn("사람 확인", self.status()["reason"])
 
+    def test_only_a_docker_failure_points_the_user_at_docker(self):
+        docker_step = {"status": "checks_failed", "steps": [{"phase": "build", "outcome": "docker_error", "exit_code": 125}]}
+        for changes in ({"status": "environment_error"}, {"status": "start_failed"}, docker_step):
+            with self.subTest(changes=changes):
+                self.write([AUTO], **changes)
+                status = self.status()
+                self.assertEqual(status["final_status"], "insufficient_evidence")
+                self.assertIn("Docker", status["reason"])
+        for changes in ({"status": "workspace_error"}, {"spec_sha256": "another spec"}, {"checks": []}):
+            with self.subTest(changes=changes):
+                self.write([AUTO], **changes)
+                status = self.status()
+                self.assertEqual(status["final_status"], "insufficient_evidence")
+                self.assertEqual(status["reason"], "점검 결과를 확인하지 못했습니다.")
+        (self.art / "verify.json").write_text("{damaged")
+        self.assertEqual(self.status()["reason"], "점검 결과를 확인하지 못했습니다.")
+
     def test_a_record_with_no_spec_keeps_the_old_status(self):
         run.dump(self.art / "verify.json", {"status": "manual_pending", "automatic_status": "passed"})
         (self.art / "manual-review.json").write_text("{}")  # no longer "done" just because a file exists
