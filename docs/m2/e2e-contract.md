@@ -174,7 +174,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 - 호출: 이 Run의 첫 검증(`verify.json`, `verify.previous.json`이 없을 때)이 `build_failed`, `auto_failed`이면 자동으로 1회 호출한다. `--resume`이나 웹 `retry`의 재검증은 호출하지 않는다. 재검증 뒤 진단, `manual_failed`와 `test_failed`, 실패한 진단의 재시도는 명시적 `run diagnose`로만 호출한다. 수동 기록 제출과 `run judge`, 상태 조회는 호출하지 않는다.
 - 예산: 시스템 프롬프트, 스키마, 입력을 합친 요청의 UTF-8 바이트 수를 입력 토큰 수로 보고, 출력은 `stages.DIAGNOSIS_MAX_TOKENS`(16,000)로 `Budget.reserve`를 한다. 요청이 100,000바이트를 넘으면 호출하지 않는다. 비용 미확인 기록이 있으면 호출하지 않는다. 출력 비용은 `max_tokens`로 제한되지만 입력 토큰 수는 호출 전 추정치다. 따라서 예약액은 실제 비용의 상한이 아니며, 제공자 측 청구 한도도 아니다.
 - 기록: `artifacts/diagnosis.json`. `call`에 응답의 실제 모델 ID, usage, 비용이 있고 `run.json`의 `calls[]`에도 `stage: diagnosis`로 남는다.
-- 재호출 방지: `evidence_sha256`은 입력 해시다. 소요 시간은 입력에 없으므로 같은 코드를 재검증해 결과와 로그가 같으면 진단이 `done`으로 유지된다. 로그 내용이 달라지면 `stale`이 되고, `run diagnose`를 실행해야 다시 호출한다.
+- 재호출 방지: `evidence_sha256`은 입력 해시다. 소요 시간은 입력에 없으므로 같은 코드를 재검증해 결과와 로그가 같으면 진단이 `done`으로 유지된다. 로그 내용이 달라지면 `stale`이 되고, `run diagnose`를 실행해야 다시 호출한다. 실제 앱의 서버 로그와 응답에는 임시 포트와 시각이 들어가므로, 재검증하면 보통 `stale`이 된다([실행 기록](runs/run-20261031-diagnosis-02.md)).
 
 | `diagnosis.status` | 뜻 |
 | --- | --- |

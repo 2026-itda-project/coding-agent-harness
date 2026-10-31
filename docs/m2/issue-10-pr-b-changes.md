@@ -27,13 +27,12 @@ Opus 원인 분석의 변경 내역이다. 비교 기준은 PR A(`feat/m2-opus-v
 
 - 오프라인 테스트 211개 통과. 테스트의 모델 호출은 모두 가짜로 대체했다.
 - 실제 Opus 호출 기록은 [run-20261031-diagnosis-01](runs/run-20261031-diagnosis-01.md)에 있다.
-- **하지 않은 것:** Docker 실행, 실제 생성 앱에서의 진단.
+- 실제 Docker와 생성 앱으로 성공 1건, 고의 실패 1건을 확인한 기록은 [run-20261031-diagnosis-02](runs/run-20261031-diagnosis-02.md)에 있다. macOS에서 실행했다.
+- **하지 않은 것:** WSL2 실행, 수동 확인까지 마친 `passed` 확인.
 
 ## 실제 실행에서 확인할 것
 
 - 실패가 많은 경우에도 `effort=high`에서 16,000 토큰이 충분한지. Spec은 생각 토큰만 26K를 쓴 기록이 있다. 잘리면 `incomplete_response`로 `failed`가 되고 판정은 유지된다.
-- 실제 생성 앱의 로그로 만든 응답이 `check_diagnosis`를 통과하는지.
-- 고의 실패 앱 1건과 성공 앱 1건의 결과를 `docs/m2/runs/`에 기록.
 
 ## 다른 PR과의 불일치 (미수정)
 

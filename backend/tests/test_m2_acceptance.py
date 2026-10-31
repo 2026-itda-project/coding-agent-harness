@@ -499,6 +499,7 @@ class DiagnosisTest(RunFiles):
                           saved["diagnosis"]["call"]["stage"]), ("claude-opus-5-5", 0.02, "diagnosis"))
         self.assertEqual((saved["handoff"]["replan_scope"], saved["handoff"]["suspected_task_ids"]), ("task", ["TASK-001"]))
         self.assertEqual(run.load(self.run_dir / "run.json")["calls"][0]["stage"], "diagnosis")
+        self.assertEqual(run.load(self.run_dir / "run.json")["cost_usd"]["messages_api"], 0.02)
         self.assertEqual(self.calls[0]["max_tokens"], stages.DIAGNOSIS_MAX_TOKENS)
 
     def test_reserves_the_whole_request_and_the_diagnosis_token_cap(self):

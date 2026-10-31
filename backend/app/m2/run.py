@@ -202,6 +202,14 @@ class Budget:
         self.check((max_input * incoming + max_output * outgoing) / 1_000_000, role)
 
 
+def cost_summary(log, attempts):
+    msg = [r.get("cost_usd") for r in log]
+    agt = [a["agent"].get("total_cost_usd") for a in attempts]
+    return {"messages_api": round(sum(c for c in msg if c is not None), 6),
+            "agent": round(sum(c for c in agt if c is not None), 6),
+            "unknown_cost_records": sum(c is None for c in msg + agt)}
+
+
 def cmd_prd(args):
     out = Path(args.out)
     user_input = Path(args.input).read_text()
@@ -249,11 +257,7 @@ def cmd_run(args):
     until = STAGES.index(args.until)
 
     def save():
-        msg = [r.get("cost_usd") for r in log]
-        agt = [a["agent"].get("total_cost_usd") for a in attempts]
-        state["cost_usd"] = {"messages_api": round(sum(c for c in msg if c is not None), 6),
-                             "agent": round(sum(c for c in agt if c is not None), 6),
-                             "unknown_cost_records": sum(c is None for c in msg + agt)}
+        state["cost_usd"] = cost_summary(log, attempts)
         dump(run_dir / "run.json", state)
 
     save()  # status readers see the run from its first stage, not only after the first task
@@ -385,7 +389,8 @@ def cmd_diagnose(args):
     try:
         verification = diagnose(run_dir, state, budget, requested=True)
     finally:
-        dump(run_dir / "run.json", {**state, "final_status": verification["final_status"], "updated_at": now()})
+        dump(run_dir / "run.json", {**state, "final_status": verification["final_status"],
+                                    "cost_usd": cost_summary(log, attempts), "updated_at": now()})
     status = verification["diagnosis"]["status"]
     if status != "done":
         raise SystemExit(f"diagnosis {status}: {verification['diagnosis'].get('error')}")
