@@ -55,6 +55,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .items li { padding: .75rem 0; border-bottom: 1px solid var(--line); }
 .items li:last-child { border-bottom: 0; }
 .editor { margin-top: .6rem; }
+.input-review { margin: 1rem 0; }
+.input-review summary { cursor: pointer; color: var(--primary); font-weight: 600; }
 .badge { margin-left: .5rem; padding: .1rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 600; background: var(--line); }
 .badge.ai { background: var(--ai-bg); color: var(--ai-text); }
 .badge.warn { background: var(--warn-bg); color: var(--warn-text); }
