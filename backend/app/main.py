@@ -100,6 +100,12 @@ def m2_run_status(run_id: str) -> dict:
     return m2_call(web.run_status, run_id)
 
 
+@app.post("/api/m2/runs/{run_id}/manual-review")
+def m2_manual_review(run_id: str, submission: dict) -> dict:
+    # A plain dict: the runner validates it, so refused input of any shape is kept in its rejected record.
+    return m2_call(web.record_manual_review, run_id, submission)
+
+
 @app.post("/api/m2/runs/{run_id}/preview/stop")
 def m2_stop_preview(run_id: str) -> dict:
     return m2_call(web.stop_preview, run_id)

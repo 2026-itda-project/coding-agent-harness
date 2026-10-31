@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.llm import claude
-from app.m2 import acceptance, agent, run, verify
+from app.m2 import acceptance, agent, run, verify, web
 from app.m2.contracts import PRD, Plan, Spec
 
 COMMIT, OTHER = "c" * 40, "d" * 40
@@ -436,6 +436,108 @@ class RunnerConnectionTest(RunFiles):
         with patch.object(verify, "verify", lambda *a, **k: make()):
             run.main(self.resume)
         self.assertEqual(run.load(self.art / "verification.json")["final_status"], "manual_pending")
+
+
+class WebStatusTest(RunFiles):
+    def setUp(self):
+        super().setUp()
+        for patcher in (patch.object(run, "WORKSPACE_ROOT", Path(self.tmp.name)),
+                        patch.object(web, "preview_running", lambda run_id: False)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.prd_id = "0123456789abcdef"
+        self.run_id = f"web-{self.prd_id}"
+        self.run_dir = Path(self.tmp.name) / self.run_id
+        self.art = self.run_dir / "artifacts"
+        self.addCleanup(web._threads.pop, self.run_id, None)
+        run.dump(self.run_dir / "web.json", {"status": "finished", "prd_id": self.prd_id, "started_at": "t"})
+
+    def status(self):
+        return web.run_status(self.run_id)
+
+    def test_outcome_table(self):
+        pass_mixed = review_of(stored("CHK-003", 0, "화면을 본다"))
+        fail_mixed = review_of(stored("CHK-003", 0, "화면을 본다", "fail"))
+        pass_manual = review_of(stored("CHK-002", 0, "화면을 본다"), stored("CHK-002", 1, "버튼을 누른다"))
+        cases = [([AUTO], {}, None, "passed", "auto_checks_passed", "not_required"),
+                 ([MIXED], {}, pass_mixed, "passed", "auto_checks_passed", "done"),
+                 ([MANUAL], {}, pass_manual, "passed", "manual_check_only", "done"),
+                 ([MIXED], {}, None, "manual_pending", "auto_checks_passed", "pending"),
+                 ([MANUAL], {}, None, "manual_pending", "manual_check_only", "pending"),
+                 ([MIXED], {}, fail_mixed, "manual_failed", "verification_failed", "failed"),
+                 ([MIXED], {}, {"old": True}, "manual_pending", "auto_checks_passed", "invalid"),
+                 ([AUTO], {"status": "checks_failed", "checks": [{"id": "CHK-001", "passed": False}]}, None,
+                  "auto_failed", "verification_failed", "not_required"),
+                 ([AUTO], {"status": "environment_error"}, None, "insufficient_evidence", "verification_failed", "not_required")]
+        for checks, changes, review, final, outcome, manual in cases:
+            with self.subTest(final=final, outcome=outcome, manual=manual):
+                self.write(checks, **changes)
+                (self.art / "manual-review.json").unlink(missing_ok=True)
+                if review:
+                    sha = run.sha((self.art / "spec.json").read_text())
+                    if "items" in review:
+                        review = {**review, "items": [{**i, "spec_sha256": sha} for i in review["items"]]}
+                    run.dump(self.art / "manual-review.json", review)
+                status = self.status()
+                self.assertEqual((status["final_status"], status["outcome"], status["manual_review"]), (final, outcome, manual))
+                self.assertEqual(status["verification"]["final_status"], final)
+
+    def test_reasons_tell_failures_apart(self):
+        self.write([AUTO], status="start_failed")
+        self.assertIn("Docker", self.status()["reason"])
+        self.write([MIXED])
+        run.submit_manual_review(self.run_dir, {"reviewer": "r", "items": [self.entry(verdict="fail")]})
+        self.assertIn("사람 확인", self.status()["reason"])
+
+    def test_a_record_with_no_spec_keeps_the_old_status(self):
+        run.dump(self.art / "verify.json", {"status": "manual_pending", "automatic_status": "passed"})
+        (self.art / "manual-review.json").write_text("{}")  # no longer "done" just because a file exists
+        status = self.status()
+        self.assertEqual((status["final_status"], status["outcome"], status["manual_review"]),
+                         (None, "auto_checks_passed", "pending"))
+
+    def test_no_verdict_while_running_or_before_verification(self):
+        self.write([AUTO])
+        run.dump(self.run_dir / "web.json", {"status": "running", "prd_id": self.prd_id, "started_at": "t"})
+        with patch.object(web, "_threads", {self.run_id: type("Alive", (), {"is_alive": lambda s: True})()}):
+            self.assertEqual(self.status()["final_status"], None)
+        run.dump(self.run_dir / "web.json", {"status": "failed", "prd_id": self.prd_id, "started_at": "t", "error": "TASK-001 failed"})
+        (self.art / "verify.json").unlink()
+        run.dump(self.run_dir / "run.json", {"stages": {"code": "failed at TASK-001"}, "tasks": {}})
+        self.assertEqual(self.status()["final_status"], None)
+
+    def test_interrupted_during_verification_has_no_evidence(self):
+        self.write([AUTO])
+        run.dump(self.run_dir / "web.json", {"status": "interrupted", "prd_id": self.prd_id, "started_at": "t"})
+        (self.art / "verify.json").unlink()
+        status = self.status()
+        self.assertEqual((status["outcome"], status["final_status"]), ("interrupted", "insufficient_evidence"))
+
+    def test_damaged_verify_record_is_reported_not_raised(self):
+        self.write([AUTO])
+        (self.art / "verify.json").write_text("{damaged")
+        status = self.status()
+        self.assertEqual((status["final_status"], status["outcome"], status["verify"]),
+                         ("insufficient_evidence", "verification_failed", None))
+
+    def test_api_records_a_review_and_refuses_bad_input(self):
+        from fastapi import HTTPException
+
+        from app import main
+        self.write([MIXED])
+        status = main.m2_manual_review(self.run_id, {"reviewer": "r", "items": [self.entry()]})
+        self.assertEqual((status["final_status"], status["manual_review"]), ("passed", "done"))
+        with self.assertRaises(HTTPException) as refused:
+            main.m2_manual_review(self.run_id, {"reviewer": "r", "items": [self.entry(evidence_text="")]})
+        self.assertEqual(refused.exception.status_code, 422)
+        self.assertTrue((self.art / "manual-review.rejected.json").exists())
+        with patch.object(web, "_threads", {self.run_id: type("Alive", (), {"is_alive": lambda s: True})()}), \
+                self.assertRaises(HTTPException) as busy:
+            main.m2_manual_review(self.run_id, {"reviewer": "r", "items": [self.entry()]})
+        self.assertEqual(busy.exception.status_code, 409)
+        with self.assertRaises(HTTPException) as unknown:
+            main.m2_manual_review("web-ffffffffffffffff", {"reviewer": "r", "items": []})
+        self.assertEqual(unknown.exception.status_code, 422)
 
 
 if __name__ == "__main__":
