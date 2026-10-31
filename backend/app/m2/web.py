@@ -249,14 +249,22 @@ def cost_review_needed(prd_id):
             or costs(read(run_dir(f"web-{prd_id}") / "run.json", {}))["unknown_cost_records"] > 0)
 
 
+def docker_failed(verification):
+    """verify.json itself shows Docker stopped the verification. Other missing evidence says nothing about Docker."""
+    verification = verification or {}
+    return (verification.get("status") in ("environment_error", "start_failed")
+            or any(s.get("outcome") == "docker_error" for s in verification.get("steps") or []))
+
+
 def reason_for(outcome, error, verification=None, final_status=None):
     """Short user-facing reason. The raw error (paths, codes) stays in `error` and web.json."""
     error = error or ""
     if outcome == "interrupted":
         return "서버가 다시 시작되어 생성이 멈췄습니다."
-    if "sandbox cleanup failed" in error or (outcome == "verification_failed" and (
-            final_status == "insufficient_evidence" or (verification and verification.get("status") == "environment_error"))):
+    if "sandbox cleanup failed" in error or (outcome == "verification_failed" and docker_failed(verification)):
         return "실행 환경을 준비하지 못했습니다. Docker 실행 상태와 샌드박스 설정을 확인한 뒤 다시 시도해 주세요."
+    if outcome == "verification_failed" and final_status == "insufficient_evidence":
+        return "점검 결과를 확인하지 못했습니다."
     if outcome == "verification_failed" and final_status == "manual_failed":
         return "사람 확인에서 실패한 항목이 있습니다."
     if outcome == "verification_failed":
