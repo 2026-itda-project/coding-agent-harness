@@ -117,7 +117,8 @@ def free_port():
         return s.getsockname()[1]
 
 
-def verify(app_dir, spec, name, keep_running=False):
+def verify(app_dir, spec, name, keep_running=False, progress=lambda phase: None):
+    progress("build")
     record = {"steps": [], "checks": [], "checks_after_restart": [],
               "root_status": None, "root_status_after_restart": None, "environment": environment()}
     if "error" in record["environment"]:
@@ -139,6 +140,7 @@ def verify(app_dir, spec, name, keep_running=False):
         if step(record, "build", [SANDBOX, BUILD], record["environment"]["sandbox_timeout_s"] + 60,
                 cwd=app_dir, env=env) != "ok":
             return stopped(record, spec, "build_failed", "build")
+        progress("check")
         port = free_port()
         base = f"http://127.0.0.1:{port}"
         uid = f"{os.getuid()}:{os.getgid()}"

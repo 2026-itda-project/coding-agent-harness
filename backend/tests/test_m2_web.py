@@ -16,8 +16,8 @@ from fastapi import HTTPException
 from app import pipeline
 from app.llm import claude
 from app.llm.errors import AnalysisError
-from app.m2 import run, stages, web
-from app.m2.contracts import ReviewedPRD, check_reviewed_prd
+from app.m2 import agent, run, stages, verify, web
+from app.m2.contracts import Plan, ReviewedPRD, Spec, check_reviewed_prd
 from app import main
 from app.schemas import (Answer, ClarificationQuestion, ClarificationRound, Gap, GapLink, ProposalConversion, Requirement,
                          WorkflowState)
@@ -79,6 +79,25 @@ def prd_output(**changes):
             "open_issues": [item("ISSUE-001", ["REQ-007"], status="needs_clarification")]}
     data.update(changes)
     return data
+
+
+def spec_data():
+    """A minimal valid Spec for the PRD above (one API, one automatic check)."""
+    step = {"method": "GET", "path": "/api/rooms", "role_header": "", "body_json": "", "expect_status": 200,
+            "expect_contains": []}
+    return {"screens": [], "data_models": [], "permissions": [], "mock_integrations": [], "rule_implementations": [],
+            "apis": [{"id": "API-001", "method": "GET", "path": "/api/rooms", "description": "목록",
+                      "request": "", "response": "[]", "requirement_ids": ["FR-001"]}],
+            "checks": [{"id": "CHK-001", "ac_ids": ["AC-001"], "description": "목록", "http_steps": [step],
+                        "rerun_after_restart": False, "manual_steps": []}]}
+
+
+def plan_data():
+    task = {"feature_id": "FEAT-001", "title": "t", "instructions": "do", "spec_ids": ["API-001"],
+            "files": ["backend/main.py"], "acceptance": ["ok"], "check_ids": []}
+    return {"features": [{"id": "FEAT-001", "name": "f", "spec_ids": ["API-001"]}],
+            "tasks": [{**task, "id": "TASK-002", "depends_on": ["TASK-001"], "check_ids": ["CHK-001"]},
+                      {**task, "id": "TASK-001", "depends_on": []}]}
 
 
 def handoff():
@@ -282,6 +301,7 @@ class Result:
 class Client:
     """Calls the FastAPI route functions directly (no HTTP client dependency), keeping their status codes."""
     routes = {("POST", "/api/m2/prd"): (main.m2_prd, main.M2PRDRequest),
+              ("POST", "/api/m2/generate"): (main.m2_generate, main.M2PRDRequest),
               ("POST", "/api/m2/runs"): (main.m2_start_run, main.M2RunRequest)}
 
     def call(self, fn, *args):
@@ -298,7 +318,7 @@ class Client:
         return self.call(main.m2_run_status, path.rsplit("/", 1)[1])
 
 
-class WebFlowTest(unittest.TestCase):
+class WebBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -323,6 +343,9 @@ class WebFlowTest(unittest.TestCase):
         with self.fake_complete(output or prd_output()):
             return self.client.post("/api/m2/prd", json={"state": approved_state().model_dump()})
 
+
+
+class WebFlowTest(WebBase):
     def test_same_approved_state_reuses_the_prd(self):
         first = self.make_prd().json()
         second = self.make_prd().json()
@@ -396,6 +419,7 @@ class WebFlowTest(unittest.TestCase):
                     self.assertEqual(run.load(web.run_dir(run_id) / "web.json"), before)
                     status = self.client.get(f"/api/m2/runs/{run_id}").json()
                     self.assertEqual(status["cost_usd"]["unknown_cost_records"], 1)
+                    self.assertTrue(status["requires_cost_review"])
                     for call in record["calls"]:
                         call["cost_usd"] = 0.12
                     for attempt in record["attempts"]:
@@ -527,6 +551,187 @@ class WebFlowTest(unittest.TestCase):
         for bad in ("../../etc", "web-xyz", "web-../../a"):
             self.assertEqual(self.client.get(f"/api/m2/runs/{bad}").status_code in (404, 422), True)
         self.assertEqual(self.client.post("/api/m2/runs", json={"prd_id": "../x"}).status_code, 422)
+
+
+class GenerateFlowTest(WebBase):
+    """The single generate button: Review state -> PRD -> runner in one request."""
+
+    def generate(self, state=None, output=None, fake_main=lambda argv: None):
+        state = state or approved_state().model_copy(update={"phase": "review"})
+        with self.fake_complete(output or prd_output()), patch.object(run, "main", fake_main):
+            response = self.client.post("/api/m2/generate", json={"state": state.model_dump()})
+            if response.status_code == 200:
+                web._threads[response.json()["run_id"]].join(5)
+        return response
+
+    def status(self, run_id):
+        with patch.object(web, "preview_running", lambda run_id: False):
+            return self.client.get(f"/api/m2/runs/{run_id}").json()
+
+    def test_prd_interruption_requires_cost_review_before_retry(self):
+        state = approved_state().model_copy(update={"phase": "review"})
+        def interrupted(*args, **kwargs):
+            args[4].append({"cost_usd": None})
+            raise AnalysisError("gateway_error", "Claude API 응답 중단")
+        with patch.object(claude, "complete", interrupted):
+            response = self.client.post("/api/m2/generate", json={"state": state.model_dump()})
+            run_id = response.json()["run_id"]
+            web._threads[run_id].join(5)
+        status = self.status(run_id)
+        self.assertTrue(status["requires_cost_review"])
+        self.assertEqual(status["outcome"], "failed")
+        before = run.load(web.run_dir(run_id) / "web.json")
+        with patch.object(claude, "complete") as model:
+            retried = self.client.post("/api/m2/runs", json={"prd_id": run_id[4:], "retry": True})
+            self.assertEqual(retried.status_code, 409)
+            model.assert_not_called()
+        self.assertEqual(run.load(web.run_dir(run_id) / "web.json"), before)
+
+    def test_one_request_makes_the_prd_and_waits_on_open_issues(self):
+        seen = []
+        first = self.generate(fake_main=seen.append).json()
+        run_id = first["run_id"]
+        status = self.status(run_id)
+        self.assertEqual((first["created"], status["outcome"], self.calls, seen), (True, "awaiting_confirmation", 1, []))
+        self.assertEqual(status["open_issues"], ["ISSUE-001 설명"])
+        saved = run.load(web.prd_dir(run_id[4:]) / "state.json")  # input, answers and review stay with the service
+        self.assertEqual((saved["text"], saved["phase"], saved["history"][0]["answers"][0]["answer"]),
+                         ("회의실 예약 서비스를 1시간 단위로 만들어줘", "approved", "승인 없이 바로 확정해 주세요"))
+        again = self.generate(fake_main=seen.append).json()
+        self.assertEqual((again["created"], self.calls), (False, 1))  # resent request: no second paid call
+
+        with patch.object(run, "main", seen.append):
+            confirmed = self.client.post("/api/m2/runs", json={"prd_id": run_id[4:], "confirm_open_issues": True})
+            web._threads[run_id].join(5)
+        self.assertEqual((confirmed.status_code, seen[0][1]), (200, "--prd"))
+        web_json = run.load(web.run_dir(run_id) / "web.json")
+        self.assertEqual((web_json["status"], web_json["open_issues_confirmed"]), ("finished", True))
+
+    def test_without_open_issues_the_runner_starts_right_away(self):
+        seen = []
+        state, output, _ = self.no_open_issue_case()
+        run_id = self.generate(state, output, seen.append).json()["run_id"]
+        self.assertEqual((len(seen), seen[0][seen[0].index("--run-id") + 1]), (1, run_id))
+        self.assertEqual(run.load(web.run_dir(run_id) / "web.json")["stage"], "run")
+
+    def test_rejected_prd_fails_and_retry_redoes_only_that_step(self):
+        run_id = self.generate(output=prd_output(roles=[])).json()["run_id"]
+        status = self.status(run_id)
+        self.assertEqual((status["outcome"], status["current_stage"]), ("failed", None))
+        self.assertIn("검증을 통과하지 못했습니다", status["error"])
+        self.assertEqual(status["reason"], "AI가 만든 설계가 검증을 통과하지 못했습니다.")
+        with self.fake_complete(prd_output()):
+            self.client.post("/api/m2/runs", json={"prd_id": run_id[4:], "retry": True})
+            web._threads[run_id].join(5)
+        self.assertEqual((self.status(run_id)["outcome"], self.calls), ("awaiting_confirmation", 2))
+
+    def test_progress_comes_from_the_run_records(self):
+        run_id = self.generate().json()["run_id"]
+        target = web.run_dir(run_id)
+        run.dump(target / "web.json", {**run.load(target / "web.json"), "status": "running", "stage": "prd"})
+        web._threads[run_id] = type("Alive", (), {"is_alive": lambda self: True})()
+        self.assertEqual(self.status(run_id)["current_stage"], "prd")
+        run.dump(target / "web.json", {**run.load(target / "web.json"), "stage": "run"})
+        run.dump(target / "run.json", {"stages": {"spec": "done", "plan": "done"}, "task_order": ["T1", "T2"],
+                                       "tasks": {"T1": {"title": "a", "status": "done", "agent": {}}}})
+        status = self.status(run_id)
+        self.assertEqual((status["current_stage"], len(status["tasks"]), len(status["task_order"])), ("code", 1, 2))
+        run.dump(target / "run.json", {"stages": {"spec": "done", "plan": "done", "code": "done"},
+                                       "verify_phase": "check"})
+        self.assertEqual(self.status(run_id)["current_stage"], "check")
+        run.dump(target / "run.json", {"stages": {"spec": "done", "plan": "done", "code": "failed at T1"}})
+        self.assertEqual(self.status(run_id)["current_stage"], "code")  # resumed after a failed task
+        web._threads.pop(run_id)
+
+    def no_open_issue_case(self):
+        state = approved_state()
+        state.requirements[-1] = state.requirements[-1].model_copy(update={"status": "confirmed", "description": "반복 예약은 없다."})
+        output = prd_output(open_issues=[])
+        output["functional_requirements"].append(item("FR-007", ["REQ-007"]))
+        output["acceptance_criteria"].append({"id": "AC-007", "description": "된다", "target_ids": ["FR-007"]})
+        return state, output, f"web-{web.prd_id_of(state)}"
+
+    def test_the_real_runner_reports_each_stage_while_it_runs(self):
+        state, output, run_id = self.no_open_issue_case()
+        seen = {}
+        stage = lambda: web.run_status(run_id)["current_stage"]
+
+        def task(task, context, app_dir, budget):
+            seen.setdefault("code", (stage(), web.run_status(run_id)["task_order"]))
+            base = agent.git(app_dir, "rev-parse", "HEAD").strip()
+            agent.git(app_dir, "commit", "-q", "--allow-empty", "-m", task.id)
+            return {"task_id": task.id, "title": task.title, "status": "done", "base_commit": base,
+                    "commit": agent.git(app_dir, "rev-parse", "HEAD").strip(), "files": [], "agent": {"total_cost_usd": 0.1}}
+
+        def check(app_dir, spec, name, keep_running=False, progress=None):
+            progress("build")
+            seen["build"] = stage()
+            progress("check")
+            seen["check"] = stage()
+            return {"status": "passed", "automatic_status": "passed", "passed": 1, "total": 1, "failures": [],
+                    "preview_url": None}
+
+        real_main = run.main
+        with patch.object(stages, "generate_spec", lambda prd, log: (seen.setdefault("spec", stage()), Spec.model_validate(spec_data()))[1]), \
+                patch.object(stages, "generate_plan", lambda prd, spec, log: (seen.setdefault("plan", stage()), Plan.model_validate(plan_data()))[1]), \
+                patch.object(agent, "run_task", task), patch.object(verify, "verify", check), \
+                patch.object(web, "preview_running", lambda run_id: False):
+            self.generate(state, output, real_main)
+        self.assertEqual(seen, {"spec": "spec", "plan": "plan", "code": ("code", ["TASK-001", "TASK-002"]),
+                                "build": "build", "check": "check"})
+        self.assertEqual(self.status(run_id)["outcome"], "auto_checks_passed")
+
+    def test_failed_build_can_be_checked_again_without_regenerating(self):
+        state, output, run_id = self.no_open_issue_case()
+        results = iter([{"status": "build_failed", "failures": []},
+                        {"status": "passed", "automatic_status": "passed", "passed": 1, "total": 1, "failures": []}])
+
+        def finished_run(argv):
+            target = web.run_dir(run_id)
+            run.dump(target / "run.json", {"stages": {"spec": "done", "plan": "done", "code": "done"}})
+            run.dump(target / "artifacts/verify.json", next(results))
+
+        self.generate(state, output, finished_run)
+        self.assertEqual(self.status(run_id)["outcome"], "verification_failed")
+        seen = []
+        with patch.object(run, "main", lambda argv: (seen.append(argv), finished_run(argv))):
+            self.client.post("/api/m2/runs", json={"prd_id": run_id[4:], "retry": True})
+            web._threads[run_id].join(5)
+        self.assertEqual((seen[0][1], self.calls), ("--resume", 1))  # same code, no new model call
+        self.assertEqual(self.status(run_id)["outcome"], "auto_checks_passed")
+
+    def test_environment_failures_are_not_reported_as_generated_app_failures(self):
+        run_id = self.generate().json()["run_id"]
+        target = web.run_dir(run_id)
+        original = run.load(target / "web.json")
+        cases = [
+            ("failed", "sandbox cleanup failed before TASK-001: private/path", None, True),
+            ("finished", None, {"status": "environment_error"}, True),
+            ("finished", None, {"status": "build_failed"}, False),
+            # An old verification failure must not hide a new model-call failure on retry.
+            ("failed", "Claude API failed", {"status": "environment_error"}, False),
+        ]
+        for status, error, verification, is_environment in cases:
+            with self.subTest(status=status, error=error, verification=verification):
+                run.dump(target / "web.json", {**original, "status": status, "error": error})
+                run.dump(target / "artifacts/verify.json", verification)
+                result = self.status(run_id)
+                self.assertEqual("Docker" in result["reason"], is_environment)
+                self.assertNotIn("private/path", result["reason"])
+                self.assertEqual(result["error"], error)
+                if status == "finished" and not is_environment:
+                    self.assertIn("빌드 또는 최종 점검", result["reason"])
+
+    def test_another_service_cannot_start_while_one_runs(self):
+        release = threading.Event()
+        state = approved_state().model_copy(update={"phase": "review"})
+        with self.fake_complete(prd_output()), patch.object(run, "main", lambda argv: release.wait(5)):
+            first = self.client.post("/api/m2/generate", json={"state": state.model_dump()}).json()
+            other = state.model_copy(update={"run_id": "analysis-2"})
+            busy = self.client.post("/api/m2/generate", json={"state": other.model_dump()})
+            release.set()
+            web._threads[first["run_id"]].join(5)
+        self.assertEqual(busy.status_code, 409)
 
 
 if __name__ == "__main__":

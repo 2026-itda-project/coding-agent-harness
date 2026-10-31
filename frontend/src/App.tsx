@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { post } from './api'
-import M2Panel from './M2Panel'
+import Generation, { type RunStatus } from './Generation'
 
-const MAX_ROUNDS = 3
+// 생성 중인 Run을 가리키는 브라우저 메모. 실제 진행 상태와 산출물은 서버에 저장되어 있어 새로고침 뒤 여기서 다시 불러온다.
+const RUN_KEY = 'harness.currentRun'
 
 type Requirement = {
   project_id: string
@@ -38,20 +39,9 @@ type Analysis = {
   usage: Record<string, unknown>[]
 }
 
-type ClarificationQuestion = {
-  gap_id: string
-  question: string
-  ai_proposal: string // 질문 단계에서는 표시하지 않는다
-}
-
+type ClarificationQuestion = { gap_id: string; question: string; ai_proposal: string }
 type Answer = { gap_id: string; answer: string }
-
-type ClarificationRound = {
-  round: number
-  gaps: Gap[]
-  questions: ClarificationQuestion[]
-  answers: Answer[]
-}
+type ClarificationRound = { round: number; gaps: Gap[]; questions: ClarificationQuestion[]; answers: Answer[] }
 
 export type WorkflowState = Analysis & {
   text: string
@@ -63,116 +53,68 @@ export type WorkflowState = Analysis & {
   proposal_conversions?: ProposalConversion[]
 }
 
-// backend RequirementCategory와 같은 값
-const CATEGORIES = ['role', 'functional', 'flow', 'permission', 'state', 'business_rule', 'exception', 'scope', 'integration', 'nfr']
-// source는 내용의 출처다. 수락해도 바뀌지 않으므로 Confirmed의 'AI 제안' = AI가 제안하고 사용자가 수락한 항목
-const SOURCE_LABELS: Record<string, string> = {
-  initial_input: '최초 입력', clarification_answer: '질문 답변', ai_proposal: 'AI 제안', review_input: 'Review 추가',
-}
-const MODE_LABELS = {
-  mock: 'Mock 분석 결과 · 규칙 기반 시연', snowchat: 'SnowChat LLM 분석 결과', claude: 'Claude Sonnet 분석 결과',
-} as const
-const GROUPS = [
-  ['Confirmed Requirements', 'confirmed'],
-  ['Needs Clarification', 'needs_clarification'],
-  ['AI Proposals', 'proposed'],
-] as const
-
 type ReviewAction =
   | { type: 'accept'; ids: string[] }
-  | { type: 'edit'; id: string; description: string; category: string; acceptance_criteria: string[]; confirm: boolean }
-  | { type: 'add'; category: string; description: string; acceptance_criteria: string[] }
-  | { type: 'resolve_gap'; gap_id: string; category?: string; description: string; acceptance_criteria: string[] }
-  | { type: 'link_gap'; gap_ids: string[] }
-  | { type: 'unlink_gap'; gap_id: string }
-  | { type: 'approve' }
+  | { type: 'edit'; id: string; description: string; confirm: boolean }
 
-type ReviewedRequirements = {
-  project_id: string
-  run_id: string
-  requirements: Requirement[]
-  open_gaps: Gap[]
-  gap_links: GapLink[]
-  proposal_conversions?: ProposalConversion[]
-  metrics: Record<string, number>
+const STEPS = ['요구사항 입력', '질문', '검토', '생성', '완료'] as const
+
+function storedRun() {
+  try { return localStorage.getItem(RUN_KEY) } catch { return null }
 }
 
-type PRDItem = { id: string; description: string; source_requirement_ids: string[]; source_gap_ids?: string[] }
-
-type PRD = {
-  project_id: string
-  run_id: string
-  overview: { summary: string; problem: string; goals: string[] }
-  in_scope: PRDItem[]
-  out_of_scope: PRDItem[]
-  roles: PRDItem[]
-  user_flows: PRDItem[]
-  functional_requirements: PRDItem[]
-  business_rules: PRDItem[]
-  nfrs: PRDItem[]
-  acceptance_criteria: (PRDItem & { target_id: string })[]
-  assumptions: PRDItem[]
-  open_issues: PRDItem[]
+function rememberRun(runId: string | null) {
+  try {
+    if (runId) localStorage.setItem(RUN_KEY, runId)
+    else localStorage.removeItem(RUN_KEY)
+  } catch { /* 저장소를 못 써도 생성은 서버에서 계속된다 */ }
 }
-
-type PRDResult = { prd: PRD; validation: { passed: boolean; errors: string[]; warnings: string[] } }
-
-const PRD_SECTIONS = [
-  ['2. Scope (In)', 'in_scope'], ['2. Scope (Out)', 'out_of_scope'], ['3. Users / Roles', 'roles'],
-  ['4. User Scenario / Flow', 'user_flows'], ['5. Functional Requirements', 'functional_requirements'],
-  ['6. Business Rules', 'business_rules'], ['7. Non-functional Requirements', 'nfrs'],
-  ['8. Acceptance Criteria', 'acceptance_criteria'], ['9. Assumptions', 'assumptions'], ['10. Open Issues', 'open_issues'],
-] as const
-
-// 수정·추가 폼 하나만 연다. id가 ''이면 새 Requirement 추가, gapId가 있으면 남은 Gap의 결정 입력
-// (category ''는 서버가 Gap 분류에서 정한다)
-type Draft = { id: string; category: string; description: string; ac: string; confirm: boolean; gapId?: string }
 
 export default function App() {
   const [text, setText] = useState('')
   const [state, setState] = useState<WorkflowState | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [runId, setRunId] = useState<string | null>(storedRun)
+  const [runOutcome, setRunOutcome] = useState<RunStatus['outcome'] | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState('')
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [reviewed, setReviewed] = useState<ReviewedRequirements | null>(null)
-  const [prdResult, setPrdResult] = useState<PRDResult | null>(null)
-  const [approvedFrom, setApprovedFrom] = useState<WorkflowState | null>(null)
+  const [draft, setDraft] = useState<{ id: string; description: string } | null>(null)
+  const [editedIds, setEditedIds] = useState<string[]>([])
+
+  async function call<T>(label: string, fn: () => Promise<T>): Promise<T | undefined> {
+    setLoading(label)
+    setError('')
+    try {
+      return await fn()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '요청에 실패했습니다.')
+    } finally {
+      setLoading('')
+    }
+  }
 
   // 질문 대기 중이면 답변 라운드, 아니면 분석 직후 첫 호출(answers 없이)
   async function step(current: WorkflowState) {
     const waiting = current.questions.length > 0
-    setLoading(waiting ? '답변 반영 및 재분석 중… (약 30초)' : '확인 질문 생성 중… (약 30초)')
-    setError('')
-    try {
-      const body = waiting
-        ? { state: current, answers: current.questions.map(q => ({ gap_id: q.gap_id, answer: answers[q.gap_id] ?? '' })) }
-        : { state: current }
-      setState(await post<WorkflowState>('/api/clarification/step', body))
+    const body = waiting
+      ? { state: current, answers: current.questions.map(q => ({ gap_id: q.gap_id, answer: answers[q.gap_id] ?? '' })) }
+      : { state: current }
+    const next = await call(waiting ? '답변을 반영하고 있습니다…' : '확인할 내용을 찾고 있습니다…',
+      () => post<WorkflowState>('/api/clarification/step', body))
+    if (next) {
+      setState(next)
       setAnswers({})
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Clarification 요청에 실패했습니다.')
-    } finally {
-      setLoading('')
     }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!text.trim()) {
-      setError('요구사항을 입력해주세요.')
+      setError('만들고 싶은 서비스를 입력해 주세요.')
       return
     }
-    setLoading('요구사항 분석 중… (최대 1분)')
-    setError('')
-    let analysis: Analysis
-    try {
-      analysis = await post<Analysis>('/api/requirements/analyze', { text })
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '분석 요청에 실패했습니다.')
-      setLoading('')
-      return
-    }
+    const analysis = await call('요구사항을 분석하고 있습니다…', () => post<Analysis>('/api/requirements/analyze', { text }))
+    if (!analysis) return
     const initial: WorkflowState = { ...analysis, text, phase: 'clarifying', questions: [], history: [], edit_count: 0, gap_links: [] }
     setState(initial)
     await step(initial)
@@ -180,302 +122,224 @@ export default function App() {
 
   async function review(action: ReviewAction) {
     if (!state) return
-    setLoading('처리 중…')
-    setError('')
-    try {
-      const result = await post<{ state: WorkflowState; reviewed: ReviewedRequirements | null }>('/api/review', { state, action })
+    const result = await call('저장하고 있습니다…',
+      () => post<{ state: WorkflowState }>('/api/review', { state, action }))
+    if (result) {
       setState(result.state)
-      setReviewed(result.reviewed)
-      if (action.type === 'approve') setApprovedFrom(state)
+      if (action.type === 'edit') setEditedIds(ids => ids.includes(action.id) ? ids : [...ids, action.id])
       setDraft(null)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Review 요청에 실패했습니다.')
-    } finally {
-      setLoading('')
     }
   }
 
-  async function generatePrd() {
-    if (!state || !reviewed) return
-    setLoading('PRD 생성 중…')
-    setError('')
-    try {
-      setPrdResult(await post<PRDResult>('/api/prd', { text: state.text, reviewed }))
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'PRD 생성에 실패했습니다.')
-    } finally {
-      setLoading('')
+  // 생성 버튼 하나: 서버가 Review 승인, PRD 생성과 검증, 개발 명세부터 점검까지를 이어서 진행한다.
+  async function generate() {
+    if (!state) return
+    const result = await call('생성을 시작하고 있습니다…', () => post<{ run_id: string }>('/api/m2/generate', { state }))
+    if (result) {
+      setRunOutcome(null)
+      rememberRun(result.run_id)
+      setRunId(result.run_id)
     }
   }
 
-  function backToReview() {
-    if (!approvedFrom) return
-    setState(approvedFrom)
-    setReviewed(null)
-    setPrdResult(null)
-    setApprovedFrom(null)
-  }
-
-  function saveDraft(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!draft) return
-    const description = draft.description.trim()
-    if (!description) {
-      setError('내용을 입력해주세요.')
-      return
-    }
-    const fields = { category: draft.category, description, acceptance_criteria: draft.ac.split('\n').map(line => line.trim()).filter(Boolean) }
-    if (draft.gapId) review({ type: 'resolve_gap', gap_id: draft.gapId, ...fields, category: draft.category || undefined })
-    else review(draft.id ? { type: 'edit', id: draft.id, ...fields, confirm: draft.confirm } : { type: 'add', ...fields })
-  }
-
-  function reset() {
+  // 화면만 처음으로 돌린다. 서버에 저장된 입력, PRD, 실행 기록과 생성 결과는 지우지 않는다.
+  function home() {
+    if (homeDisabled) return
+    rememberRun(null)
+    setRunId(null)
+    setRunOutcome(null)
     setState(null)
+    setText('')
     setAnswers({})
-    setError('')
     setDraft(null)
-    setReviewed(null)
-    setPrdResult(null)
-    setApprovedFrom(null)
+    setEditedIds([])
+    setError('')
   }
 
-  const editable = state?.phase === 'review' && !loading
-  const pending = state?.requirements.filter(r => r.status === 'needs_clarification' && r.blocking) ?? []
-  const proposals = state?.requirements.filter(r => r.status === 'proposed') ?? []
-  // backend workflow.open_gaps·suggested_requirement_id와 같은 규칙: 남은 non-blocking Gap 전부, 관련 Requirement가 하나면 연결 추천
-  const openGaps = state?.gaps.filter(g => !g.blocking) ?? []
-  const suggestionFor = (gap: Gap) =>
-    gap.related_requirement_ids.length === 1 ? state?.requirements.find(r => r.id === gap.related_requirement_ids[0]) : undefined
-  const suggested = openGaps.filter(gap => suggestionFor(gap))
+  const screen = runId ? 'run' : !state ? 'input' : state.phase === 'clarifying' ? 'questions' : 'review'
+  const finished = runOutcome === 'auto_checks_passed' || runOutcome === 'manual_check_only'
+  const stepIndex = screen === 'run' && finished ? 4 : { input: 0, questions: 1, review: 2, run: 3 }[screen]
+  const editable = !loading && !draft
+  const homeDisabled = !!loading || !!runId && (runOutcome === null || runOutcome === 'running')
 
-  const draftForm = draft && (
-    <form onSubmit={saveDraft}>
-      <label>category{' '}
-        <select value={draft.category} onChange={event => setDraft({ ...draft, category: event.target.value })}>
-          {draft.gapId && <option value="">Gap 분류 기준</option>}
-          {CATEGORIES.map(category => <option key={category}>{category}</option>)}
-        </select>
-      </label>
-      <label>내용 <textarea rows={2} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} /></label>
-      <label>Acceptance Criteria (한 줄에 하나)
-        <textarea rows={3} value={draft.ac} onChange={event => setDraft({ ...draft, ac: event.target.value })} />
-      </label>
-      {draft.id && state?.requirements.find(r => r.id === draft.id)?.status !== 'confirmed' && (
-        <label><input type="checkbox" checked={draft.confirm} onChange={event => setDraft({ ...draft, confirm: event.target.checked })} /> 확정 (confirmed로 변경)</label>
-      )}
-      <button key="save" disabled={!!loading}>저장</button>
-      <button key="cancel" type="button" onClick={() => setDraft(null)} disabled={!!loading}>취소</button>
-    </form>
-  )
+  // 최초 입력의 해석은 필요한 경우에만 펼친다. 검토에서 수정한 항목은 '정한 내용'에 계속 보인다.
+  const reqs = state?.requirements ?? []
+  const decisions = reqs.filter(r => r.status === 'confirmed' && r.source !== 'ai_proposal'
+    && (r.source === 'clarification_answer' || r.source === 'review_input' || editedIds.includes(r.id)))
+  const inputItems = reqs.filter(r => r.status === 'confirmed' && r.source === 'initial_input' && !editedIds.includes(r.id))
+  const aiItems = reqs.filter(r => r.source === 'ai_proposal' && r.status !== 'needs_clarification')
+  const undecided = reqs.filter(r => r.status === 'needs_clarification')
+  const proposals = aiItems.filter(r => r.status === 'proposed')
+  const required = undecided.filter(r => r.blocking)
 
-  function reviewItem(r: Requirement) {
+  function editor(r: Requirement, confirmLabel: string) {
+    if (draft?.id !== r.id) return null
     return (
-      <li key={r.id}>
-        <strong>{r.id}</strong> [{r.category}]{' '}
-        <span className={r.source === 'ai_proposal' ? 'badge ai' : 'badge'}>{SOURCE_LABELS[r.source] ?? r.source}</span>
-        {r.blocking && ' · 진행 보류'} — {r.description}
-        {r.acceptance_criteria.length > 0 && <small>AC: {r.acceptance_criteria.join(' / ')}</small>}
-        {state?.gap_links.filter(l => l.requirement_id === r.id).map(l => (
-          <small key={l.gap.id}>
-            연결된 확인 사항: {l.gap.id} {l.gap.description}
-            {editable && !draft && (
-              <span className="actions">
-                <button type="button" onClick={() => review({ type: 'unlink_gap', gap_id: l.gap.id })}>연결 취소</button>
-              </span>
-            )}
-          </small>
-        ))}
-        {draft?.id === r.id ? draftForm : editable && (
-          <span className="actions">
-            {r.status === 'proposed' && <button key="accept" type="button" onClick={() => review({ type: 'accept', ids: [r.id] })}>수락</button>}
-            <button key="edit" type="button" disabled={!!draft}
-              onClick={() => setDraft({ id: r.id, category: r.category, description: r.description, ac: r.acceptance_criteria.join('\n'), confirm: false })}>수정</button>
-          </span>
-        )}
-      </li>
-    )
-  }
-
-  function prdSection(title: string, items: (PRDItem & { target_id?: string })[]) {
-    return (
-      <div key={title}>
-        <h3>{title}</h3>
-        {items.length === 0 ? <p>없음</p> : (
-          <ul>
-            {items.map(item => (
-              <li key={item.id}>
-                <strong>{item.id}</strong>{item.target_id && ` → ${item.target_id}`} — {item.description}
-                <small>출처: {[...(item.source_gap_ids ?? []), ...item.source_requirement_ids].join(', ') || '서비스 전반'}</small>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <form className="editor" onSubmit={event => {
+        event.preventDefault()
+        if (!draft.description.trim()) { setError('내용을 입력해 주세요.'); return }
+        review({ type: 'edit', id: r.id, description: draft.description.trim(), confirm: true })
+      }}>
+        <textarea aria-label="요구사항 수정" rows={2} value={draft.description} autoFocus
+          onChange={event => setDraft({ ...draft, description: event.target.value })} />
+        <div className="row">
+          <button disabled={!!loading}>{confirmLabel}</button>
+          <button type="button" className="secondary" onClick={() => setDraft(null)} disabled={!!loading}>취소</button>
+        </div>
+      </form>
     )
   }
 
   return (
-    <main>
-      <h1>자연어 요구사항 분석</h1>
-      <p>서비스 요구사항을 입력하면 구조화된 항목과 확인이 필요한 부분을 표시합니다.</p>
-      <form onSubmit={submit}>
-        <label htmlFor="requirement-text">서비스 요구사항</label>
-        <textarea id="requirement-text" value={text} onChange={event => setText(event.target.value)} rows={5} disabled={!!state} />
-        {state
-          ? <button key="reset" type="button" onClick={reset} disabled={!!loading}>처음부터 다시</button>
-          : <button key="analyze" disabled={!!loading}>분석하기</button>}
-      </form>
-      {loading && <p className="notice" role="status">{loading}</p>}
-      {error && <p role="alert" className="error">{error}</p>}
-      {state && (
-        <section aria-live="polite">
-          <p className="notice">{MODE_LABELS[state.analysis_mode]}</p>
+    <div className="page">
+      <header className="top">
+        <button type="button" className="brand" onClick={home} disabled={homeDisabled}>Harness</button>
+        <ol className="stepper" aria-label="진행 단계">
+          {STEPS.map((label, index) => (
+            <li key={label} className={index < stepIndex ? 'done' : index === stepIndex ? 'current' : ''}
+              aria-current={index === stepIndex ? 'step' : undefined}>{label}</li>
+          ))}
+        </ol>
+      </header>
 
-          {state.phase === 'clarifying' && state.questions.length > 0 && (
-            <form onSubmit={event => { event.preventDefault(); step(state) }}>
-              <h2>확인 질문 (라운드 {state.clarification_round}/{MAX_ROUNDS})</h2>
-              <p>답하기 어려운 질문은 비워 두면 건너뜁니다. {MAX_ROUNDS}라운드 뒤에도 남은 항목은 AI 제안으로 전환됩니다.</p>
-              {state.questions.map(q => (
-                <div key={q.gap_id}>
-                  <label htmlFor={`answer-${q.gap_id}`}><strong>{q.gap_id}</strong> {q.question}</label>
-                  <textarea id={`answer-${q.gap_id}`} rows={2} value={answers[q.gap_id] ?? ''} disabled={!!loading}
-                    onChange={event => setAnswers({ ...answers, [q.gap_id]: event.target.value })} />
-                </div>
-              ))}
-              <button disabled={!!loading}>답변 제출</button>
+      <main>
+        {loading && <p className="notice" role="status"><span className="spinner" aria-hidden /> {loading}</p>}
+        {error && <p role="alert" className="error">{error}</p>}
+
+        {screen === 'run' && runId && <Generation key={runId} runId={runId} onHome={home} onOutcome={setRunOutcome} />}
+
+        {screen === 'input' && (
+          <section className="card hero">
+            <h1>어떤 서비스를 만들까요?</h1>
+            <p className="muted">만들고 싶은 서비스를 자유롭게 설명해 주세요. 꼭 필요한 것만 몇 가지 물어본 뒤 동작하는 앱을 만들어 드립니다.</p>
+            <form onSubmit={submit}>
+              <label htmlFor="requirement-text" className="sr-only">서비스 설명</label>
+              <textarea id="requirement-text" value={text} onChange={event => setText(event.target.value)} rows={6}
+                placeholder="예: 동네 소모임을 만들고 참여 신청을 받을 수 있는 서비스를 만들어줘" disabled={!!loading} />
+              <button disabled={!!loading}>시작하기</button>
             </form>
-          )}
-          {state.phase === 'clarifying' && state.questions.length === 0 && !loading && (
-            <button type="button" onClick={() => step(state)}>확인 질문 생성 다시 시도</button>
-          )}
-          {/* review 이후 gaps는 마지막 분석 결과라 blocking 값을 신뢰하지 않는다. phase와 requirements로만 판단 */}
-          {state.phase !== 'clarifying' && (
-            <>
-              <h2>Requirement Review</h2>
-              <p className="notice">
-                {state.phase === 'review'
-                  ? 'Clarification이 끝났습니다. 요구사항을 확인·수정하고 승인하세요.'
-                  : '승인했습니다. 아래 JSON이 PRD 생성 단계의 입력입니다.'}
-              </p>
-              {GROUPS.map(([title, status]) => {
-                const items = state.requirements.filter(r => r.status === status)
-                return (
-                  <div key={status}>
-                    <h3>{title} ({items.length})</h3>
-                    {status === 'proposed' && editable && items.length > 1 && (
-                      <button type="button" onClick={() => review({ type: 'accept', ids: items.map(r => r.id) })}>모두 수락</button>
-                    )}
-                    {items.length === 0 ? <p>없음</p> : <ul>{items.map(reviewItem)}</ul>}
-                  </div>
-                )
-              })}
-              {state.phase === 'review' && (
-                <>
-                  {draft?.id === '' && !draft.gapId
-                    ? <div key="add-form"><h3>요구사항 추가</h3>{draftForm}</div>
-                    : <button key="add" type="button" disabled={!editable || !!draft}
-                        onClick={() => setDraft({ id: '', category: 'functional', description: '', ac: '', confirm: false })}>요구사항 추가</button>}
-                  <h3>남은 확인 사항 ({openGaps.length})</h3>
-                  <p>진행을 막지 않지만 아직 정하지 않은 사항입니다. 그대로 승인하면 PRD의 Open Issues로 인계됩니다. 지금 정했다면 결정을 입력하세요. 입력한 결정은 요구사항으로 추가됩니다. 이미 있는 요구사항과 같은 내용이면 추천대로 연결해 하나로 합칠 수 있습니다.</p>
-                  {editable && suggested.length > 0 && (
-                    <button type="button" disabled={!!draft}
-                      onClick={() => review({ type: 'link_gap', gap_ids: suggested.map(gap => gap.id) })}>추천 모두 연결 ({suggested.length})</button>
-                  )}
-                  {openGaps.length === 0 ? <p>없음</p> : (
-                    <ul>
-                      {openGaps.map(gap => (
-                        <li key={gap.id}>
-                          <strong>{gap.id}</strong> [{gap.category}] — {gap.description}
-                          <small>관련 요구사항: {gap.related_requirement_ids.join(', ') || '서비스 전반'}</small>
-                          {suggestionFor(gap) && (
-                            <small>추천: {suggestionFor(gap)!.id} "{suggestionFor(gap)!.description}"와 같은 내용으로 보이면 연결하세요.</small>
-                          )}
-                          {draft?.gapId === gap.id ? draftForm : editable && (
-                            <span className="actions">
-                              {suggestionFor(gap) && (
-                                <button type="button" disabled={!!draft}
-                                  onClick={() => review({ type: 'link_gap', gap_ids: [gap.id] })}>추천대로 연결</button>
-                              )}
-                              <button type="button" disabled={!!draft}
-                                onClick={() => setDraft({ id: '', category: '', description: '', ac: '', confirm: false, gapId: gap.id })}>결정 입력</button>
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <h3>승인</h3>
-                  {pending.length > 0 && (
-                    <p className="error">진행 보류 항목({pending.map(r => r.id).join(', ')})을 수정 화면에서 확정해야 승인할 수 있습니다.</p>
-                  )}
-                  {draft && <p className="error">편집 중인 항목을 저장하거나 취소해야 승인할 수 있습니다.</p>}
-                  {proposals.length > 0 && (
-                    <p>수락하지 않은 AI 제안 {proposals.length}개는 proposed 상태로 인계됩니다. M1 PRD에서는 Assumptions 후보, M2 PRD에서는 AI 기본값으로 구현 범위에 포함됩니다.</p>
-                  )}
-                  <button key="approve" type="button" disabled={!editable || pending.length > 0 || !!draft}
-                    onClick={() => review({ type: 'approve' })}>요구사항 승인</button>
-                </>
-              )}
-              {reviewed && (
-                <>
-                  <h3>인계 JSON (ReviewedRequirements)</h3>
-                  <pre>{JSON.stringify(reviewed, null, 2)}</pre>
-                  <button key="prd" type="button" onClick={generatePrd} disabled={!!loading}>M1 PRD 생성 (규칙 기반 미리보기)</button>
-                  <M2Panel key={state.run_id + reviewed.requirements.length} state={state} />
-                </>
-              )}
-              {prdResult && (
-                <>
-                  <h2>PRD Preview</h2>
-                  <p className={prdResult.validation.passed ? 'notice' : 'error'}>
-                    검증 {prdResult.validation.passed ? '통과' : '실패'}
-                  </p>
-                  {prdResult.validation.errors.map(message => <p key={message} className="error">오류: {message}</p>)}
-                  {prdResult.validation.warnings.map(message => <p key={message} className="notice">경고: {message}</p>)}
-                  <h3>1. Product Overview</h3>
-                  <p>{prdResult.prd.overview.summary}</p>
-                  {PRD_SECTIONS.map(([title, key]) => prdSection(title, prdResult.prd[key]))}
-                  {prdResult.validation.passed ? (
-                    <>
-                      <h3>Final PRD JSON</h3>
-                      <pre>{JSON.stringify(prdResult.prd, null, 2)}</pre>
-                    </>
-                  ) : (
-                    <p className="error">검증을 통과하지 못해 Final PRD로 출력하지 않습니다.</p>
-                  )}
-                  <button key="back" type="button" onClick={backToReview} disabled={!!loading || !approvedFrom}>Review로 돌아가 수정</button>
-                </>
-              )}
-            </>
-          )}
+          </section>
+        )}
 
-          {state.phase === 'clarifying' && (
-            <>
-              <h2>현재 요구사항</h2>
-              <ul>
-                {state.requirements.map(requirement => (
-                  <li key={requirement.id}>
-                    <strong>{requirement.id}</strong> [{requirement.category} · {requirement.status} · {requirement.source}]
-                    {requirement.blocking && ' · 진행 보류'} — {requirement.description}
-                  </li>
+        {screen === 'questions' && state && (
+          state.questions.length > 0 ? (
+            <section className="card">
+              <h2>몇 가지만 확인할게요</h2>
+              <p className="muted">답하기 어려운 질문은 비워 두셔도 됩니다. 다음에 다시 여쭤보고, 끝까지 비어 있으면 AI가 정합니다.</p>
+              <form onSubmit={event => { event.preventDefault(); step(state) }}>
+                {state.questions.map((q, index) => (
+                  <div key={q.gap_id} className="question">
+                    <label htmlFor={`answer-${q.gap_id}`}>{index + 1}. {q.question}</label>
+                    <textarea id={`answer-${q.gap_id}`} rows={2} value={answers[q.gap_id] ?? ''} disabled={!!loading}
+                      onChange={event => setAnswers({ ...answers, [q.gap_id]: event.target.value })} />
+                  </div>
                 ))}
-              </ul>
-              <h2>확인이 필요한 부분</h2>
-              {state.gaps.length === 0 ? <p>발견된 Gap이 없습니다.</p> : (
-                <ul>
-                  {state.gaps.map(gap => (
-                    <li key={gap.id}>
-                      <strong>{gap.id}</strong> [{gap.category} · {gap.blocking ? '핵심' : '참고'}]
-                      {' '}{gap.description}
-                      <small>관련 요구사항: {gap.related_requirement_ids.join(', ') || '서비스 전반'}</small>
+                <button disabled={!!loading}>답변 제출</button>
+              </form>
+            </section>
+          ) : !loading && (
+            <section className="card">
+              <p>확인할 내용을 불러오지 못했습니다.</p>
+              <button type="button" onClick={() => step(state)}>다시 시도</button>
+            </section>
+          )
+        )}
+
+        {screen === 'review' && state && (
+          <section className="card">
+            <h2>이렇게 만들까요?</h2>
+            <p className="muted">질문에 답한 내용과 AI가 정한 내용입니다. 고칠 부분만 수정하고 생성을 누르세요.</p>
+            {state.analysis_mode !== 'claude' && <p className="notice small">개발용 {state.analysis_mode} 분석 결과입니다.</p>}
+            {state.history.every(round => round.questions.length === 0) && (
+              <p className="notice small">추가로 확인할 질문이 없어 바로 검토로 넘어왔습니다.</p>
+            )}
+
+            {inputItems.length > 0 && (
+              <details className="input-review">
+                <summary>입력 내용이 어떻게 정리됐는지 보기</summary>
+                <p className="muted small">처음 입력하신 내용을 정리했습니다. 다르게 이해한 부분만 수정해 주세요. 모두 확인하지 않아도 생성할 수 있습니다.</p>
+                <ul className="items">{inputItems.map(r => (
+                  <li key={r.id}>
+                    {r.description}
+                    {editor(r, '저장') ?? (
+                      <button type="button" className="link" disabled={!editable}
+                        onClick={() => setDraft({ id: r.id, description: r.description })}>수정</button>
+                    )}
+                  </li>
+                ))}</ul>
+              </details>
+            )}
+
+            {decisions.length > 0 && (
+              <>
+                <h3>정한 내용</h3>
+                <ul className="items">{decisions.map(r => (
+                  <li key={r.id}>
+                    {r.description}
+                    {editor(r, '저장') ?? (
+                      <button type="button" className="link" disabled={!editable}
+                        onClick={() => setDraft({ id: r.id, description: r.description })}>수정</button>
+                    )}
+                  </li>
+                ))}</ul>
+              </>
+            )}
+
+            {undecided.length > 0 && (
+              <>
+                <h3>정해야 할 내용</h3>
+                <ul className="items">
+                  {undecided.map(r => (
+                    <li key={r.id}>
+                      {r.description}{r.blocking && <span className="badge warn">필수</span>}
+                      {editor(r, '정하기') ?? (
+                        <button type="button" className="link" disabled={!editable}
+                          onClick={() => setDraft({ id: r.id, description: '' })}>정하기</button>
+                      )}
                     </li>
                   ))}
                 </ul>
-              )}
-            </>
-          )}
-        </section>
-      )}
-    </main>
+              </>
+            )}
+
+            {aiItems.length > 0 && (
+              <>
+                <div className="row between">
+                  <h3>AI가 정한 내용</h3>
+                  {proposals.length > 1 && (
+                    <button type="button" className="secondary" disabled={!editable}
+                      onClick={() => review({ type: 'accept', ids: proposals.map(r => r.id) })}>모두 좋아요</button>
+                  )}
+                </div>
+                <p className="muted small">따로 손대지 않아도 이대로 만들어집니다.</p>
+                <ul className="items">
+                  {aiItems.map(r => (
+                    <li key={r.id}>
+                      {r.description}<span className="badge ai">{r.status === 'proposed' ? 'AI 제안' : '확인한 AI 제안'}</span>
+                      {editor(r, '저장') ?? (
+                        <span className="row inline">
+                          {r.status === 'proposed' && (
+                            <button type="button" className="link" disabled={!editable}
+                              onClick={() => review({ type: 'accept', ids: [r.id] })}>좋아요</button>
+                          )}
+                          <button type="button" className="link" disabled={!editable}
+                            onClick={() => setDraft({ id: r.id, description: r.description })}>수정</button>
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {required.length > 0 && <p className="error">필수 항목을 정해야 생성할 수 있습니다.</p>}
+            <div className="row">
+              <button type="button" className="primary" onClick={generate} disabled={!editable || required.length > 0}>생성</button>
+              <button type="button" className="secondary" onClick={home} disabled={!!loading}>처음부터 다시</button>
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
   )
 }
