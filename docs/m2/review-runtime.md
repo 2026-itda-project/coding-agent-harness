@@ -1,6 +1,6 @@
 # Review 결과에서 MVP 실행까지 (웹 연결)
 
-기존 입력·Clarification·Review 화면과 M2 실행기(`backend/app/m2/run.py`)를 연결한 계약이다. 관련 이슈: #7, #8, #13(일부). 이 연결은 "앞뒤 연결"이며 M2 전체 완료(#9~#12의 Sandbox·Opus 검증·재계획·지표)를 뜻하지 않는다.
+기존 입력·Clarification·Review 화면과 M2 실행기(`backend/app/m2/run.py`)를 연결한 계약이다. 관련 이슈: #7, #8, #13(일부). 이 연결은 "앞뒤 연결"이며 M2 전체 완료(#9~#12의 Sandbox·Opus 검증·재계획·지표)를 뜻하지 않는다. 최종 판정과 Opus 진단은 [e2e-contract.md 7절](e2e-contract.md#7-최종-판정-10)에 있다.
 
 ## 1. 변경 전과 후
 
@@ -138,7 +138,7 @@ cd ../frontend && npm run dev                                              # htt
 ## 7. 한계 (임시 동작 포함)
 
 - 실행 관리는 서버 프로세스 하나의 스레드다. `--reload`나 다중 worker에서는 쓰지 않는다. 서버가 재시작되면 진행 중이던 Run은 `interrupted`가 된다. 자동으로 다시 시작하지 않으며, 사용자가 "이어서 다시 시도"(`retry=true`)를 누르면 완료된 단계를 건너뛰고 이어서 실행한다. 재시작 중 이미 시작된 Claude Code 프로세스가 남을 수 있다.
-- 자동 재시도·재계획(#11), Opus 진단(#10 후속), 비용·지표 체계(#12)는 포함하지 않는다.
+- 자동 재시도·재계획(#11), 비용·지표 체계(#12)는 포함하지 않는다. `manual_failed`의 Opus 진단은 CLI `run diagnose`로만 요청하며 웹 API는 없다.
 - 수동 확인 결과를 화면에서 기록하는 기능은 없다. API와 CLI로 기록한다([e2e-contract.md 7절](e2e-contract.md#7-최종-판정-10)).
 - 환경 오류와 앱 실패는 `final_status`로 구분되지만 `outcome`은 둘 다 `verification_failed`다. 화면 구분은 #13에서 한다.
 - 새로고침: 생성을 시작하면 브라우저 `localStorage`에 `run_id`만 기억하고, 다시 열면 서버의 상태를 불러와 진행이나 결과 화면을 보여 준다. 진행 상태와 산출물은 서버 파일에 있으므로 브라우저 저장이 지워져도 생성 결과는 남는다(그 경우 화면에서 다시 찾아가는 목록은 아직 없다). 생성 전 단계(질문, 검토)의 화면 상태는 브라우저 메모리에만 있어 새로고침하면 처음부터 다시 해야 한다.
@@ -155,7 +155,7 @@ Claude 응답 중단과 Claude Code Agent Timeout은 비용이 `null`로 남을 
 | 실패 단계 | 수정 대상 |
 | --- | --- |
 | PRD 생성 | `prds/<prd_id>/prd.failed-N.json` 또는 `prd.rejected-N.json`의 `calls[].cost_usd` |
-| Spec / Plan | `<run_id>/run.json`의 `calls[].cost_usd` |
+| Spec / Plan / 진단 | `<run_id>/run.json`의 `calls[].cost_usd`. 진단은 `artifacts/diagnosis.json`의 `call`에도 복사본이 있지만 예산 검사는 `run.json`만 읽는다 |
 | Agent Timeout | `<run_id>/run.json`의 `attempts[].agent.total_cost_usd`와 같은 시도의 `tasks[task_id].agent.total_cost_usd`(존재할 때) |
 
 4. 같은 PRD의 모든 실패 시도 또는 Run의 모든 호출·시도에 미확인 비용이 없는지 확인한다. 요약 비용만 수정해도 잠금은 풀리지 않는다. 예산 검사는 원본 호출·시도 기록을 다시 읽는다.

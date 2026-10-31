@@ -88,6 +88,12 @@ class StreamError(Exception):
     """The server reported an error after the response had started."""
 
 
+def request_bytes(system, payload, schema):
+    """UTF-8 size of what `complete` sends as content: a pre-call estimate, counting one token per byte.
+    Generous in practice, but the API does not promise it, and the provider may add its own text."""
+    return len((system + json.dumps(schema) + json.dumps(payload, ensure_ascii=False)).encode())
+
+
 def complete(model, system, payload, schema, log, max_tokens=32000, effort=None, timeout=300, constrained=True):
     """One structured call. Appends a usage/cost record to `log` before parsing, so failed
     outputs are still billed in the run record."""

@@ -426,6 +426,65 @@ def check_manual_submission(submission, spec):
         [] if submission.items else ["items is empty"])
 
 
+# ---------- Diagnosis (#10): cause analysis only ----------
+
+class DiagnosisFailure(Strict):
+    stages: list[Literal["build", "start", "restart", "serve", "serve_after_restart"]]
+    check_ids: list[str]
+    ac_ids: list[str]
+    category: Literal["app_code", "spec_or_check", "plan", "environment", "unknown"]
+    root_cause: str
+    evidence: list[str]  # entries of the input's evidence_index
+    suspected_task_ids: list[str]
+    fix_hint: str
+
+
+class Diagnosis(Strict):
+    """No verdict field exists here, and extra fields are refused: the model explains a verdict
+    that code has already made and cannot change it."""
+    summary: str
+    failures: list[DiagnosisFailure]
+    replan_scope: Literal["task", "plan", "spec", "environment"]
+
+
+def check_diagnosis(diagnosis, context):
+    """References and coverage against what the code gave the model (`acceptance.diagnosis_payload`)."""
+    errors = [] if diagnosis.summary.strip() else ["summary is empty"]
+    if not diagnosis.failures:
+        errors.append("failures is empty")
+    checks, acs, tasks = context["known_checks"], set(context["known_ac_ids"]), set(context["known_task_ids"])
+    index = set(context["evidence_index"])
+    for n, failure in enumerate(diagnosis.failures):
+        where = f"failures[{n}]"
+        errors += [f"{where} unknown check {c}" for c in failure.check_ids if c not in checks]
+        errors += [f"{where} unknown AC {a}" for a in failure.ac_ids if a not in acs]
+        covered = {a for c in failure.check_ids for a in checks.get(c, [])}
+        errors += [f"{where} {a} is not covered by its checks" for a in failure.ac_ids
+                   if a in acs and failure.check_ids and a not in covered]
+        errors += [f"{where} unknown task {t}" for t in failure.suspected_task_ids if t not in tasks]
+        errors += [f"{where} unknown evidence {e}" for e in failure.evidence if e not in index]
+        if not failure.evidence:
+            errors.append(f"{where} has no evidence")
+        if not failure.root_cause.strip():
+            errors.append(f"{where} root_cause is empty")
+    named_stages = {s for f in diagnosis.failures for s in f.stages}
+    failed_stages = {t["kind"] for t in context["failure_targets"] if t["check_id"] is None}
+    errors += [f"stage {s} did not fail" for s in sorted(named_stages - failed_stages)]
+    named_checks = {c for f in diagnosis.failures for c in f.check_ids}
+    for target in context["failure_targets"]:
+        if target["check_id"] is None and target["kind"] not in named_stages:
+            errors.append(f"failed stage {target['kind']} is not diagnosed")
+        if target["check_id"] is not None and target["check_id"] not in named_checks:
+            errors.append(f"failed check {target['check_id']} is not diagnosed")
+    says_environment = any(f.category == "environment" for f in diagnosis.failures)
+    if (context["environment_failure"] or says_environment) and diagnosis.replan_scope != "environment":
+        errors.append("an environment failure needs replan_scope environment")
+    if not context["environment_failure"] and not context["cause_ambiguous"] and (
+            says_environment or diagnosis.replan_scope == "environment"):
+        errors.append("the evidence shows an app failure, not an environment failure")
+    return errors
+
+
 # ---------- JSON schema for structured outputs ----------
 
 def output_schema(model):
