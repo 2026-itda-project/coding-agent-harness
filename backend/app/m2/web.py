@@ -189,7 +189,7 @@ def start_run(prd_id, confirm_open_issues, retry=False):
                 run.dump(target / "web.json", {**web, "status": "running", "stage": "run", "error": None,
                                                "ended_at": None, "open_issues_confirmed": True})
                 return _start(run_id, ["--prd", str(out / "prd.json"), "--run-id", run_id], created=False)
-            if not retry or not (web["status"] in ("failed", "interrupted") or verification_failed(target, web)):
+            if not retry or not stopped_for_retry(target, web):
                 return {"run_id": run_id, "created": False}
             if cost_review_needed(prd_id):
                 raise Conflict("비용 확인이 필요합니다. 운영자가 중단된 호출 비용을 확인한 뒤 다시 시도하세요.")
@@ -272,6 +272,18 @@ def reason_for(outcome, error, verification=None, final_status=None):
     if "model call failed" in error or "Claude API" in error:
         return "AI 응답을 끝까지 받지 못했습니다."
     return "생성 중 문제가 생겨 멈췄습니다."
+
+
+def stopped_for_retry(target, web):
+    return web["status"] in ("failed", "interrupted") or verification_failed(target, web)
+
+
+def can_retry(target, web):
+    """Whether a retry request would start now: the same conditions as `start_run`, so a screen can
+    offer the action only when it will do something."""
+    return (stopped_for_retry(target, web) and not cost_review_needed(web["prd_id"])
+            and ((target / "run.json").exists() or web.get("stage") == "prd")
+            and not any(t.is_alive() for t in _threads.values()))
 
 
 def verification_failed(target, web):
@@ -360,7 +372,7 @@ def run_status(run_id):
     preview = verify.get("preview_url") if verify else None
     return {
         "run_id": run_id, "prd_id": web["prd_id"], "outcome": outcome, "error": web.get("error"),
-        "requires_cost_review": cost_review_needed(web["prd_id"]),
+        "requires_cost_review": cost_review_needed(web["prd_id"]), "can_retry": can_retry(target, web),
         "reason": reason_for(outcome, web.get("error"), verify, final_status) if outcome in ("failed", "interrupted", "verification_failed") else None,
         "current_stage": current if outcome == "running" else None, "stages": stages_done,
         "tasks": tasks, "task_order": state.get("task_order", []),
