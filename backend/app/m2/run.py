@@ -77,9 +77,19 @@ def repair_stop(repairs, result, limit):
     """Why the repair loop must not start another round, or None."""
     if len(repairs) >= limit:
         return "limit_reached"
-    if repairs and sorted(repairs[-1]["failures"]) == sorted(failure_list(result)):
+    last = repairs[-1] if repairs else None
+    if last and last["result"] != "rolled_back" and sorted(last["failures"]) == sorted(failure_list(result)):
         return "same_failures"
     return None
+
+
+def worse(before, after):
+    """A repair made things worse if the app now fails more checks, or no longer builds."""
+    if after["status"] not in REPAIRABLE:
+        return False
+    if after["status"] == "build_failed" and before["status"] != "build_failed":
+        return True
+    return len(failure_list(after)) > len(failure_list(before))
 
 
 def failure_list(result):
@@ -230,8 +240,10 @@ def cmd_run(args):
                     state["stages"]["repair"] = "plan_rejected"
                     break
                 dump(art / f"repair/round-{rnd}.plan.json", fix.model_dump())
+                before = result
                 entry = {"round": rnd, "failures": failure["failures"], "diagnosis": fix.diagnosis,
                          "plan": f"repair/round-{rnd}.plan.json", "tasks": [s.task_id for s in fix.steps],
+                         "base_commit": agent.git(app_dir, "rev-parse", "HEAD").strip(),
                          "attempts": [], "verify": None, "result": None}
                 repairs.append(entry)
                 for step in fix.steps:
@@ -249,6 +261,13 @@ def cmd_run(args):
                 entry["verify"] = f"repair/round-{rnd}.verify.json"
                 result = check_app(entry["verify"])
                 entry["result"] = result["status"]
+                entry["failures_after"] = failure_list(result) if result["status"] in REPAIRABLE else []
+                if worse(before, result):
+                    # Keep the failed round in the history, but continue from the code before it.
+                    entry["result"], entry["rolled_back_to"] = "rolled_back", entry["base_commit"]
+                    agent.rollback(app_dir, entry["base_commit"], f"revert repair round {rnd}: more failures")
+                    result = before
+                    state["stages"]["verify"] = result["status"]
                 save()
             else:
                 if repairs:

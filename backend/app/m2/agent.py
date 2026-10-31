@@ -155,6 +155,14 @@ def agent_env(app_dir):
     return {**env, "DISABLE_AUTOUPDATER": "1", **sandbox_env(app_dir)}
 
 
+def rollback(app_dir, commit, message):
+    """Restore the work tree of `commit` as a new commit, so the reverted attempt stays in history."""
+    assert_no_remote(app_dir)
+    git(app_dir, "read-tree", "-u", "--reset", commit)
+    git(app_dir, "commit", "-q", "--allow-empty", "-m", message)
+    return git(app_dir, "rev-parse", "HEAD").strip()
+
+
 def run_task(task, context, app_dir, budget_usd, runner=run_group):
     """Run the agent, then commit whatever it changed. Returns a record; never raises on agent
     failure so the caller can log it and stop. Containers left by an earlier attempt are removed

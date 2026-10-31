@@ -827,6 +827,61 @@ class RepairLoopTest(unittest.TestCase):
         self.assertEqual(state["stages"]["repair"], "budget_stop")
         self.assertIn("unknown cost", self.exit)
 
+    def test_worse_fix_is_rolled_back_and_the_next_round_starts_from_before(self):
+        app = self.run_dir / "app"
+        (app / "main.py").write_text("v1")
+        agent.git(app, "add", "-A")
+        agent.git(app, "commit", "-q", "-m", "v1")
+
+        def breaking(task, context, app_dir, budget):
+            self.contexts.append(context)
+            base = agent.git(app_dir, "rev-parse", "HEAD").strip()
+            (Path(app_dir) / "main.py").write_text("broken")
+            (Path(app_dir) / "extra.py").write_text("x")
+            agent.git(app_dir, "add", "-A")
+            agent.git(app_dir, "commit", "-q", "-m", "fix try")
+            return {"task_id": task.id, "title": task.title, "status": "done", "base_commit": base,
+                    "commit": agent.git(app_dir, "rev-parse", "HEAD").strip(), "files": [],
+                    "agent": {"total_cost_usd": 0.2}}
+
+        one = verify_result("checks_failed", ["CHK-001 failed"])
+        two = verify_result("checks_failed", ["CHK-001 failed", "CHK-002 failed"])
+        generate, calls = self.planner(repair_data())
+        results = iter([one, two, one])
+        with patch.object(verify, "verify", lambda *a, **k: next(results)), \
+                patch.object(stages, "generate_repair_plan", generate), patch.object(agent, "run_task", breaking):
+            run.main(["run", "--resume", str(self.run_dir), "--budget-usd", "5", "--max-repairs", "2"])
+        state = run.load(self.run_dir / "run.json")
+        first, second = state["repairs"]
+        self.assertEqual(first["result"], "rolled_back")
+        self.assertEqual(first["failures_after"], ["CHK-001 failed", "CHK-002 failed"])
+        self.assertEqual(second["failures"], ["CHK-001 failed"])  # the round restarts from the pre-round failure
+        self.assertEqual(calls[1]["history"][0]["result"], "rolled_back")
+        self.assertEqual(state["stages"]["repair"], "limit_reached")
+        self.assertIn("revert repair round 1", agent.git(app, "log", "--format=%s"))
+
+    def test_rollback_restores_the_tree(self):
+        app = self.run_dir / "app"
+        (app / "main.py").write_text("v1")
+        agent.git(app, "add", "-A")
+        agent.git(app, "commit", "-q", "-m", "v1")
+        good = agent.git(app, "rev-parse", "HEAD").strip()
+        (app / "main.py").write_text("broken")
+        (app / "extra.py").write_text("x")
+        agent.git(app, "add", "-A")
+        agent.git(app, "commit", "-q", "-m", "bad")
+        agent.rollback(app, good, "revert")
+        self.assertEqual((app / "main.py").read_text(), "v1")
+        self.assertFalse((app / "extra.py").exists())
+        self.assertEqual(agent.git(app, "diff", good, "HEAD"), "")
+        self.assertEqual(len(agent.git(app, "log", "--format=%s").splitlines()), 4)
+
+    def test_build_break_counts_as_worse(self):
+        self.assertTrue(run.worse(verify_result("checks_failed", ["CHK-001 failed"]), verify_result("build_failed")))
+        self.assertFalse(run.worse(verify_result("checks_failed", ["CHK-001 failed"]),
+                                   verify_result("checks_failed", ["CHK-002 failed"])))
+        self.assertFalse(run.worse(verify_result("checks_failed", ["CHK-001 failed"]), verify_result("passed")))
+
     def test_zero_max_repairs_disables_the_loop(self):
         state, calls = self.go([verify_result("checks_failed", ["CHK-001 failed"])], [repair_data()],
                                extra=["--max-repairs", "0"])
