@@ -13,6 +13,7 @@
 | 사례 | 명령 | 검증 | 판정 | 진단 | 모델 호출 |
 | --- | --- | --- | --- | --- | --- |
 | 성공 | `run --resume` | 13/13 | `manual_pending` | `not_needed` | 없음 |
+| 성공(원본 Run, 수동 확인 제출) | `run manual-review` | 13/13 | `passed` | `not_needed` | 없음 |
 | 고의 실패 1차 | `run --resume`(첫 검증으로 만듦) | 7/13 | `auto_failed` | `done`(자동) | 1회 |
 | 고의 실패 재검증 | `run --resume` | 7/13 | `auto_failed` | `stale` | 없음 |
 | 고의 실패 재진단 | `run diagnose` | 재검증 결과 사용 | `auto_failed` | `done` | 1회 |
@@ -28,6 +29,7 @@
 
 ## 확인한 것
 
+- 수동 확인: 사람이 브라우저에서 실제 앱을 확인하고 원본 Run `run-20261031-140832`(`49bf68d`)에 기록했다. Spec의 26단계와 제출 항목이 일치했고 모두 `pass`다. 판정은 `passed`, AC 15개는 모두 `manual_passed`, `route`는 `none`이 되었고 모델 호출은 늘지 않았다. 복사본 `run-20261031-verify-ok`에는 제출하지 않아 `manual_pending`으로 남아 있다.
 - 실제 빌드, 기동, 재시작, HTTP 점검을 거쳐 코드가 판정을 내렸고, 진단 전후로 `final_status`와 `route`(`replan_candidate`)가 그대로였다.
 - 진단은 실패 점검 5개(CHK-001, 002, 006, 007, 012)를 하나의 원인으로 묶고 `GET /api/my/balance`를 지목했다. `category`는 `app_code`, `replan_scope`는 `task`였다.
 - 의심 Task 첫 번째인 `TASK-002`는 해당 함수를 만든 Task와 일치한다. 재진단은 `TASK-001`, `TASK-004`도 함께 지목했다.
@@ -45,7 +47,6 @@
 ## 확인하지 못한 것
 
 - WSL2에서의 실행
-- 최종 `passed`. 성공 사례는 수동 확인이 남은 `manual_pending`까지만 확인했고, 수동 기록을 제출하지 않았다
 - 빌드 실패, 환경 실패, 수동 실패에 대한 실제 호출
 - 입력에 코드 본문이 없어 진단은 조건식까지 특정하지 못한다. 자동 호출은 "휴가 종류 조건 오류"를 가능성 중 하나로 들었고, 재진단은 저장 컬럼 가능성을 들었다
 - 실패가 더 많거나 원인이 복잡할 때 16,000토큰이 충분한지. 이번 출력은 약 1,700토큰이다
