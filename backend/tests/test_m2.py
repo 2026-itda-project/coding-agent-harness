@@ -266,6 +266,16 @@ class WorkspaceTest(unittest.TestCase):
         self.assertEqual(record["agent"]["result"], "agent timeout")
         self.assertEqual(record["leftover_containers"], ["before", "after"])
         self.assertNotIn("cleanup_error", record)
+        self.assertIsNone(record["agent"]["total_cost_usd"])
+        self.assertEqual((record["cost_status"], record["unknown_reason"]), ("unknown", "agent_timeout"))
+        self.assertLessEqual(record["started_at"], record["ended_at"])
+
+    def test_attempt_records_its_time_and_reported_cost(self):
+        record = self.run_fake(False)
+        self.assertEqual((record["status"], record["agent"]["total_cost_usd"]), ("done", 0.2))
+        self.assertEqual((record["cost_status"], record["unknown_reason"]), ("reported", None))
+        self.assertLessEqual(record["started_at"], record["ended_at"])
+        self.assertGreaterEqual(record["duration_s"], 0)
 
     def test_failed_cleanup_after_the_agent_keeps_its_result_and_cost(self):
         calls = []
@@ -432,8 +442,43 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertEqual(len(log), 1)
         self.assertEqual(log[0]["usage"], usage)
         self.assertIsNone(log[0]["cost_usd"])
+        self.assertEqual((log[0]["cost_status"], log[0]["unknown_reason"]), ("unknown", "cost_calculation_failed"))
         with self.assertRaises(SystemExit):
             run.Budget(100, lambda: [r["cost_usd"] for r in log]).check(1, "next")
+
+    def test_cost_record_says_how_the_cost_was_found(self):
+        """#12: a computed cost names its rates and their source; missing usage stays unknown, never 0."""
+        import io
+        from contextlib import suppress
+        from unittest.mock import MagicMock
+        cases = {"computed": {"input_tokens": 1000, "output_tokens": 100},
+                 "usage_missing": {"input_tokens": 1000}}
+        for case, usage in cases.items():
+            events = [("message_start", {"message": {"model": "claude-sonnet-5-5", "usage": usage}}),
+                      ("message_delta", {"delta": {"stop_reason": "end_turn"}, "usage": {}})]
+            stream = "".join(f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events)
+            opener = MagicMock()
+            opener.open.return_value.__enter__.return_value = io.BytesIO(stream.encode())
+            log = []
+            with self.subTest(case=case), patch.dict(os.environ, {"ANTHROPIC_API_KEY": "fake-not-sent"}), \
+                    patch.object(claude, "build_opener", return_value=opener), suppress(AnalysisError):
+                claude.complete("claude-sonnet-5-5", "test", {}, {}, log)  # no text block: parse fails after the record
+            record = log[0]
+            self.assertLessEqual(record["started_at"], record["ended_at"])
+            if case == "computed":
+                self.assertEqual((record["cost_status"], record["unknown_reason"]), ("computed", None))
+                self.assertAlmostEqual(record["cost_usd"], 0.003)
+                self.assertEqual((record["pricing"]["input_usd_per_mtok"], record["pricing"]["checked"]),
+                                 (2, claude.PRICING["checked"]))
+                rates = record["pricing"]  # the recorded basis reproduces the recorded cost
+                self.assertAlmostEqual((usage["input_tokens"] * rates["input_usd_per_mtok"]
+                                        + usage["output_tokens"] * rates["output_usd_per_mtok"]) / 1_000_000,
+                                       record["cost_usd"])
+                self.assertIn("/ 1_000_000", rates["basis"])
+            else:
+                self.assertEqual((record["cost_status"], record["unknown_reason"], record["cost_usd"]),
+                                 ("unknown", "usage_missing", None))
+                self.assertNotIn("pricing", record)
 
 
 def alive(pid):

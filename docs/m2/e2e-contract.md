@@ -84,6 +84,19 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 - Context에는 작업 폴더 안의 실제 파일만 넣는다. 심볼릭 링크나 폴더 밖으로 이어지는 경로는 읽지 않고 `repository.skipped`에 이유를 남긴다.
 - Task의 모든 시도를 `agent/TASK-xxx-attempt-N.json`, `diffs/TASK-xxx-attempt-N.diff`로 남기고, 예산은 모든 시도의 비용을 합산한다. 비용을 알 수 없는 기록이 있으면 다음 유료 호출을 시작하지 않는다.
 
+### 비용·시간 기록 (#12)
+
+모델 호출 기록(`run.json`의 `calls[]`, PRD 폴더의 `provenance.json`·`prd.failed-N.json`·`prd.rejected-N.json`의 `calls[]`)과 Task 시도 기록(`attempts[]`, `agent/TASK-xxx-attempt-N.json`)은 비용을 어떻게 얻었는지와 시각을 함께 남긴다. 비용을 알 수 없으면 `cost_usd`(시도는 `agent.total_cost_usd`)는 `null`이고 0으로 바꾸지 않는다.
+
+| 필드 | 값 |
+| --- | --- |
+| `cost_status` | `computed`: usage × 요율로 계산(호출) · `reported`: Claude Code가 보고한 합계(시도, 내부 호출 포함) · `unknown`: 알 수 없음 |
+| `unknown_reason` | `unknown`일 때만 값이 있다. 호출: `stream_interrupted`(응답 도중 끊김), `usage_missing`(토큰 수 없음), `cost_calculation_failed`(요율 없는 모델·캐시 과금). 시도: `agent_timeout`, `cost_not_reported` |
+| `pricing` | `computed`일 때 사용한 요율(`input_usd_per_mtok`, `output_usd_per_mtok`)과 출처(`source`, `url`, `checked`), 계산식(`basis`). 값은 `app/llm/claude.py`의 `PRICES`·`PRICING` |
+| `started_at`, `ended_at` | ISO 8601 UTC. 호출은 `latency_s`, 시도는 `duration_s`(초)도 남긴다 |
+
+이 필드가 없는 이전 기록은 기존처럼 `cost_usd`의 `null` 여부로만 판단한다. 미확인 비용의 확인·보정 절차는 후속 PR에서 정한다(현재는 `review-runtime.md` 7절의 수동 절차).
+
 ## 6. Acceptance 판정 (E6)
 
 - 자동: Spec `checks`의 `http_steps`(상태 코드, 응답 포함 문자열). 재시작 후 `rerun_after_restart` 점검을 다시 실행해 데이터 유지를 확인한다.

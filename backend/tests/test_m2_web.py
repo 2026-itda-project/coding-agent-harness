@@ -190,6 +190,7 @@ class ClaudeProviderTest(unittest.TestCase):
             self.assertEqual(len(log), int(billed))
             if billed:
                 self.assertIsNone(log[0]["cost_usd"])
+                self.assertEqual((log[0]["cost_status"], log[0]["unknown_reason"]), ("unknown", "stream_interrupted"))
                 with self.assertRaises(SystemExit):  # unknown cost is never counted as 0
                     run.Budget(100, lambda: [r["cost_usd"] for r in log]).check(1, "next")
 
