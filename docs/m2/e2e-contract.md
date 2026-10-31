@@ -11,11 +11,12 @@
 고정 PRD --(Opus)--> Spec [E2] --(Opus)--> Feature·Task·Coding Plan [E3]
 Task마다: Context 구성 [E4] -> Claude Code 헤드리스(Sonnet)가 작업 폴더 수정 -> Harness가 Task 커밋 [E5]
 Docker 샌드박스에서 빌드·실행 -> Spec의 HTTP 점검 -> 재시작 후 지속성 점검 [E6]
+검증 실패 시: Opus 수정 계획 -> Sonnet이 해당 Task 수정 -> 다시 E6 (최대 --max-repairs 라운드) [#11]
 ```
 
 - 모델 ID는 환경 변수 `SONNET_MODEL`, `OPUS_MODEL`에서만 읽는다. 다른 모델로 자동 대체하지 않는다.
 - "Opus가 조종하는 Sonnet"은 Opus가 쓴 Task별 `instructions`를 Sonnet Agent가 실행하는 구조다.
-- 자동 재시도와 Opus 검증, 재계획(#10, #11)은 포함하지 않는다. 요구사항 루프와 UI 연결(#7, #8, #13 일부)은 이 문서가 아니라 [review-runtime.md](review-runtime.md)에서 다룬다.
+- Opus 검증(#10), 비용 미확인 복구·자동 재개(#11 나머지)는 포함하지 않는다. 검증 실패 후 수정 루프는 6.1절. 요구사항 루프와 UI 연결(#7, #8, #13 일부)은 이 문서가 아니라 [review-runtime.md](review-runtime.md)에서 다룬다.
 
 ## 2. PRD 입력 계약 (E1)
 
@@ -112,6 +113,13 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 | `data_kept` | 검증 전에 작업 폴더의 `data/`(런타임 DB)를 옮겨 둔 위치(`<run_id>/data-before-verify/`, 마지막 1개만 보관). 없었으면 null. Agent가 코딩 중 직접 보낸 요청이나 이전 검증의 점검 데이터가 남아 결과를 바꾸지 않도록, 검증은 항상 생성 코드가 만드는 시드 데이터에서 시작한다. 그래서 같은 Run을 다시 검증하면 미리보기에서 입력한 데이터도 시드 상태로 돌아가고, 그 직전 데이터 1개만 보관본으로 남는다. 옮긴 데이터는 샌드박스에 마운트되지 않고 Git에도 들어가지 않는다. `data/`나 보관 경로가 심볼릭 링크면 따라가지 않고 `workspace_error`(`data`)로 멈추며, 이전 보관본을 지우지 못해도 멈춘다 |
 
 이 기록은 실패를 구분할 원자료다. 어떤 실패를 자동 수정·재시도할지는 #11에서 정한다.
+
+### 6.1 수정 루프 (#11)
+
+- 대상: 검증 `status`가 `build_failed` 또는 `checks_failed`일 때. `passed`와 `manual_pending`(앱 오류가 아님)은 수정하지 않는다.
+- 한 라운드: 실패 근거(`failures`, 실패한 점검의 HTTP 결과, 빌드·서버 로그)를 Opus에 보내 `RepairPlan`(원인 `diagnosis`, 고칠 Task와 지시 `steps`)을 받는다. 어느 Task를 고칠지는 Opus가 정하고, 코드는 Task·점검 ID 참조만 검사한다. 각 step은 기존 Task 실행으로 Sonnet이 수정하며 지시는 Context의 `last_error`로 전달된다. 커밋·diff는 `<task>-attempt-<n>`으로 남는다. 그다음 다시 검증한다.
+- 중단(`run.json` `stages.repair`): `passed`·`manual_pending`(통과), `limit_reached`(`--max-repairs`, 기본 3, 0이면 루프 없음), `same_failures`(직전 라운드와 같은 실패), `plan_rejected`(계획이 계약 위반, 수정 실행 없음), `fix_failed`(Sonnet 수정 실패), `budget_stop`(예산 초과 또는 비용 미확인 기록).
+- 기록: 라운드마다 `run.json` `repairs[]`에 실패 목록, 진단, 고친 Task, 시도 이름, 결과를 남기고, `artifacts/repair/round-<n>.plan.json`, `round-<n>.verify.json`을 둔다. 이전 라운드 기록은 지우지 않고 다음 계획의 `previous_repairs`로 전달한다.
 
 ## 7. 실행
 

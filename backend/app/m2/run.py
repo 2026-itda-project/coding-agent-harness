@@ -4,7 +4,8 @@
   uv run --env-file ../.env python -m app.m2.run run --prd <prd.json> [--until spec|plan|code|verify]
   uv run --env-file ../.env python -m app.m2.run run --resume <run dir>
 
-Every paid call checks the run budget first. Nothing is retried automatically (#11)."""
+Every paid call checks the run budget first. A failed verification gets up to --max-repairs
+rounds of Opus repair plan -> Sonnet fix -> verification (#11); nothing else is retried."""
 
 import argparse
 import hashlib
@@ -67,6 +68,30 @@ class Budget:
     def reserve(self, role, max_output=32000, max_input=60000):
         incoming, outgoing = claude.PRICES[claude.model_for(role)]
         self.check((max_input * incoming + max_output * outgoing) / 1_000_000, role)
+
+
+REPAIRABLE = ("build_failed", "checks_failed")
+
+
+def repair_stop(repairs, result, limit):
+    """Why the repair loop must not start another round, or None."""
+    if len(repairs) >= limit:
+        return "limit_reached"
+    if repairs and sorted(repairs[-1]["failures"]) == sorted(failure_list(result)):
+        return "same_failures"
+    return None
+
+
+def failure_list(result):
+    return result.get("failures") or [result["status"]]
+
+
+def failure_report(result, spec):
+    """The evidence the repair planner sees: failed checks with their HTTP results and log tails."""
+    failed = [c for c in result.get("checks", []) + result.get("checks_after_restart", []) if not c["passed"]]
+    return {"status": result["status"], "failures": failure_list(result), "failed_checks": failed,
+            "build_log_tail": result.get("build", {}).get("log_tail", ""),
+            "server_log_tail": result.get("server_log_tail", "")}
 
 
 def cmd_prd(args):
@@ -142,21 +167,21 @@ def cmd_run(args):
             plan = Plan.model_validate(load(art / "plan.json"))
             state["task_order"] = order_tasks(plan)
             tasks = {t.id: t for t in plan.tasks}
-            for tid in state["task_order"]:
-                if state["tasks"].get(tid, {}).get("status") == "done":
-                    continue
+
+            def attempt(tid, last_error=None):
                 budget.check(args.task_budget_usd, tid)
                 done = {k: {"task_id": k, "title": v["title"], "commit": v["commit"], "files": v["files"],
                             "attempt": v.get("attempt", 1), "summary": v["agent"].get("result")}
                         for k, v in state["tasks"].items()
                         if v["status"] == "done"}
-                context = build_context(tasks[tid], prd, spec, app_dir, done, agent.SANDBOX)
-                dump(art / f"contexts/{tid}.json", context)
+                n = sum(a["task_id"] == tid for a in attempts) + 1
+                context = build_context(tasks[tid], prd, spec, app_dir, done, agent.SANDBOX, last_error)
+                dump(art / f"contexts/{tid}.json" if n == 1 else art / f"contexts/{tid}-attempt-{n}.json", context)
                 record = agent.run_task(tasks[tid], context, app_dir, args.task_budget_usd)
-                record["attempt"] = sum(a["task_id"] == tid for a in attempts) + 1
+                record["attempt"] = n
                 attempts.append(record)
                 state["tasks"][tid] = record
-                name = f"{tid}-attempt-{record['attempt']}"
+                name = f"{tid}-attempt-{n}"
                 dump(art / f"agent/{name}.json", record)
                 (art / f"diffs/{name}.diff").parent.mkdir(parents=True, exist_ok=True)
                 (art / f"diffs/{name}.diff").write_text(agent.git(app_dir, "diff", record["base_commit"], record["commit"]))
@@ -164,18 +189,70 @@ def cmd_run(args):
                 if record.get("cleanup_error"):  # the attempt and its cost are saved; nothing more starts
                     state["stages"]["code"] = f"cleanup failed after {tid}"
                     raise SystemExit(f"sandbox cleanup failed after {tid}: {record['cleanup_error']}")
+                return record, name
+
+            for tid in state["task_order"]:
+                if state["tasks"].get(tid, {}).get("status") == "done":
+                    continue
+                record, name = attempt(tid)
                 if record["status"] != "done":
                     state["stages"]["code"] = f"failed at {tid}"
                     raise SystemExit(f"{tid} failed; see {art / f'agent/{name}.json'}")
             state["stages"]["code"] = "done"
         if until >= 3:
-            result = verify.verify(app_dir, spec, f"harness-{state['run_id']}", keep_running=args.keep_running)
-            dump(art / "verify.json", result)
-            state["stages"]["verify"] = result["status"]
-            print(f"verify: {result['status']} ({result.get('passed')}/{result.get('total')} checks)"
-                  + (f", preview {result['preview_url']}" if result.get("preview_url") else ""))
-            if result.get("cleanup_error"):  # the next task or verification checks again before it starts
-                print(f"warning: sandbox cleanup failed after verify: {result['cleanup_error']}")
+            def check_app(path):
+                result = verify.verify(app_dir, spec, f"harness-{state['run_id']}", keep_running=args.keep_running)
+                dump(art / path, result)
+                state["stages"]["verify"] = result["status"]
+                print(f"verify: {result['status']} ({result.get('passed')}/{result.get('total')} checks)"
+                      + (f", preview {result['preview_url']}" if result.get("preview_url") else ""))
+                if result.get("cleanup_error"):  # the next task or verification checks again before it starts
+                    print(f"warning: sandbox cleanup failed after verify: {result['cleanup_error']}")
+                return result
+
+            result = check_app("verify.json")
+            repairs = state.setdefault("repairs", [])
+            while result["status"] in REPAIRABLE:
+                if stop := repair_stop(repairs, result, args.max_repairs):
+                    state["stages"]["repair"] = stop
+                    break
+                rnd = len(repairs) + 1
+                failure = failure_report(result, spec)
+                try:
+                    budget.reserve("opus")
+                except SystemExit:
+                    state["stages"]["repair"] = "budget_stop"
+                    raise
+                try:
+                    fix = stages.generate_repair_plan(prd, spec, plan, failure, repairs, log)
+                except stages.ContractError as exc:
+                    dump(art / f"repair/round-{rnd}.plan.rejected.json", {"errors": exc.errors, "data": exc.data})
+                    state["stages"]["repair"] = "plan_rejected"
+                    break
+                dump(art / f"repair/round-{rnd}.plan.json", fix.model_dump())
+                entry = {"round": rnd, "failures": failure["failures"], "diagnosis": fix.diagnosis,
+                         "plan": f"repair/round-{rnd}.plan.json", "tasks": [s.task_id for s in fix.steps],
+                         "attempts": [], "verify": None, "result": None}
+                repairs.append(entry)
+                for step in fix.steps:
+                    note = {"repair_round": rnd, "diagnosis": fix.diagnosis, "instructions": step.instructions,
+                            "check_ids": step.check_ids, "failure": failure}
+                    try:
+                        record, name = attempt(step.task_id, note)
+                    except SystemExit:
+                        state["stages"]["repair"] = "budget_stop"
+                        raise
+                    entry["attempts"].append(name)
+                    if record["status"] != "done":
+                        entry["result"] = state["stages"]["repair"] = "fix_failed"
+                        raise SystemExit(f"repair round {rnd}: {step.task_id} failed; see {art / f'agent/{name}.json'}")
+                entry["verify"] = f"repair/round-{rnd}.verify.json"
+                result = check_app(entry["verify"])
+                entry["result"] = result["status"]
+                save()
+            else:
+                if repairs:
+                    state["stages"]["repair"] = result["status"]
     except stages.ContractError as exc:
         dump(art / f"{exc.stage}.rejected.json", {"errors": exc.errors, "data": exc.data})
         state["stages"][exc.stage] = "rejected"
@@ -208,6 +285,7 @@ def main(argv=None):
     r.add_argument("--budget-usd", type=float, default=8.0)
     r.add_argument("--task-budget-usd", type=float, default=1.5)
     r.add_argument("--keep-running", action="store_true")
+    r.add_argument("--max-repairs", type=int, default=3)
     args = parser.parse_args(argv)
     (cmd_prd if args.cmd == "prd" else cmd_run)(args)
 
