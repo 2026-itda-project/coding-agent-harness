@@ -367,6 +367,40 @@ def check_plan(plan, spec):
     return errors
 
 
+# ---------- Repair plan (#11) ----------
+
+class RepairStep(Strict):
+    task_id: str
+    instructions: str
+    check_ids: list[str]
+
+
+class RepairPlan(Strict):
+    diagnosis: str
+    steps: list[RepairStep]
+
+
+def check_repair_plan(repair, plan, spec):
+    """References only: which task to fix and why is the model's call."""
+    errors = []
+    tids = {t.id for t in plan.tasks}
+    check_ids = {c.id for c in spec.checks}
+    if not repair.diagnosis.strip():
+        errors.append("empty diagnosis")
+    if not repair.steps:
+        errors.append("no repair steps")
+    seen = [s.task_id for s in repair.steps]
+    for step in repair.steps:
+        if step.task_id not in tids:
+            errors.append(f"unknown task {step.task_id}")
+        elif seen.count(step.task_id) > 1:
+            errors.append(f"duplicate task {step.task_id}")
+        errors += [f"{step.task_id} unknown check {c}" for c in step.check_ids if c not in check_ids]
+        if not step.instructions.strip():
+            errors.append(f"{step.task_id} empty instructions")
+    return errors
+
+
 # ---------- JSON schema for structured outputs ----------
 
 def output_schema(model):

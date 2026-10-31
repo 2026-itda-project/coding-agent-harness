@@ -15,8 +15,8 @@ from app.llm import claude
 from app.llm.errors import AnalysisError
 from app.m2 import agent, run, stages, verify
 from app.m2.context import build_context
-from app.m2.contracts import (PRD, Plan, Spec, check_generated_prd, check_plan, check_prd, check_spec,
-                              order_tasks, output_schema)
+from app.m2.contracts import (PRD, Plan, RepairPlan, Spec, check_generated_prd, check_plan, check_prd,
+                              check_repair_plan, check_spec, order_tasks, output_schema)
 
 
 def item(id_, status="confirmed", source="initial_input"):
@@ -704,3 +704,215 @@ class SandboxTest(unittest.TestCase):
         self.assertGreater(planned, 0)
         self.assertEqual((result["passed"], result["total"], result["automatic_status"]), (0, planned, "failed"))
         self.assertIn(f"{planned} planned checks did not run", result["failures"])
+
+def verify_result(status, failures=()):
+    check = {"id": "CHK-001", "ac_ids": ["AC-001"], "passed": status == "passed",
+             "steps": [{"method": "GET", "path": "/api/items", "status": 500 if failures else 200}]}
+    return {"status": status, "failures": list(failures), "checks": [check], "checks_after_restart": [],
+            "steps": [{"phase": "build", "outcome": "failed" if status == "build_failed" else "ok", "exit_code": 0,
+                       "output_tail": "build log"}], "server_log_tail": "Traceback ..."}
+
+
+def repair_data(task_id="TASK-002", checks=("CHK-001",)):
+    return {"diagnosis": "CHK-001이 500으로 실패했다.",
+            "steps": [{"task_id": task_id, "instructions": "목록 API 수정", "check_ids": list(checks)}]}
+
+
+class RepairLoopTest(unittest.TestCase):
+    """#11: verify failure -> Opus repair plan -> Sonnet fix -> verify, up to --max-repairs rounds."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.env = patch.dict(os.environ, {"SONNET_MODEL": "claude-sonnet-5-5", "OPUS_MODEL": "claude-opus-5-5"})
+        self.env.start()
+        self.run_dir = Path(self.tmp.name) / "run"
+        agent.init_workspace(self.run_dir / "app")
+        self.art = self.run_dir / "artifacts"
+        for name, data in (("prd", prd_data()), ("spec", spec_data()), ("plan", plan_data())):
+            run.dump(self.art / f"{name}.json", data)
+        done = {"status": "done", "title": "t", "commit": "x", "files": [], "agent": {"total_cost_usd": 0.1}}
+        run.dump(self.run_dir / "run.json", {"run_id": "t", "stages": {"code": "done"}, "calls": [],
+                                             "tasks": {"TASK-001": {**done, "task_id": "TASK-001"},
+                                                       "TASK-002": {**done, "task_id": "TASK-002"}},
+                                             "attempts": []})
+        self.contexts = []
+
+    def tearDown(self):
+        self.env.stop()
+        self.tmp.cleanup()
+
+    def fix(self, status="done"):
+        def run_task(task, context, app_dir, budget):
+            self.contexts.append(context)
+            base = agent.git(app_dir, "rev-parse", "HEAD").strip()
+            return {"task_id": task.id, "title": task.title, "status": status, "base_commit": base, "commit": base,
+                    "files": [], "agent": {"total_cost_usd": 0.2, "result": "고침"}}
+        return run_task
+
+    def planner(self, *plans):
+        calls = []
+
+        def generate(prd, spec, plan, failure, history, log):
+            calls.append({"failure": failure, "history": [dict(h) for h in history]})
+            log.append({"stage": "repair_plan", "cost_usd": 0.3})
+            data = plans[min(len(calls), len(plans)) - 1]
+            if isinstance(data, Exception):
+                raise data
+            return RepairPlan.model_validate(data)
+        return generate, calls
+
+    def go(self, verifies, plans, fix_status="done", extra=()):
+        generate, calls = self.planner(*plans)
+        results = iter(verifies)
+        with patch.object(verify, "verify", lambda *a, **k: next(results)), \
+                patch.object(stages, "generate_repair_plan", generate), \
+                patch.object(agent, "run_task", self.fix(fix_status)):
+            try:
+                run.main(["run", "--resume", str(self.run_dir), "--budget-usd", "5", *extra])
+            except SystemExit as exc:
+                self.exit = str(exc)
+        return run.load(self.run_dir / "run.json"), calls
+
+    def test_failure_is_fixed_in_one_round(self):
+        state, calls = self.go([verify_result("checks_failed", ["CHK-001 failed"]), verify_result("passed")],
+                               [repair_data()])
+        self.assertEqual(state["stages"]["repair"], "passed")
+        self.assertEqual(len(state["repairs"]), 1)
+        rnd = state["repairs"][0]
+        self.assertEqual((rnd["tasks"], rnd["attempts"], rnd["result"]), (["TASK-002"], ["TASK-002-attempt-1"], "passed"))
+        self.assertEqual(calls[0]["failure"]["failed_checks"][0]["id"], "CHK-001")
+        self.assertEqual(self.contexts[0]["last_error"]["instructions"], "목록 API 수정")
+        for path in ("repair/round-1.plan.json", "repair/round-1.verify.json", "agent/TASK-002-attempt-1.json"):
+            self.assertTrue((self.art / path).exists(), path)
+        self.assertEqual(state["cost_usd"]["messages_api"], 0.3)
+
+    def test_stops_at_the_round_limit_and_keeps_every_round(self):
+        verifies = [verify_result("checks_failed", [f"CHK-00{i} failed"]) for i in range(1, 5)]
+        state, calls = self.go(verifies, [repair_data()])
+        self.assertEqual(state["stages"]["repair"], "limit_reached")
+        self.assertEqual([r["round"] for r in state["repairs"]], [1, 2, 3])
+        self.assertEqual(len(calls[2]["history"]), 2)
+        self.assertEqual(state["repairs"][-1]["result"], "checks_failed")
+
+    def test_same_failures_stop_early(self):
+        same = verify_result("checks_failed", ["CHK-001 failed"])
+        state, _ = self.go([same, same], [repair_data()])
+        self.assertEqual(state["stages"]["repair"], "same_failures")
+        self.assertEqual(len(state["repairs"]), 1)
+
+    def test_rejected_plan_runs_no_fix(self):
+        bad = stages.ContractError("repair_plan", ["unknown task TASK-999"], {})
+        state, _ = self.go([verify_result("checks_failed", ["CHK-001 failed"])], [bad])
+        self.assertEqual(state["stages"]["repair"], "plan_rejected")
+        self.assertEqual(self.contexts, [])
+        self.assertTrue((self.art / "repair/round-1.plan.rejected.json").exists())
+
+    def test_failed_fix_stops_the_loop(self):
+        state, _ = self.go([verify_result("checks_failed", ["CHK-001 failed"])], [repair_data()], fix_status="failed")
+        self.assertEqual(state["stages"]["repair"], "fix_failed")
+        self.assertIn("repair round 1", self.exit)
+
+    def test_passed_and_manual_pending_do_not_repair(self):
+        for status in ("passed", "manual_pending"):
+            state, calls = self.go([verify_result(status)], [repair_data()])
+            self.assertEqual(calls, [])
+            self.assertEqual(state["repairs"], [])
+            self.assertNotIn("repair", state["stages"])
+
+    def test_unknown_cost_blocks_the_repair_plan_call(self):
+        state = run.load(self.run_dir / "run.json")
+        state["calls"] = [{"stage": "plan", "cost_usd": None}]
+        run.dump(self.run_dir / "run.json", state)
+        state, calls = self.go([verify_result("checks_failed", ["CHK-001 failed"])], [repair_data()])
+        self.assertEqual(calls, [])
+        self.assertEqual(state["stages"]["repair"], "budget_stop")
+        self.assertIn("unknown cost", self.exit)
+
+    def test_worse_fix_is_rolled_back_and_the_next_round_starts_from_before(self):
+        app = self.run_dir / "app"
+        (app / "main.py").write_text("v1")
+        agent.git(app, "add", "-A")
+        agent.git(app, "commit", "-q", "-m", "v1")
+
+        def breaking(task, context, app_dir, budget):
+            self.contexts.append(context)
+            base = agent.git(app_dir, "rev-parse", "HEAD").strip()
+            (Path(app_dir) / "main.py").write_text("broken")
+            (Path(app_dir) / "extra.py").write_text("x")
+            agent.git(app_dir, "add", "-A")
+            agent.git(app_dir, "commit", "-q", "-m", "fix try")
+            return {"task_id": task.id, "title": task.title, "status": "done", "base_commit": base,
+                    "commit": agent.git(app_dir, "rev-parse", "HEAD").strip(), "files": [],
+                    "agent": {"total_cost_usd": 0.2}}
+
+        one = verify_result("checks_failed", ["CHK-001 failed"])
+        two = verify_result("checks_failed", ["CHK-001 failed", "CHK-002 failed"])
+        generate, calls = self.planner(repair_data())
+        results = iter([one, two, one])
+        with patch.object(verify, "verify", lambda *a, **k: next(results)), \
+                patch.object(stages, "generate_repair_plan", generate), patch.object(agent, "run_task", breaking):
+            run.main(["run", "--resume", str(self.run_dir), "--budget-usd", "5", "--max-repairs", "2"])
+        state = run.load(self.run_dir / "run.json")
+        first, second = state["repairs"]
+        self.assertEqual(first["result"], "rolled_back")
+        self.assertEqual(first["failures_after"], ["CHK-001 failed", "CHK-002 failed"])
+        self.assertEqual(second["failures"], ["CHK-001 failed"])  # the round restarts from the pre-round failure
+        self.assertEqual(calls[1]["history"][0]["result"], "rolled_back")
+        self.assertEqual(state["stages"]["repair"], "limit_reached")
+        self.assertIn("revert repair round 1", agent.git(app, "log", "--format=%s"))
+
+    def test_rollback_restores_the_tree(self):
+        app = self.run_dir / "app"
+        (app / "main.py").write_text("v1")
+        agent.git(app, "add", "-A")
+        agent.git(app, "commit", "-q", "-m", "v1")
+        good = agent.git(app, "rev-parse", "HEAD").strip()
+        (app / "main.py").write_text("broken")
+        (app / "extra.py").write_text("x")
+        agent.git(app, "add", "-A")
+        agent.git(app, "commit", "-q", "-m", "bad")
+        agent.rollback(app, good, "revert")
+        self.assertEqual((app / "main.py").read_text(), "v1")
+        self.assertFalse((app / "extra.py").exists())
+        self.assertEqual(agent.git(app, "diff", good, "HEAD"), "")
+        self.assertEqual(len(agent.git(app, "log", "--format=%s").splitlines()), 4)
+
+    def test_environment_and_docker_errors_are_not_repaired(self):
+        killed = verify_result("build_failed", ["build: killed (exit 137)"])
+        killed["steps"][0]["outcome"] = "killed"
+        for result in (verify_result("environment_error", ["preflight: docker unavailable"]),
+                       verify_result("start_failed", ["start: docker_error (exit 125)"]), killed):
+            state, calls = self.go([result], [repair_data()])
+            self.assertEqual(calls, [], result["status"])
+            self.assertNotIn("repair", state["stages"])
+        state, calls = self.go([verify_result("build_failed", ["build: failed (exit 1)"]), verify_result("passed")],
+                               [repair_data()])
+        self.assertEqual(calls[0]["failure"]["build_log_tail"], "build log")
+        self.assertEqual(state["stages"]["repair"], "passed")
+
+    def test_build_break_counts_as_worse(self):
+        self.assertTrue(run.worse(verify_result("checks_failed", ["CHK-001 failed"]), verify_result("build_failed")))
+        self.assertFalse(run.worse(verify_result("checks_failed", ["CHK-001 failed"]),
+                                   verify_result("checks_failed", ["CHK-002 failed"])))
+        self.assertFalse(run.worse(verify_result("checks_failed", ["CHK-001 failed"]), verify_result("passed")))
+
+    def test_zero_max_repairs_disables_the_loop(self):
+        state, calls = self.go([verify_result("checks_failed", ["CHK-001 failed"])], [repair_data()],
+                               extra=["--max-repairs", "0"])
+        self.assertEqual(calls, [])
+        self.assertEqual(state["stages"]["repair"], "limit_reached")
+
+
+class RepairPlanContractTest(unittest.TestCase):
+    def test_references_are_checked(self):
+        spec, plan = Spec.model_validate(spec_data()), Plan.model_validate(plan_data())
+        self.assertEqual(check_repair_plan(RepairPlan.model_validate(repair_data()), plan, spec), [])
+        bad = {"diagnosis": " ", "steps": [repair_data("TASK-999")["steps"][0],
+                                           *repair_data("TASK-001", ["CHK-404"])["steps"] * 2]}
+        errors = check_repair_plan(RepairPlan.model_validate(bad), plan, spec)
+        self.assertIn("empty diagnosis", errors)
+        self.assertIn("unknown task TASK-999", errors)
+        self.assertIn("duplicate task TASK-001", errors)
+        self.assertIn("TASK-001 unknown check CHK-404", errors)
+        self.assertEqual(check_repair_plan(RepairPlan.model_validate({"diagnosis": "x", "steps": []}), plan, spec),
+                         ["no repair steps"])
