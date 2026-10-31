@@ -73,6 +73,18 @@ class Budget:
 REPAIRABLE = ("build_failed", "checks_failed")
 
 
+def repairable(result):
+    """Failures the generated code can cause. Environment, workspace and container start errors,
+    and a build killed or refused by Docker, are not sent to the coding agent."""
+    if result["status"] == "build_failed":
+        return build_step(result).get("outcome") in ("failed", "timeout")
+    return result["status"] == "checks_failed"
+
+
+def build_step(result):
+    return next((s for s in result.get("steps", []) if s["phase"] == "build"), {})
+
+
 def repair_stop(repairs, result, limit):
     """Why the repair loop must not start another round, or None."""
     if len(repairs) >= limit:
@@ -100,7 +112,7 @@ def failure_report(result, spec):
     """The evidence the repair planner sees: failed checks with their HTTP results and log tails."""
     failed = [c for c in result.get("checks", []) + result.get("checks_after_restart", []) if not c["passed"]]
     return {"status": result["status"], "failures": failure_list(result), "failed_checks": failed,
-            "build_log_tail": result.get("build", {}).get("log_tail", ""),
+            "failure_stage": result.get("failure_stage"), "build_log_tail": build_step(result).get("output_tail", ""),
             "server_log_tail": result.get("server_log_tail", "")}
 
 
@@ -222,7 +234,7 @@ def cmd_run(args):
 
             result = check_app("verify.json")
             repairs = state.setdefault("repairs", [])
-            while result["status"] in REPAIRABLE:
+            while repairable(result):
                 if stop := repair_stop(repairs, result, args.max_repairs):
                     state["stages"]["repair"] = stop
                     break

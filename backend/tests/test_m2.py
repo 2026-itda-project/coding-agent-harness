@@ -709,7 +709,8 @@ def verify_result(status, failures=()):
     check = {"id": "CHK-001", "ac_ids": ["AC-001"], "passed": status == "passed",
              "steps": [{"method": "GET", "path": "/api/items", "status": 500 if failures else 200}]}
     return {"status": status, "failures": list(failures), "checks": [check], "checks_after_restart": [],
-            "build": {"exit_code": 0, "log_tail": "build ok"}, "server_log_tail": "Traceback ..."}
+            "steps": [{"phase": "build", "outcome": "failed" if status == "build_failed" else "ok", "exit_code": 0,
+                       "output_tail": "build log"}], "server_log_tail": "Traceback ..."}
 
 
 def repair_data(task_id="TASK-002", checks=("CHK-001",)):
@@ -875,6 +876,19 @@ class RepairLoopTest(unittest.TestCase):
         self.assertFalse((app / "extra.py").exists())
         self.assertEqual(agent.git(app, "diff", good, "HEAD"), "")
         self.assertEqual(len(agent.git(app, "log", "--format=%s").splitlines()), 4)
+
+    def test_environment_and_docker_errors_are_not_repaired(self):
+        killed = verify_result("build_failed", ["build: killed (exit 137)"])
+        killed["steps"][0]["outcome"] = "killed"
+        for result in (verify_result("environment_error", ["preflight: docker unavailable"]),
+                       verify_result("start_failed", ["start: docker_error (exit 125)"]), killed):
+            state, calls = self.go([result], [repair_data()])
+            self.assertEqual(calls, [], result["status"])
+            self.assertNotIn("repair", state["stages"])
+        state, calls = self.go([verify_result("build_failed", ["build: failed (exit 1)"]), verify_result("passed")],
+                               [repair_data()])
+        self.assertEqual(calls[0]["failure"]["build_log_tail"], "build log")
+        self.assertEqual(state["stages"]["repair"], "passed")
 
     def test_build_break_counts_as_worse(self):
         self.assertTrue(run.worse(verify_result("checks_failed", ["CHK-001 failed"]), verify_result("build_failed")))

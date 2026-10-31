@@ -116,7 +116,7 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 
 ### 6.1 수정 루프 (#11)
 
-- 대상: 검증 `status`가 `build_failed` 또는 `checks_failed`일 때. `passed`와 `manual_pending`(앱 오류가 아님)은 수정하지 않는다.
+- 대상: 검증 `status`가 `checks_failed`이거나, 빌드 단계가 `failed`·`timeout`으로 끝난 `build_failed`일 때. `passed`, `manual_pending`, 실행 환경 오류(`environment_error`, `workspace_error`, `start_failed`, Docker가 끊거나 죽인 빌드)는 생성 코드로 고칠 수 없으므로 수정하지 않는다.
 - 한 라운드: 실패 근거(`failures`, 실패한 점검의 HTTP 결과, 빌드·서버 로그)를 Opus에 보내 `RepairPlan`(원인 `diagnosis`, 고칠 Task와 지시 `steps`)을 받는다. 어느 Task를 고칠지는 Opus가 정하고, 코드는 Task·점검 ID 참조만 검사한다. 각 step은 기존 Task 실행으로 Sonnet이 수정하며 지시는 Context의 `last_error`로 전달된다. 커밋·diff는 `<task>-attempt-<n>`으로 남는다. 그다음 다시 검증한다.
 - 중단(`run.json` `stages.repair`): `passed`·`manual_pending`(통과), `limit_reached`(`--max-repairs`, 기본 3, 0이면 루프 없음), `same_failures`(직전 라운드와 같은 실패), `plan_rejected`(계획이 계약 위반, 수정 실행 없음), `fix_failed`(Sonnet 수정 실패), `budget_stop`(예산 초과 또는 비용 미확인 기록).
 - 되돌리기: 수정 후 실패한 점검이 늘어나거나 빌드가 새로 깨지면 그 라운드 전 커밋의 파일 상태를 새 커밋으로 복원하고(`result: rolled_back`), 다음 라운드는 수정 전 실패에서 다시 시작한다. 되돌린 라운드도 기록과 다음 계획의 `previous_repairs`에 남는다.
