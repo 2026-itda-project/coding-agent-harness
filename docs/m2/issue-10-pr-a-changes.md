@@ -13,7 +13,7 @@
 | `backend/app/m2/run.py` | +134 | `judge_run`, `save_verdict`, `retire_verification`, `submit_manual_review`, `run judge`, `run manual-review`, 검증 뒤 판정 저장 |
 | `backend/app/m2/web.py` | +65 | `verdict_of`, `manual_review_of`, `record_manual_review`, `run_status`와 `reason_for` 수정 |
 | `backend/app/main.py` | +6 | `POST /api/m2/runs/{run_id}/manual-review` |
-| `backend/tests/test_m2_acceptance.py` | +544 (신규) | 신규 테스트 39개 |
+| `backend/tests/test_m2_acceptance.py` | +544 (신규) | 신규 테스트 42개 |
 | `backend/tests/test_m2_web.py` | +9 | #24 테스트 1건의 픽스처 수정(아래 참고) |
 | `docs/m2/e2e-contract.md` | +71 | 7절 "최종 판정" 추가, 기존 "실행"은 8절로 이동 |
 | `docs/m2/review-runtime.md` | +17 | `final_status`와 `outcome` 대응표, API, 한계 |
@@ -32,6 +32,8 @@
 | `verify.json` | 코드 정보 없음 | `code_commit`, `spec_sha256` 추가 |
 | 손상된 `verify.json` 조회 | 오류 응답 | `insufficient_evidence` |
 | 판정 없이 다시 판정 | 불가 | `run judge`(Docker·모델 호출 없음) |
+
+`run_status`에 `can_retry`를 추가했다. `manual_failed`도 `outcome`은 `verification_failed`지만 서버가 재시도를 실행하지 않으므로 `false`다. 화면의 재시도 버튼은 아직 이 값을 쓰지 않는다.
 
 `outcome`의 값 종류는 늘리지 않았다. 환경 오류와 앱 실패는 `final_status`로 구분하며, 화면 구분은 #13에서 한다.
 
@@ -60,7 +62,7 @@ PR B에서 구현할 결정: `build_failed`, `auto_failed`에서만 자동 진�
 
 ## 검증
 
-- `main` 기준선 132개, #24 기준선 143개, 이번 변경 후 182개 모두 통과
+- `main` 기준선 132개, #24 기준선 143개, 이번 변경 후 185개 모두 통과
 - 실행 환경: macOS, Python 3.13 venv, `python -m unittest discover -s tests`. `uv`가 없어 venv로 실행했다.
 - 하지 않은 것: Docker 실행, 실제 모델 호출, 프런트엔드 빌드. 실제 실행 검증은 PR B 때 WSL2에서 한다.
 

@@ -77,7 +77,7 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 | --- | --- |
 | `POST /api/m2/generate` `{state}` | 화면의 '생성' 버튼. `review` 또는 `approved` 상태를 받아 서버가 승인하고, 백그라운드 스레드에서 PRD 생성과 검증 후 실행기를 시작한다. `run_id`를 바로 반환한다. 같은 상태의 재요청은 같은 Run을 돌려준다 |
 | `POST /api/m2/runs` `{prd_id, confirm_open_issues, retry}` | 서버에 저장된 그 PRD로 기존 실행기(`run.main`)를 백그라운드 스레드에서 시작하고 `run_id`를 바로 반환. `retry=true`는 실패·중단된 같은 Run을 실행기의 `--resume`으로 이어서 실행(사용자 요청 시에만) |
-| `GET /api/m2/runs/{run_id}` | 현재 단계, Task, 비용 확인 필요 여부(`requires_cost_review`), 실패 사유(`error`는 내부 원문, `reason`은 화면용 짧은 문장), 자동 점검, 수동 확인 대기, 미리보기 주소, 비용, 확인이 필요한 미결정 사항 |
+| `GET /api/m2/runs/{run_id}` | 현재 단계, Task, 비용 확인 필요 여부(`requires_cost_review`), 실패 사유(`error`는 내부 원문, `reason`은 화면용 짧은 문장), 재시도 요청이 실제로 시작되는지(`can_retry`), 자동 점검, 수동 확인 대기, 미리보기 주소, 비용, 확인이 필요한 미결정 사항 |
 | `POST /api/m2/runs/{run_id}/manual-review` | 끝난 Run의 수동 확인 기록. 거부되면 422, 실행 중이면 409. 모델과 Docker를 부르지 않는다 |
 | `POST /api/m2/runs/{run_id}/preview/stop` | 그 Run의 미리보기 컨테이너만 종료 |
 

@@ -520,6 +520,53 @@ class WebStatusTest(RunFiles):
         self.assertEqual((status["final_status"], status["outcome"], status["verify"]),
                          ("insufficient_evidence", "verification_failed", None))
 
+    def retry_cases(self):
+        fail = {"status": "checks_failed", "checks": [{"id": "CHK-001", "passed": False}]}
+        return [("failed run", "failed", [AUTO], {}, {}, True), ("interrupted run", "interrupted", [AUTO], {}, {}, True),
+                ("automatic failure", "finished", [AUTO], fail, {}, True),
+                ("build failure", "finished", [AUTO], {"status": "build_failed"}, {}, True),
+                ("environment error", "finished", [AUTO], {"status": "environment_error"}, {}, True),
+                ("passed", "finished", [AUTO], {}, {}, False), ("manual pending", "finished", [MIXED], {}, {}, False),
+                ("waiting for confirmation", "awaiting_confirmation", [AUTO], {}, {}, False),
+                ("unknown cost", "failed", [AUTO], {}, {"calls": [{"cost_usd": None}]}, False)]
+
+    def set_up_retry_case(self, web_status, planned, changes, state):
+        self.write(planned, **changes)
+        run.dump(self.run_dir / "run.json", {**run.load(self.run_dir / "run.json"), **state})
+        run.dump(self.run_dir / "web.json", {"status": web_status, "prd_id": self.prd_id, "started_at": "t", "stage": "run"})
+        web._threads.pop(self.run_id, None)
+
+    def test_can_retry_says_exactly_when_a_retry_starts(self):
+        for name, web_status, planned, changes, state, expected in self.retry_cases():
+            with self.subTest(name):
+                self.set_up_retry_case(web_status, planned, changes, state)
+                self.assertEqual(self.status()["can_retry"], expected)
+                started = []
+                with patch.object(run, "main", lambda argv: started.append(argv)):
+                    try:
+                        web.start_run(self.prd_id, False, retry=True)
+                    except web.Conflict:
+                        pass
+                    if self.run_id in web._threads:
+                        web._threads[self.run_id].join(5)
+                self.assertEqual(bool(started), expected)
+
+    def test_manual_failure_cannot_be_retried(self):
+        self.write([MIXED])
+        run.submit_manual_review(self.run_dir, {"reviewer": "r", "items": [self.entry(verdict="fail")]})
+        status = self.status()
+        self.assertEqual((status["outcome"], status["final_status"], status["can_retry"]),
+                         ("verification_failed", "manual_failed", False))
+
+    def test_no_retry_while_any_run_is_active_or_without_a_record(self):
+        self.write([AUTO], status="build_failed")
+        with patch.object(web, "_threads", {"web-other": type("Alive", (), {"is_alive": lambda s: True})()}):
+            self.assertEqual(self.status()["can_retry"], False)
+        self.assertEqual(self.status()["can_retry"], True)
+        (self.run_dir / "run.json").unlink()
+        run.dump(self.run_dir / "web.json", {"status": "failed", "prd_id": self.prd_id, "started_at": "t", "stage": "run"})
+        self.assertEqual(self.status()["can_retry"], False)
+
     def test_api_records_a_review_and_refuses_bad_input(self):
         from fastapi import HTTPException
 
