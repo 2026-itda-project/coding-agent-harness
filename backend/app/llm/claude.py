@@ -15,7 +15,8 @@ ENDPOINT = "https://api.anthropic.com/v1/messages"
 # record carries it, so a run shows which rates its costs were calculated with (#12).
 PRICES = {"claude-sonnet-5-5": (2, 10), "claude-opus-5-5": (4, 20)}
 PRICING = {"source": "Claude model overview", "url": "https://docs.claude.com/en/docs/about-claude/models/overview",
-           "checked": "2026-10-14", "unit": "USD per 1M tokens", "basis": "input_tokens * input + output_tokens * output"}
+           "checked": "2026-10-14", "unit": "USD per 1M tokens",
+           "basis": "(input_tokens * input_usd_per_mtok + output_tokens * output_usd_per_mtok) / 1_000_000"}
 
 
 def model_for(role):

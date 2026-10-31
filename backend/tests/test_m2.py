@@ -470,6 +470,11 @@ class ReviewFixesTest(unittest.TestCase):
                 self.assertAlmostEqual(record["cost_usd"], 0.003)
                 self.assertEqual((record["pricing"]["input_usd_per_mtok"], record["pricing"]["checked"]),
                                  (2, claude.PRICING["checked"]))
+                rates = record["pricing"]  # the recorded basis reproduces the recorded cost
+                self.assertAlmostEqual((usage["input_tokens"] * rates["input_usd_per_mtok"]
+                                        + usage["output_tokens"] * rates["output_usd_per_mtok"]) / 1_000_000,
+                                       record["cost_usd"])
+                self.assertIn("/ 1_000_000", rates["basis"])
             else:
                 self.assertEqual((record["cost_status"], record["unknown_reason"], record["cost_usd"]),
                                  ("unknown", "usage_missing", None))
