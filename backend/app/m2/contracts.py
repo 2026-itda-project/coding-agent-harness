@@ -367,6 +367,65 @@ def check_plan(plan, spec):
     return errors
 
 
+# ---------- Manual review (E6 acceptance) ----------
+
+class ManualReviewEntry(Strict):
+    """One person's verdict on one planned manual step. `step` repeats the Spec text and step_index
+    identifies it, as a check may list the same text twice."""
+    check_id: str
+    step_index: int
+    step: str
+    verdict: Literal["pass", "fail"]
+    evidence: str
+
+
+class ManualReviewSubmission(Strict):
+    """What a person sends. The server adds the time and the code the verdicts apply to."""
+    reviewer: str
+    items: list[ManualReviewEntry]
+
+
+class ManualReviewItem(ManualReviewEntry):
+    reviewer: str
+    reviewed_at: str
+    code_commit: str
+    spec_sha256: str
+
+
+class ManualReview(Strict):
+    schema_version: Literal[1]
+    reviewer: str  # the latest submission; submissions may be partial, so each item keeps its own
+    reviewed_at: str
+    items: list[ManualReviewItem]
+
+
+def check_manual_entries(reviewer, items, spec):
+    errors = [] if reviewer.strip() else ["reviewer is empty"]
+    checks = {c.id: c for c in spec.checks}
+    seen = set()
+    for entry in items:
+        where = f"{entry.check_id} step {entry.step_index}"
+        check = checks.get(entry.check_id)
+        if check is None:
+            errors.append(f"{entry.check_id} unknown check")
+            continue
+        if (entry.check_id, entry.step_index) in seen:
+            errors.append(f"{where} duplicate")
+        seen.add((entry.check_id, entry.step_index))
+        if not 0 <= entry.step_index < len(check.manual_steps):
+            errors.append(f"{where} is not a planned manual step")
+        elif check.manual_steps[entry.step_index] != entry.step:
+            errors.append(f"{where} text differs from the spec")
+        if not entry.evidence.strip():
+            errors.append(f"{where} has no evidence")
+    return errors
+
+
+def check_manual_submission(submission, spec):
+    return check_manual_entries(submission.reviewer, submission.items, spec) + (
+        [] if submission.items else ["items is empty"])
+
+
 # ---------- JSON schema for structured outputs ----------
 
 def output_schema(model):
