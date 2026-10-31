@@ -15,7 +15,7 @@ Docker 샌드박스에서 빌드·실행 -> Spec의 HTTP 점검 -> 재시작 후
 
 - 모델 ID는 환경 변수 `SONNET_MODEL`, `OPUS_MODEL`에서만 읽는다. 다른 모델로 자동 대체하지 않는다.
 - "Opus가 조종하는 Sonnet"은 Opus가 쓴 Task별 `instructions`를 Sonnet Agent가 실행하는 구조다.
-- 자동 재시도와 Opus 검증, 재계획(#10, #11)은 포함하지 않는다. 요구사항 루프와 UI 연결(#7, #8, #13 일부)은 이 문서가 아니라 [review-runtime.md](review-runtime.md)에서 다룬다.
+- 자동 재시도, Opus 진단, 재계획(#10 후속, #11)은 포함하지 않는다. 실행 증거로 내리는 최종 판정은 [7절](#7-최종-판정-10)에 있다. 요구사항 루프와 UI 연결(#7, #8, #13 일부)은 이 문서가 아니라 [review-runtime.md](review-runtime.md)에서 다룬다.
 
 ## 2. PRD 입력 계약 (E1)
 
@@ -89,8 +89,8 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 - 자동: Spec `checks`의 `http_steps`(상태 코드, 응답 포함 문자열). 재시작 후 `rerun_after_restart` 점검을 다시 실행해 데이터 유지를 확인한다.
 - 수동: 각 점검의 `manual_steps`를 브라우저에서 확인한다(`--keep-running`으로 미리보기 유지).
 - 자동 판정 통과 조건: 최초 실행과 재시작 후 모두 `GET /`가 200이고, HTTP 단계가 있는 점검(최초 + 재시작 후 지속성 점검)이 모두 실행되어 통과. 실행되지 않은 자동 점검은 실패로 `failures`에 기록한다.
-- 수동 전용 점검은 자동 점검 수에서 제외한다. 혼합 점검을 포함한 모든 수동 단계는 `manual_checks`에 `pending`으로 남긴다. 자동 판정은 `automatic_status`(passed/failed/not_applicable)로 구분하고, 실패 없이 수동 확인이 남으면 전체 `status`는 `manual_pending`이다. 수동 전용인 경우 자동 결과는 `not_applicable`이며 통과로 집계하지 않는다. 수동 판정 입력 기능은 후속 범위다.
-- 완료 판정은 빌드 성공이 아니라 자동 점검 전부 통과와 수동 점검 기록이다. 시나리오별 체크리스트는 픽스처 폴더에 둔다.
+- 수동 전용 점검은 자동 점검 수에서 제외한다. 혼합 점검을 포함한 모든 수동 단계는 `manual_checks`에 `pending`으로 남긴다. 자동 판정은 `automatic_status`(passed/failed/not_applicable)로 구분하고, 실패 없이 수동 확인이 남으면 전체 `status`는 `manual_pending`이다. 수동 전용인 경우 자동 결과는 `not_applicable`이며 통과로 집계하지 않는다. 수동 판정은 7절의 기록 계약으로 입력한다.
+- 완료 판정은 빌드 성공이 아니라 자동 점검 전부 통과와 수동 점검 기록이며, 7절의 `final_status`로 내린다. 시나리오별 체크리스트는 픽스처 폴더에 둔다.
 - Test 단계: 스택 계약이 생성 앱에 테스트를 요구하지 않으므로 지금은 실행하지 않는다. 테스트 요구가 정해지면 스택 계약과 E6 단계에 추가한다.
 
 ### `verify.json` 기록 (#9)
@@ -113,7 +113,66 @@ PRD 항목 ID → Spec 항목의 `requirement_ids`, Spec 점검의 `ac_ids` → 
 
 이 기록은 실패를 구분할 원자료다. 어떤 실패를 자동 수정·재시도할지는 #11에서 정한다.
 
-## 7. 실행
+## 7. 최종 판정 (#10)
+
+코드(`backend/app/m2/acceptance.py`)가 실행 증거로만 판정한다. 입력은 `verify.json`, PRD·Spec·Plan, `manual-review.json`, Task 기록이다. 모델 출력은 입력이 아니며, 이 단계에는 유료 호출이 없다. 결과는 `artifacts/verification.json`과 `run.json`의 `final_status`에 남는다. 원인 분석(Opus 진단)은 아직 구현하지 않았고 `diagnosis.status`는 `not_implemented`다.
+
+### `final_status` (위에서부터 처음 해당하는 값)
+
+| 값 | 조건 | `handoff.route` |
+| --- | --- | --- |
+| `insufficient_evidence` | `verify.json` 없음·손상, `environment_error`, `workspace_error`, `start_failed`, 어떤 단계든 `docker_error`, 계획과 맞지 않는 기록(모르는·중복·누락 결과, 다른 Spec, 점검 없는 AC, 끝나지 않은 Task, build 기록 없음) | `environment` |
+| `build_failed` | 빌드 단계 실패. `timeout`·`killed`는 원인을 구분할 수 없어 `cause_ambiguous: true` | `replan_candidate` |
+| `test_failed` | `verify.json`의 `test.status`가 `failed`. **현재 스택 계약에 Test 단계가 없어 실제 실행 경로가 없다** | `replan_candidate` |
+| `auto_failed` | 점검 실패, `GET /`가 200이 아님, 재시작 실패 | `replan_candidate` |
+| `manual_failed` | 현재 코드에 대한 수동 `fail`이 있음 | `replan_candidate` |
+| `manual_pending` | 미기록이거나 다른 코드의 기록만 있는 수동 단계가 있음 | `wait_for_human` |
+| `passed` | 계획된 자동 점검이 모두 실행·통과했고 수동 단계도 모두 `pass` | `none` |
+
+`automatic_status`나 `status`를 믿지 않고 점검 결과에서 다시 계산한다. `stopped()`가 실행하지 못한 점검도 `failed`로 적기 때문이다. Test 게이트는 `not_applicable`로 기록하고 통과로 세지 않는다.
+
+### `verification.json`
+
+| 필드 | 내용 |
+| --- | --- |
+| `final_status`, `reasons`, `cause_ambiguous` | 판정, 사유, 원인 구분 불가 여부 |
+| `check_authorship` | `spec_model`. 자동 점검은 Spec을 작성한 모델이 만들었으므로 독립 검증이 아니다 |
+| `basis` | `code_commit`, `spec_sha256`, `verify_status`, `failure_stage`, `verify_failures`, `manual_review_state`(`none`·`recorded`·`invalid`) |
+| `gates` | `build`, `test`, `automatic`, `manual`별 상태와 수 |
+| `checks[]` | 점검별 `first_run`, `after_restart`, `manual[]`, `state`, `ac_ids`, `task_ids` |
+| `acceptance[]` | AC별 `state`, `check_ids`, `task_ids` |
+| `tasks[]` | Task별 `agent_status`, `attempt`, `commit`, `check_ids`, `state`(점검이 없으면 `no_checks`), `diff` |
+| `evidence_refs` | `verify.json`, 서버 로그, 수동 기록 위치 |
+| `diagnosis` | 진단 자리. 지금은 `status: not_implemented` |
+| `handoff` | 재계획 인계. 아래 참고 |
+
+점검·AC·Task 상태는 가장 나쁜 값을 따른다: `no_evidence` > `auto_failed` > `manual_failed` > `not_run` > `manual_pending` > `manual_passed` > `auto_passed`.
+
+### 수동 확인 기록
+
+제출 형식은 `{reviewer, items: [{check_id, step_index, step, verdict: pass|fail, evidence}]}`이다. 경로는 CLI `run manual-review`와 `POST /api/m2/runs/{run_id}/manual-review` 두 가지다. 시각과 코드 커밋은 서버가 기록한다.
+
+- 거부: 빈 `reviewer`·`evidence`, 모르는 점검, 계획에 없는 단계, Spec과 다른 문구, 중복, 빈 `items`, 점검 전에 멈춘 검증, 어느 코드를 점검했는지 모르는 `verify.json`. 입력과 오류는 `manual-review.rejected.json`에 남고 기존 기록은 바뀌지 않는다.
+- 부분 제출을 허용한다. `manual-review.json`에 단계별로 합치고, 받아들인 제출과 그로 대체된 판정은 `manual-review.history.jsonl`에 쌓는다.
+- 항목마다 `code_commit`, `spec_sha256`을 남긴다. 같은 커밋을 다시 검증하면 수동 판정을 유지하고, 코드나 Spec이 바뀌면 `stale`로 세어 다시 확인을 요구한다.
+- 판정 때 파일을 다시 검증한다. 계약에 맞지 않으면 전체를 쓰지 않으며(`invalid`), 파일이 있다는 것만으로 완료되지 않는다. 그런 파일이 있으면 새 제출도 거부하므로 운영자가 옮겨야 한다.
+- 한계: 재검증은 데이터를 시드로 되돌리므로(`data_kept`), 유지된 수동 판정은 그 당시 화면을 확인한 결과다. `reviewer`는 본인이 입력한 값이며 인증하지 않는다(로컬 데모 범위).
+
+### 다시 판정하기
+
+- `run judge --run-dir <dir>`: Docker와 모델을 부르지 않고 판정만 다시 한다. 수동 기록을 넣으면 같은 판정이 자동으로 실행된다. 실행 중인 웹 Run에는 쓰지 않는다.
+- `run --resume`: 검증을 다시 실행한다. 시작할 때 `verification.json`을 지우고 `verify.json`을 `verify.previous.json`으로 옮겨, 중단되어도 이전 판정이 남지 않는다. 중단된 Run은 `insufficient_evidence`다.
+- `verify.json`에 `code_commit`, `spec_sha256`이 추가되었다. 이전 기록에는 없으며, 그 기록에 대한 수동 제출은 거부된다.
+
+### `handoff` (#11 인계)
+
+`final_status`, `route`, `cause_ambiguous`, `reasons`, `failures[]`, `suspected_task_ids`, `replan_scope`. `failures[]`는 코드가 만들며 항목은 `kind`(`build`·`start`·`restart`·`serve`·`serve_after_restart`·`auto_check`·`manual_step`), `check_id`, `ac_ids`, `task_ids`, `detail`, `evidence_ref`다. `task_ids`는 Plan의 `check_ids` 배정이며 원인 Task라는 뜻이 아니다. `suspected_task_ids`와 `replan_scope`는 Opus 진단이 채울 자리로 지금은 비어 있다.
+
+### 미결정
+
+자동 전용 점검의 `passed`를 최종 완료로 인정하되 `check_authorship`으로 표시한다. 모든 AC에 수동 단계를 요구하는 등의 더 엄격한 기준은 정하지 않았다.
+
+## 8. 실행
 
 실제 실행을 확인한 환경은 WSL2(Ubuntu) + Docker Desktop입니다. Windows에서는 WSL 터미널에서 실행합니다. 현재 실행기는 Bash와 POSIX API를 사용하므로 Windows 네이티브 실행은 지원하지 않습니다. macOS 및 별도 Linux 환경에서는 아직 실제 E2E를 검증하지 않았습니다.
 
@@ -123,5 +182,7 @@ docker build -t harness-sandbox:m2-1 app/m2/sandbox      # 최초 1회
 uv run --env-file ../.env python -m app.m2.run prd --input ../docs/m2/fixtures/leave-management/input.md --out ../docs/m2/fixtures/leave-management
 uv run --env-file ../.env python -m app.m2.run run --prd ../docs/m2/fixtures/leave-management/prd.json --keep-running
 uv run --env-file ../.env python -m app.m2.run run --resume <run dir>   # 실패 지점부터 이어 실행
-uv run python -m unittest tests.test_m2                                  # 오프라인 테스트
+uv run python -m app.m2.run manual-review --run-dir <run dir> --input <review.json>   # 수동 확인 기록
+uv run python -m app.m2.run judge --run-dir <run dir>                    # 다시 판정 (Docker·모델 호출 없음)
+uv run python -m unittest discover -s tests                              # 오프라인 테스트
 ```

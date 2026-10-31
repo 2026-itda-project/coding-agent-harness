@@ -3,7 +3,7 @@
 고정 PRD(`prd.json`, 출처 `provenance.json`)의 AC를 사용자 흐름별로 묶은 판정표다. 휴가관리는 검증용 예시이며 Harness 코드에는 이 내용이 들어가지 않는다.
 
 - 자동 판정: E6가 Spec `checks`의 HTTP 점검을 실행한 결과(`artifacts/verify.json`). 해당 AC를 덮는 점검이 모두 통과해야 한다.
-- 수동 판정: `--keep-running` 미리보기에서 사람이 확인. 결과는 실행 기록에 날짜와 함께 적는다.
+- 수동 판정: `--keep-running` 미리보기에서 사람이 확인. 결과는 `artifacts/manual-review.json`에 기록한다(`docs/m2/e2e-contract.md` 7절).
 - 한 항목이라도 실패하면 E2E 실패로 기록한다. 빌드 성공만으로 통과 처리하지 않는다.
 
 | 흐름 | 확인할 것 | AC | 판정 |

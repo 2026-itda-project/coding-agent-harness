@@ -78,6 +78,7 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
 | `POST /api/m2/generate` `{state}` | 화면의 '생성' 버튼. `review` 또는 `approved` 상태를 받아 서버가 승인하고, 백그라운드 스레드에서 PRD 생성과 검증 후 실행기를 시작한다. `run_id`를 바로 반환한다. 같은 상태의 재요청은 같은 Run을 돌려준다 |
 | `POST /api/m2/runs` `{prd_id, confirm_open_issues, retry}` | 서버에 저장된 그 PRD로 기존 실행기(`run.main`)를 백그라운드 스레드에서 시작하고 `run_id`를 바로 반환. `retry=true`는 실패·중단된 같은 Run을 실행기의 `--resume`으로 이어서 실행(사용자 요청 시에만) |
 | `GET /api/m2/runs/{run_id}` | 현재 단계, Task, 비용 확인 필요 여부(`requires_cost_review`), 실패 사유(`error`는 내부 원문, `reason`은 화면용 짧은 문장), 자동 점검, 수동 확인 대기, 미리보기 주소, 비용, 확인이 필요한 미결정 사항 |
+| `POST /api/m2/runs/{run_id}/manual-review` | 끝난 Run의 수동 확인 기록. 거부되면 422, 실행 중이면 409. 모델과 Docker를 부르지 않는다 |
 | `POST /api/m2/runs/{run_id}/preview/stop` | 그 Run의 미리보기 컨테이너만 종료 |
 
 - 클라이언트는 `prd_id`만 보낸다. 파일 경로, PRD 내용, 명령, URL은 받지 않는다. id는 형식을 검사한 뒤에만 경로와 컨테이너 이름에 쓴다.
@@ -97,6 +98,17 @@ Review 이후 검증 `check_reviewed_prd(prd, reviewed)`(기존 `check_prd` 포�
   | `verification_failed` | 빌드 또는 자동 점검 실패 |
   | `auto_checks_passed` | 자동 점검(`automatic_status: passed`) 전부 통과. 실행기 `status`는 `passed` 또는 `manual_pending` |
   | `manual_check_only` | 자동 점검이 없고(`automatic_status: not_applicable`) 수동 확인만 남음. 자동 통과로 표시하지 않음 |
+
+  최종 판정은 `outcome`이 아니라 `final_status`와 `verification`이다([e2e-contract.md 7절](e2e-contract.md#7-최종-판정-10)). 실행 중이거나 검증 전이면 `null`이다. 조회할 때마다 증거에서 다시 판정한다. `outcome`은 화면 호환을 위해 값을 늘리지 않았다.
+
+  | `final_status` | `outcome` | `manual_review` |
+  | --- | --- | --- |
+  | `passed` | 자동 점검이 있으면 `auto_checks_passed`, 없으면 `manual_check_only` | 수동 단계가 없으면 `not_required`, 있으면 `done` |
+  | `manual_pending` | 자동 점검이 있으면 `auto_checks_passed`, 없으면 `manual_check_only` | `pending`, 기록이 계약에 맞지 않으면 `invalid` |
+  | `manual_failed` | `verification_failed` | `failed` |
+  | `build_failed`, `test_failed`, `auto_failed`, `insufficient_evidence` | `verification_failed` | 수동 기록 상태 그대로 |
+
+  따라서 `auto_checks_passed`만으로는 완료가 아니다. Spec·Plan이 없는 기록은 `final_status: null`로 이전 규칙을 따르고, 파일이 있어도 `done`으로 보지 않는다.
 
   상단 단계 표시는 실행 결과 조회에 따라 생성에서 완료로 전환한다. 사용자 화면은 `auto_checks_passed`에만 "생성이 완료되었습니다!"를 쓴다. `manual_check_only`는 "생성이 끝났습니다"와 직접 확인 안내를 쓴다. 내부의 `manual_pending`과 `manual_review: pending`은 그대로 남기며 화면 문구 때문에 완료로 바꾸지 않는다. 실패, 중단, 점검 실패는 간단한 사유와 다음 행동(이어서 다시 시도, 홈으로)을 보여 준다.
 - 진행 단계(`current_stage`)는 실행 기록에서만 계산하며, `done`이 아닌 단계(실패, 거부)는 다시 시도할 때 그 단계부터로 본다: `prd`(요구사항 정리) → `spec`(개발 명세) → `plan`(작업 계획) → `code`(기능 구현, 완료 Task 수 / 전체) → `build`(빌드) → `check`(최종 점검). 실행기는 시작할 때, Spec과 Plan을 마칠 때, Task 순서를 정할 때, Task마다, 빌드와 점검을 시작할 때(`verify_phase`) `run.json`을 저장한다. 화면은 10초마다 조회하고 예상 시간이나 가짜 진행률은 보여 주지 않는다.
@@ -126,8 +138,9 @@ cd ../frontend && npm run dev                                              # htt
 ## 7. 한계 (임시 동작 포함)
 
 - 실행 관리는 서버 프로세스 하나의 스레드다. `--reload`나 다중 worker에서는 쓰지 않는다. 서버가 재시작되면 진행 중이던 Run은 `interrupted`가 된다. 자동으로 다시 시작하지 않으며, 사용자가 "이어서 다시 시도"(`retry=true`)를 누르면 완료된 단계를 건너뛰고 이어서 실행한다. 재시작 중 이미 시작된 Claude Code 프로세스가 남을 수 있다.
-- 자동 재시도·재계획(#11), Opus 최종 검증(#10), 비용·지표 체계(#12)는 포함하지 않는다.
-- 수동 확인 결과를 화면에서 기록하는 기능은 없다(`artifacts/manual-review.json`이 있으면 `done`).
+- 자동 재시도·재계획(#11), Opus 진단(#10 후속), 비용·지표 체계(#12)는 포함하지 않는다.
+- 수동 확인 결과를 화면에서 기록하는 기능은 없다. API와 CLI로 기록한다([e2e-contract.md 7절](e2e-contract.md#7-최종-판정-10)).
+- 환경 오류와 앱 실패는 `final_status`로 구분되지만 `outcome`은 둘 다 `verification_failed`다. 화면 구분은 #13에서 한다.
 - 새로고침: 생성을 시작하면 브라우저 `localStorage`에 `run_id`만 기억하고, 다시 열면 서버의 상태를 불러와 진행이나 결과 화면을 보여 준다. 진행 상태와 산출물은 서버 파일에 있으므로 브라우저 저장이 지워져도 생성 결과는 남는다(그 경우 화면에서 다시 찾아가는 목록은 아직 없다). 생성 전 단계(질문, 검토)의 화면 상태는 브라우저 메모리에만 있어 새로고침하면 처음부터 다시 해야 한다.
 - Review 이후 PRD 프롬프트는 Structured Output 문법 한도 때문에 Spec과 같이 스키마를 프롬프트로 전달하고 같은 계약으로 검증한다.
 
