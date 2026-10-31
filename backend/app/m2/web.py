@@ -189,7 +189,7 @@ def start_run(prd_id, confirm_open_issues, retry=False):
                 run.dump(target / "web.json", {**web, "status": "running", "stage": "run", "error": None,
                                                "ended_at": None, "open_issues_confirmed": True})
                 return _start(run_id, ["--prd", str(out / "prd.json"), "--run-id", run_id], created=False)
-            if not retry or not (web["status"] in ("failed", "interrupted") or verification_failed(target, web)):
+            if not retry or not stopped_for_retry(target, web):
                 return {"run_id": run_id, "created": False}
             if cost_review_needed(prd_id):
                 raise Conflict("비용 확인이 필요합니다. 운영자가 중단된 호출 비용을 확인한 뒤 다시 시도하세요.")
@@ -249,14 +249,24 @@ def cost_review_needed(prd_id):
             or costs(read(run_dir(f"web-{prd_id}") / "run.json", {}))["unknown_cost_records"] > 0)
 
 
-def reason_for(outcome, error, verification=None):
+def docker_failed(verification):
+    """verify.json itself shows Docker stopped the verification. Other missing evidence says nothing about Docker."""
+    verification = verification or {}
+    return (verification.get("status") in ("environment_error", "start_failed")
+            or any(s.get("outcome") == "docker_error" for s in verification.get("steps") or []))
+
+
+def reason_for(outcome, error, verification=None, final_status=None):
     """Short user-facing reason. The raw error (paths, codes) stays in `error` and web.json."""
     error = error or ""
     if outcome == "interrupted":
         return "서버가 다시 시작되어 생성이 멈췄습니다."
-    if "sandbox cleanup failed" in error or (outcome == "verification_failed"
-                                            and verification and verification.get("status") == "environment_error"):
+    if "sandbox cleanup failed" in error or (outcome == "verification_failed" and docker_failed(verification)):
         return "실행 환경을 준비하지 못했습니다. Docker 실행 상태와 샌드박스 설정을 확인한 뒤 다시 시도해 주세요."
+    if outcome == "verification_failed" and final_status == "insufficient_evidence":
+        return "점검 결과를 확인하지 못했습니다."
+    if outcome == "verification_failed" and final_status == "manual_failed":
+        return "사람 확인에서 실패한 항목이 있습니다."
     if outcome == "verification_failed":
         return "만든 앱이 빌드 또는 최종 점검을 통과하지 못했습니다."
     if "unknown cost" in error or "비용 확인" in error:
@@ -272,11 +282,64 @@ def reason_for(outcome, error, verification=None):
     return "생성 중 문제가 생겨 멈췄습니다."
 
 
+def stopped_for_retry(target, web):
+    return web["status"] in ("failed", "interrupted") or verification_failed(target, web)
+
+
+def can_retry(target, web):
+    """Whether a retry request would start now: the same conditions as `start_run`, so a screen can
+    offer the action only when it will do something."""
+    return (stopped_for_retry(target, web) and not cost_review_needed(web["prd_id"])
+            and ((target / "run.json").exists() or web.get("stage") == "prd")
+            and not any(t.is_alive() for t in _threads.values()))
+
+
 def verification_failed(target, web):
     """A finished run whose build or checks failed. Retrying it runs the same code through build and
     checks again (the runner skips finished stages); nothing is regenerated or repaired."""
-    verify = read(target / "artifacts/verify.json")
+    verify = run.read_json(target / "artifacts/verify.json")
+    verify = verify if isinstance(verify, dict) else None
     return web["status"] == "finished" and not (verify and verify.get("status") in ("passed", "manual_pending"))
+
+
+def verdict_of(target, web, state):
+    """The verdict is judged from the evidence on every read, so it cannot drift from it. None while
+    the run is active, before it reached verification, or for a record that has no Spec and Plan."""
+    art = target / "artifacts"
+    if web["status"] in ("running", "awaiting_confirmation"):
+        return None
+    if not (art / "verify.json").exists() and state.get("stages", {}).get("code") != "done":
+        return None
+    try:
+        return run.judge_run(target, state.get("tasks"))
+    except (ValueError, OSError):
+        return None
+
+
+MANUAL_REVIEW = {"not_applicable": "not_required", "passed": "done", "failed": "failed", "pending": "pending"}
+
+
+def manual_review_of(verification):
+    if verification is None:
+        return "pending"
+    if verification["basis"]["manual_review_state"] == "invalid":
+        return "invalid"
+    return MANUAL_REVIEW[verification["gates"]["manual"]["status"]]
+
+
+def record_manual_review(run_id, data):
+    """A person's review of a finished run. Never calls a model or Docker to judge it."""
+    target = run_dir(run_id)
+    if read(target / "web.json") is None:
+        raise ValueError("알 수 없는 실행입니다.")
+    with _lock:
+        thread = _threads.get(run_id)
+        if thread and thread.is_alive():
+            raise Conflict("실행 중에는 수동 확인을 기록할 수 없습니다.")
+        if not (target / "artifacts/spec.json").exists():
+            raise ValueError("검증 기록이 없어 수동 확인을 기록할 수 없습니다.")
+        run.submit_manual_review(target, data)
+    return run_status(run_id)
 
 
 def run_status(run_id):
@@ -290,7 +353,10 @@ def run_status(run_id):
         run.dump(target / "web.json", web)
     state = read(target / "run.json", {})
     art = target / "artifacts"
-    verify = read(art / "verify.json")
+    verify = run.read_json(art / "verify.json")
+    verify = verify if isinstance(verify, dict) else None
+    verification = verdict_of(target, web, state)
+    final_status = verification["final_status"] if verification else None
     stages_done = state.get("stages", {})
     # a stage counts as passed only when it is "done": a failed or rejected one is where a resumed run restarts
     current = "prd" if web.get("stage") == "prd" else next((s for s in run.STAGES if stages_done.get(s) != "done"), None)
@@ -302,6 +368,10 @@ def run_status(run_id):
         outcome = web["status"]
     elif web["status"] in ("failed", "interrupted"):
         outcome = web["status"]
+    elif verification:  # `outcome` keeps its values for the screens; `final_status` is the verdict
+        no_automatic = verification["gates"]["automatic"]["status"] == "not_applicable"
+        outcome = ("verification_failed" if final_status not in ("passed", "manual_pending")
+                   else "manual_check_only" if no_automatic else "auto_checks_passed")
     elif verify and verify.get("status") in ("passed", "manual_pending"):
         # automatic checks only; a human review is still pending. No automatic check is its own outcome.
         outcome = "manual_check_only" if verify.get("automatic_status") == "not_applicable" else "auto_checks_passed"
@@ -310,12 +380,13 @@ def run_status(run_id):
     preview = verify.get("preview_url") if verify else None
     return {
         "run_id": run_id, "prd_id": web["prd_id"], "outcome": outcome, "error": web.get("error"),
-        "requires_cost_review": cost_review_needed(web["prd_id"]),
-        "reason": reason_for(outcome, web.get("error"), verify) if outcome in ("failed", "interrupted", "verification_failed") else None,
+        "requires_cost_review": cost_review_needed(web["prd_id"]), "can_retry": can_retry(target, web),
+        "reason": reason_for(outcome, web.get("error"), verify, final_status) if outcome in ("failed", "interrupted", "verification_failed") else None,
         "current_stage": current if outcome == "running" else None, "stages": stages_done,
         "tasks": tasks, "task_order": state.get("task_order", []),
         "verify": {k: verify.get(k) for k in ("status", "automatic_status", "passed", "total", "failures")} if verify else None,
-        "manual_review": "done" if (art / "manual-review.json").exists() else "pending",
+        "final_status": final_status, "verification": verification,
+        "manual_review": manual_review_of(verification),
         "preview_url": preview if preview and preview_running(run_id) else None,
         "cost_usd": costs(state), "started_at": web["started_at"], "ended_at": web.get("ended_at"),
         "models": state.get("models"),

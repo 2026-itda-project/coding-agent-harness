@@ -669,10 +669,15 @@ class GenerateFlowTest(WebBase):
             progress("check")
             seen["check"] = stage()
             return {"status": "passed", "automatic_status": "passed", "passed": 1, "total": 1, "failures": [],
-                    "preview_url": None}
+                    "preview_url": None, "root_status": 200, "root_status_after_restart": 200,
+                    "steps": [{"phase": "build", "outcome": "ok"}, {"phase": "restart", "outcome": "ok"}],
+                    "checks": [{"id": "CHK-001", "passed": True}], "checks_after_restart": []}
+
+        covers_every_ac = spec_data()
+        covers_every_ac["checks"][0]["ac_ids"] = [ac["id"] for ac in output["acceptance_criteria"]]
 
         real_main = run.main
-        with patch.object(stages, "generate_spec", lambda prd, log: (seen.setdefault("spec", stage()), Spec.model_validate(spec_data()))[1]), \
+        with patch.object(stages, "generate_spec", lambda prd, log: (seen.setdefault("spec", stage()), Spec.model_validate(covers_every_ac))[1]), \
                 patch.object(stages, "generate_plan", lambda prd, spec, log: (seen.setdefault("plan", stage()), Plan.model_validate(plan_data()))[1]), \
                 patch.object(agent, "run_task", task), patch.object(verify, "verify", check), \
                 patch.object(web, "preview_running", lambda run_id: False):

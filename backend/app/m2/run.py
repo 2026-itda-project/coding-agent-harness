@@ -3,6 +3,8 @@
   uv run --env-file ../.env python -m app.m2.run prd --input <input.md> --out <fixture dir>
   uv run --env-file ../.env python -m app.m2.run run --prd <prd.json> [--until spec|plan|code|verify]
   uv run --env-file ../.env python -m app.m2.run run --resume <run dir>
+  uv run python -m app.m2.run judge --run-dir <run dir>                                 # no Docker, no model
+  uv run python -m app.m2.run manual-review --run-dir <run dir> --input <review.json>   # no Docker, no model
 
 Every paid call checks the run budget first. Nothing is retried automatically (#11)."""
 
@@ -17,9 +19,12 @@ from pathlib import Path
 
 from app.llm import claude
 from app.llm.errors import AnalysisError
-from app.m2 import agent, stages, verify
+from pydantic import ValidationError
+
+from app.m2 import acceptance, agent, stages, verify
 from app.m2.context import build_context
-from app.m2.contracts import PRD, Plan, Spec, check_generated_prd, check_prd, order_tasks
+from app.m2.contracts import (PRD, ManualReview, ManualReviewSubmission, Plan, Spec, check_generated_prd,
+                              check_manual_submission, check_prd, order_tasks)
 
 STAGES = ("spec", "plan", "code", "verify")
 WORKSPACE_ROOT = Path(os.getenv("HARNESS_WORKSPACE_ROOT") or Path.home() / "dev/2026-itda-project/harness-workspaces")
@@ -44,6 +49,93 @@ def dump(path, data):
 
 def load(path):
     return json.loads(path.read_text())
+
+
+def read_json(path, unreadable=None):
+    """A record that may be missing or damaged: None if missing, `unreadable` if it is not JSON."""
+    if not path.exists():
+        return None
+    try:
+        return load(path)
+    except ValueError:
+        return unreadable
+
+
+class ManualReviewRejected(ValueError):
+    """A submission that was refused and saved to manual-review.rejected.json."""
+
+
+# ---------- verdict (#10): evidence files -> acceptance.build_verification ----------
+
+def judge_run(run_dir, tasks):
+    """Judge from the files as they are now, writing nothing. Raises ValueError or OSError when the
+    Spec or Plan the evidence is judged against cannot be read."""
+    art = Path(run_dir) / "artifacts"
+    record = read_json(art / "verify.json")
+    # A damaged review must count as invalid, not as "none yet": the marker fails the contract.
+    review = read_json(art / "manual-review.json", unreadable={"unreadable": True})
+    return acceptance.build_verification(
+        PRD.model_validate(load(art / "prd.json")), Spec.model_validate(load(art / "spec.json")),
+        Plan.model_validate(load(art / "plan.json")), record if isinstance(record, dict) else None, review,
+        tasks, sha((art / "spec.json").read_text()), now())
+
+
+def save_verdict(run_dir):
+    """Judge again and record it, for a finished run: its run.json has no other writer now."""
+    state = read_json(Path(run_dir) / "run.json") or {}
+    verification = judge_run(run_dir, state.get("tasks"))
+    dump(Path(run_dir) / "artifacts/verification.json", verification)
+    dump(Path(run_dir) / "run.json", {**state, "final_status": verification["final_status"], "updated_at": now()})
+    return verification
+
+
+def retire_verification(art):
+    """Before checking again: a verification that gets interrupted must not leave the previous verdict
+    or its evidence standing for code that is being checked anew. The last evidence stays readable."""
+    (art / "verification.json").unlink(missing_ok=True)
+    if (art / "verify.json").exists():
+        os.replace(art / "verify.json", art / "verify.previous.json")
+
+
+def submit_manual_review(run_dir, data):
+    """Validate a person's review and merge it step by step; a partial one is allowed. Refused input
+    goes to manual-review.rejected.json and every accepted one to manual-review.history.jsonl."""
+    art = Path(run_dir) / "artifacts"
+    spec = Spec.model_validate(load(art / "spec.json"))
+    spec_sha = sha((art / "spec.json").read_text())
+    record = read_json(art / "verify.json")
+    record = record if isinstance(record, dict) else {}
+    target = art / "manual-review.json"
+    existing = read_json(target, unreadable={"unreadable": True})
+    errors, submission = [], None
+    try:
+        submission = ManualReviewSubmission.model_validate(data)
+        errors = check_manual_submission(submission, spec)
+    except ValidationError as exc:
+        errors = [e["msg"] + " at " + ".".join(map(str, e["loc"])) for e in exc.errors()]
+    if record.get("status") not in ("manual_pending", "checks_failed"):
+        errors.append(f"verification {record.get('status')} gave no running app to review")
+    elif not record.get("code_commit") or record.get("spec_sha256") != spec_sha:
+        errors.append("verify.json does not say which code and Spec it checked; verify again first")
+    try:
+        previous = ManualReview.model_validate(existing).items if existing is not None else []
+    except ValidationError:
+        previous = []
+        errors.append("the stored manual-review.json fails the contract; move it away first")
+    if errors:
+        dump(art / "manual-review.rejected.json", {"rejected_at": now(), "errors": errors, "data": data})
+        raise ManualReviewRejected("수동 확인 기록이 거부되었습니다: " + "; ".join(errors))
+    at = now()
+    new = [{**e.model_dump(), "reviewer": submission.reviewer, "reviewed_at": at,
+            "code_commit": record["code_commit"], "spec_sha256": spec_sha} for e in submission.items]
+    keys = {(e["check_id"], e["step_index"]) for e in new}
+    replaced = [i.model_dump() for i in previous if (i.check_id, i.step_index) in keys]
+    kept = [i.model_dump() for i in previous if (i.check_id, i.step_index) not in keys]
+    with (art / "manual-review.history.jsonl").open("a") as history:
+        history.write(json.dumps({"submitted_at": at, "reviewer": submission.reviewer, "items": new,
+                                  "replaced": replaced}, ensure_ascii=False) + "\n")
+    dump(target, {"schema_version": 1, "reviewer": submission.reviewer, "reviewed_at": at, "items": kept + new})
+    return save_verdict(run_dir)
 
 
 class Budget:
@@ -177,10 +269,18 @@ def cmd_run(args):
             def progress(phase):  # lets a status reader tell building from checking
                 state["verify_phase"] = phase
                 save()
+            state.pop("final_status", None)
+            retire_verification(art)
+            evidence_of = {"code_commit": agent.git(app_dir, "rev-parse", "HEAD").strip(),
+                           "spec_sha256": sha((art / "spec.json").read_text())}
             result = verify.verify(app_dir, spec, f"harness-{state['run_id']}", keep_running=args.keep_running,
                                    progress=progress)
-            dump(art / "verify.json", result)
+            dump(art / "verify.json", {**result, **evidence_of})
             state["stages"]["verify"] = result["status"]
+            verification = judge_run(run_dir, state["tasks"])
+            dump(art / "verification.json", verification)
+            state["final_status"] = verification["final_status"]
+            print(f"final status: {verification['final_status']}")
             print(f"verify: {result['status']} ({result.get('passed')}/{result.get('total')} checks)"
                   + (f", preview {result['preview_url']}" if result.get("preview_url") else ""))
             if result.get("cleanup_error"):  # the next task or verification checks again before it starts
@@ -201,6 +301,27 @@ def cmd_run(args):
     print(f"run dir: {run_dir}\ncost: {state['cost_usd']}")
 
 
+def finished_run_dir(args):
+    run_dir = Path(args.run_dir)
+    if (read_json(run_dir / "web.json") or {}).get("status") == "running":
+        raise SystemExit("this run is still running; its records cannot change now")
+    return run_dir
+
+
+def cmd_judge(args):
+    verification = save_verdict(finished_run_dir(args))
+    print(f"final status: {verification['final_status']}\n" + "\n".join(verification["reasons"]))
+
+
+def cmd_manual_review(args):
+    run_dir = finished_run_dir(args)
+    try:
+        verification = submit_manual_review(run_dir, json.loads(Path(args.input).read_text()))
+    except ManualReviewRejected as exc:
+        raise SystemExit(str(exc))
+    print(f"final status: {verification['final_status']}\n" + "\n".join(verification["reasons"]))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -217,8 +338,13 @@ def main(argv=None):
     r.add_argument("--budget-usd", type=float, default=8.0)
     r.add_argument("--task-budget-usd", type=float, default=1.5)
     r.add_argument("--keep-running", action="store_true")
+    j = sub.add_parser("judge")
+    j.add_argument("--run-dir", required=True)
+    m = sub.add_parser("manual-review")
+    m.add_argument("--run-dir", required=True)
+    m.add_argument("--input", required=True)
     args = parser.parse_args(argv)
-    (cmd_prd if args.cmd == "prd" else cmd_run)(args)
+    {"prd": cmd_prd, "run": cmd_run, "judge": cmd_judge, "manual-review": cmd_manual_review}[args.cmd](args)
 
 
 if __name__ == "__main__":
