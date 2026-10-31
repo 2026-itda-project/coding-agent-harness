@@ -9,7 +9,9 @@ from app import pipeline
 from app.llm.errors import AnalysisError
 from app.llm.mock import MockProvider
 from app.m2 import stages, web
-from app.m2.contracts import PRD, ReviewedPRD, Spec, check_reviewed_prd, check_spec
+from app.m2.contracts import PRD, ReviewedPRD, Spec, check_reviewed_prd, check_spec, output_schema
+from app.m2.requirements import QuestionPlan
+from pydantic import ValidationError
 from app.schemas import Answer, EditAction, Gap, WorkflowState
 from app.workflow import approve, validate_state
 
@@ -34,6 +36,14 @@ class RecordingMock(MockProvider):
 
 
 class SingleRoundTest(unittest.TestCase):
+    def test_question_schema_is_api_compatible_but_six_questions_still_fail(self):
+        schema = output_schema(QuestionPlan)
+        self.assertNotIn('maxItems', schema['properties']['questions'])
+        questions = [dict(gap_id=f'G-{i}', question='핵심 결정?', ai_proposal='추천안') for i in range(6)]
+        self.assertEqual(len(QuestionPlan.model_validate({'role_gap': None, 'questions': questions[:5]}).questions), 5)
+        with self.assertRaises(ValidationError):
+            QuestionPlan.model_validate({'role_gap': None, 'questions': questions})
+
     def test_zero_questions_reaches_review_with_a_single_role(self):
         provider = RecordingMock()
         result = pipeline.clarify_step(state(), provider=provider)

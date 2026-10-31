@@ -408,9 +408,10 @@ def output_schema(model):
         if isinstance(node, dict):
             if "$ref" in node:
                 return inline(defs[node["$ref"].split("/")[-1]])
-            # Drop pydantic's "title" metadata, but keep properties that are named "title".
+            # Claude rejects maxItems; Pydantic still enforces it after generation.
+            # Keep actual property names even when they match stripped schema metadata.
             result = {k: inline(v, k == "properties") for k, v in node.items()
-                      if is_properties or k not in ("title", "default")}
+                      if is_properties or k not in ("title", "default", "maxItems")}
             if "properties" in result:
                 result["required"] = list(result["properties"])
             return result
